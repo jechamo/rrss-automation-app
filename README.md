@@ -10,9 +10,14 @@ virales del nicho y generación de vídeo).
 ## Documentación
 
 - [Requisitos](docs/01-requisitos.md) — **APROBADO (v1)**
-- Diseño — *pendiente*
-- Arquitectura — *pendiente*
+- [Diseño](docs/02-diseno.md) — **APROBADO (v1)**
+- [Arquitectura](docs/03-arquitectura.md) — **APROBADO (v1)**
+
+## Stack
+
+Node.js + TypeScript · Next.js (App Router) · Tailwind · React Flow · SQLite/Prisma ·
+Playwright · FFmpeg · Claude Code CLI / Agent SDK (motor de IA seleccionable).
 
 ## Estado
 
-En fase de especificación. Aún sin código de aplicación.
+Especificación SDD cerrada. Siguiente: scaffolding + implementación de **REQ-001**.
