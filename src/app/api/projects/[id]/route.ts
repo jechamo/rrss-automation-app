@@ -17,3 +17,13 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   }
   return NextResponse.json({ project, lastRun: project.runs[0] ?? null });
 }
+
+export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const { id } = await ctx.params;
+  try {
+    await prisma.project.delete({ where: { id } });
+  } catch {
+    return NextResponse.json({ error: "No se pudo eliminar (¿ya no existe?)." }, { status: 404 });
+  }
+  return NextResponse.json({ ok: true });
+}

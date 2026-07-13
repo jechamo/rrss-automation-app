@@ -107,6 +107,12 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
     setSaving(false);
   }
 
+  async function removeProject() {
+    if (!confirm("¿Eliminar este analisis y su dossier? Esta accion no se puede deshacer.")) return;
+    await fetch(`/api/projects/${id}`, { method: "DELETE" });
+    window.location.href = "/";
+  }
+
   async function regenerate() {
     setRegenerating(true);
     setDossier(null);
@@ -136,7 +142,15 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
             {project.url} ↗
           </a>
         </div>
-        <StatusBadge status={runStatus} />
+        <div className="flex shrink-0 items-center gap-3">
+          <StatusBadge status={runStatus} />
+          <button
+            onClick={removeProject}
+            className="rounded-lg border border-[var(--color-state-error)]/40 px-3 py-1.5 text-xs text-[var(--color-state-error)] hover:bg-[var(--color-state-error)]/10"
+          >
+            Eliminar
+          </button>
+        </div>
       </header>
 
       <section className="mb-6">

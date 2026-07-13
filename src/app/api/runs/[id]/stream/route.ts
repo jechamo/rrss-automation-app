@@ -10,31 +10,44 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
+      let closed = false;
+      let unsub: (() => void) | null = null;
+
       const send = (e: RunEvent) => {
+        if (closed) return;
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(e)}\n\n`));
       };
+      const finish = (ok: boolean) => {
+        if (closed) return;
+        send({ type: "done", ok });
+        closed = true;
+        if (unsub) unsub();
+        controller.close();
+      };
 
-      // Estado inicial persistido (por si el run ya avanzo o termino).
-      const run = await prisma.run.findUnique({ where: { id } });
-      if (run) {
+      const sendPersisted = (run: { nodes: string }) => {
         const nodes = JSON.parse(run.nodes) as { id: string; state: string; detail?: string }[];
         for (const n of nodes) {
           send({ type: "node", nodeId: n.id, state: n.state as NodeState, detail: n.detail });
         }
-        if (run.status === "ok" || run.status === "error") {
-          send({ type: "done", ok: run.status === "ok" });
-          controller.close();
-          return;
-        }
-      }
+      };
 
-      const unsub = subscribe(id, (e) => {
-        send(e);
-        if (e.type === "done") {
-          unsub();
-          controller.close();
-        }
+      // Suscribimos ANTES de leer el estado para no perder el evento "done"
+      // si el run termina mientras consultamos la BD (condicion de carrera).
+      unsub = subscribe(id, (e) => {
+        if (e.type === "done") finish(e.ok);
+        else send(e);
       });
+
+      const run = await prisma.run.findUnique({ where: { id } });
+      if (!run) {
+        finish(false);
+        return;
+      }
+      sendPersisted(run);
+      if (run.status === "ok" || run.status === "error") {
+        finish(run.status === "ok");
+      }
     },
   });
 

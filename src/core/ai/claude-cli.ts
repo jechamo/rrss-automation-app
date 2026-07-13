@@ -50,16 +50,36 @@ export class ClaudeCliEngine implements AiEngine {
     return null;
   }
 
-  private exec(args: string[], cwd?: string, input?: string): Promise<{ code: number; stdout: string; stderr: string }> {
+  private exec(
+    args: string[],
+    cwd?: string,
+    input?: string,
+    timeoutMs = 180_000,
+  ): Promise<{ code: number; stdout: string; stderr: string }> {
     return new Promise((resolve) => {
       const bin = this.resolveBinary()!;
       const child = spawn(bin, args, { cwd, shell: process.platform === "win32" });
       let stdout = "";
       let stderr = "";
+      let settled = false;
+      const done = (r: { code: number; stdout: string; stderr: string }) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(r);
+      };
+      const timer = setTimeout(() => {
+        child.kill();
+        done({
+          code: -1,
+          stdout,
+          stderr: stderr + `\nTiempo de espera agotado tras ${timeoutMs / 1000}s.`,
+        });
+      }, timeoutMs);
       child.stdout.on("data", (d) => (stdout += d.toString()));
       child.stderr.on("data", (d) => (stderr += d.toString()));
-      child.on("error", (e) => resolve({ code: -1, stdout, stderr: stderr + String(e) }));
-      child.on("close", (code) => resolve({ code: code ?? -1, stdout, stderr }));
+      child.on("error", (e) => done({ code: -1, stdout, stderr: stderr + String(e) }));
+      child.on("close", (code) => done({ code: code ?? -1, stdout, stderr }));
       if (input) {
         child.stdin.write(input);
         child.stdin.end();
@@ -69,7 +89,7 @@ export class ClaudeCliEngine implements AiEngine {
 
   async test(): Promise<TestResult> {
     const bin = this.resolveBinary();
-    const { code, stdout, stderr } = await this.exec(["--version"]);
+    const { code, stdout, stderr } = await this.exec(["--version"], undefined, undefined, 15_000);
     if (code === 0) {
       return { ok: true, detail: `Claude CLI OK (${stdout.trim() || bin})` };
     }

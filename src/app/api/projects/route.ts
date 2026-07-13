@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     data: { name, url, codeType, codePath: codePath ?? null },
   });
 
-  const def = buildReq001Pipeline();
+  const def = buildReq001Pipeline(project.codeType);
   const run = await prisma.run.create({
     data: {
       projectId: project.id,

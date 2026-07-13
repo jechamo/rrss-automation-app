@@ -12,7 +12,7 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
     return NextResponse.json({ error: "Proyecto no encontrado." }, { status: 404 });
   }
 
-  const def = buildReq001Pipeline();
+  const def = buildReq001Pipeline(project.codeType);
   const run = await prisma.run.create({
     data: {
       projectId: project.id,

@@ -59,6 +59,7 @@ body {
   position: absolute;
   inset: 0;
   border-radius: inherit;
+  pointer-events: none;
   padding: 1px;
   background: linear-gradient(120deg, var(--color-accent), var(--color-accent-2));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
