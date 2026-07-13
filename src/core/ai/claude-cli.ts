@@ -58,7 +58,12 @@ export class ClaudeCliEngine implements AiEngine {
   ): Promise<{ code: number; stdout: string; stderr: string }> {
     return new Promise((resolve) => {
       const bin = this.resolveBinary()!;
-      const child = spawn(bin, args, { cwd, shell: process.platform === "win32" });
+      // shell:true en Windows manda el comando por cmd.exe, que rompe argumentos
+      // multilinea (p.ej. --append-system-prompt). Con un .exe real no hace falta:
+      // spawn directo pasa cada arg intacto. Solo usamos shell para "claude"/.cmd/.bat.
+      const useShell = process.platform === "win32" && !/\.exe$/i.test(bin);
+      console.log("[claude-cli] exec:", bin, "| args:", args.map((a) => (a.length > 60 ? a.slice(0, 60) + "…" : a)));
+      const child = spawn(bin, args, { cwd, shell: useShell });
       let stdout = "";
       let stderr = "";
       let settled = false;

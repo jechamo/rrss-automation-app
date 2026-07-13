@@ -43,9 +43,16 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 - `iniciar.bat` reescrito: mata servidores viejos + limpia `.next` para arranque 100% limpio. — `e950b3f`
 - Documentación de agente: `AGENTS.md` + esta bitácora.
 
-**Diagnóstico raíz de errores fantasma:** `.next` cacheado servía una versión antigua de
-`claude-cli.ts` (de antes del auto-descubrimiento) → "claude no reconocido" y "no va al flujo".
-Solución: arranque limpio vía `iniciar.bat` (borra `.next`, mata `node.exe`).
+**Diagnóstico raíz DEFINITIVO del "claude no se reconoce":** no era caché ni PATH.
+En `claude-cli.ts` el `exec()` usaba `spawn(bin, args, { shell: true })` en Windows. Con
+`shell:true` Node **concatena los argumentos sin escaparlos** (DEP0190) y los manda por
+`cmd.exe`. El `run()` del dossier pasa `--append-system-prompt` con un texto **multilínea**;
+`cmd.exe` lo partía en los espacios/saltos de línea y ejecutaba los fragmentos como comandos
+sueltos → "claude"/palabra no reconocida. El `test()` (`--version`, sin args complejos) no lo
+sufría, por eso "Probar conexión" daba OK pero el análisis fallaba.
+**Fix:** usar `shell:false` cuando el binario es un `.exe` real (spawn directo, cada arg intacto);
+shell solo para `claude` a secas o `.cmd/.bat`. Verificado: con `shell:false` el system prompt
+multilínea llega íntegro como un solo argumento.
 
 **Pendiente de confirmar por el usuario:** que tras `iniciar.bat` en frío, un análisis "solo web"
 va directo al flujo, sin error de "claude", con nodos actualizándose en vivo.
