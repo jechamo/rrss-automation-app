@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import type { AiEngine, AiResult, AiTask, TestResult } from "./engine";
@@ -24,8 +24,30 @@ export class ClaudeCliEngine implements AiEngine {
     ];
     for (const c of candidates) if (existsSync(c)) return c;
 
+    // App de escritorio de Claude: binario versionado, elegimos la version mas reciente.
+    const managed = this.resolveManaged(home);
+    if (managed) return managed;
+
     // Ultima opcion: confiar en el PATH.
     return "claude";
+  }
+
+  private resolveManaged(home: string): string | null {
+    const base = path.join(home, "AppData", "Roaming", "Claude", "claude-code");
+    if (!existsSync(base)) return null;
+    try {
+      const versions = readdirSync(base, { withFileTypes: true })
+        .filter((d) => d.isDirectory())
+        .map((d) => d.name)
+        .sort(compareVersionsDesc);
+      for (const v of versions) {
+        const bin = path.join(base, v, "claude.exe");
+        if (existsSync(bin)) return bin;
+      }
+    } catch {
+      /* ignore */
+    }
+    return null;
   }
 
   private exec(args: string[], cwd?: string, input?: string): Promise<{ code: number; stdout: string; stderr: string }> {
@@ -82,6 +104,17 @@ export class ClaudeCliEngine implements AiEngine {
     if (task.json) result.data = extractJson(text);
     return result;
   }
+}
+
+/** Ordena versiones semver descendente (ej. "2.1.128" antes que "2.1.9"). */
+function compareVersionsDesc(a: string, b: string): number {
+  const pa = a.split(".").map((n) => parseInt(n, 10) || 0);
+  const pb = b.split(".").map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const diff = (pb[i] ?? 0) - (pa[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
 }
 
 /** Intenta extraer un bloque JSON de una respuesta de texto. */

@@ -4,9 +4,14 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const [projects, pieces] = await Promise.all([
+  const [projects, pieces, recent] = await Promise.all([
     prisma.project.count(),
     prisma.contentPiece.count(),
+    prisma.project.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 6,
+      include: { dossier: true },
+    }),
   ]);
 
   return (
@@ -42,6 +47,36 @@ export default async function DashboardPage() {
           cta="Ir a Ajustes →"
         />
       </section>
+
+      {recent.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-3 text-sm font-semibold text-white/60">Proyectos recientes</h2>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {recent.map((p) => (
+              <Link
+                key={p.id}
+                href={`/proyecto/${p.id}`}
+                className="glass group p-4 transition hover:bg-white/[0.06]"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate font-medium">{p.name}</span>
+                  <span
+                    className="shrink-0 rounded-full px-2 py-0.5 text-[10px]"
+                    style={
+                      p.dossier?.status === "approved"
+                        ? { background: "rgba(52,211,153,0.15)", color: "var(--color-state-ok)" }
+                        : { background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }
+                    }
+                  >
+                    {p.dossier ? (p.dossier.status === "approved" ? "Aprobado" : "Borrador") : "Sin dossier"}
+                  </span>
+                </div>
+                <div className="mt-1 truncate text-xs text-white/40">{p.url}</div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
