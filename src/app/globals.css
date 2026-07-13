@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+/* Tokens del tema (Diseño §2): dark + neon/glass + gradientes vibrantes */
+@theme {
+  --color-bg-base: #0a0a0f;
+  --color-bg-elevated: #12121a;
+  --color-surface: rgba(255, 255, 255, 0.04);
+  --color-surface-strong: rgba(255, 255, 255, 0.08);
+  --color-border-soft: rgba(255, 255, 255, 0.10);
+
+  --color-accent: #7c3aed;
+  --color-accent-2: #22d3ee;
+  --color-accent-3: #f472b6;
+
+  --color-state-running: #22d3ee;
+  --color-state-ok: #34d399;
+  --color-state-error: #fb7185;
+  --color-state-pending: #a1a1aa;
+
+  --color-text: #e5e7eb;
+  --color-text-dim: #9ca3af;
+}
+
+html,
+body {
+  background: var(--color-bg-base);
+  color: var(--color-text);
+  min-height: 100vh;
+}
+
+body {
+  background-image:
+    radial-gradient(60rem 60rem at 10% -10%, rgba(124, 58, 237, 0.15), transparent 60%),
+    radial-gradient(50rem 50rem at 110% 10%, rgba(34, 211, 238, 0.12), transparent 55%);
+  background-attachment: fixed;
+}
+
+/* Tarjeta glass reutilizable */
+.glass {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-soft);
+  backdrop-filter: blur(12px);
+  border-radius: 1rem;
+}
+
+.glass-strong {
+  background: var(--color-surface-strong);
+  border: 1px solid var(--color-border-soft);
+  backdrop-filter: blur(16px);
+  border-radius: 1rem;
+}
+
+/* Borde con brillo/gradiente */
+.glow-border {
+  position: relative;
+}
+.glow-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(120deg, var(--color-accent), var(--color-accent-2));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.6;
+}
+
+.text-gradient {
+  background: linear-gradient(120deg, var(--color-accent-2), var(--color-accent-3));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

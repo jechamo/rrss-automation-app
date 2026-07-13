@@ -1,0 +1,66 @@
+// Esquema inicial (multiproyecto). Crece por requisito.
+// Ver docs/03-arquitectura.md §8.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id        String         @id @default(cuid())
+  name      String
+  url       String
+  codeType  String? // local | github_public | github_private | none
+  codePath  String? // ruta local o URL de repo
+  niche     String?
+  createdAt DateTime       @default(now())
+  dossier   Dossier?
+  runs      Run[]
+  pieces    ContentPiece[]
+}
+
+model Dossier {
+  id        String   @id @default(cuid())
+  projectId String   @unique
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  content   String // JSON string con las secciones del dossier
+  status    String   @default("draft") // draft | approved
+  version   Int      @default(1)
+  updatedAt DateTime @updatedAt
+}
+
+model Run {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  requisito String // REQ-001 ...
+  status    String   @default("pending") // pending | running | ok | error
+  nodes     String // JSON string: estado por nodo
+  logs      String? // JSON string
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ContentPiece {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  origin    String // viral | own
+  script    String?
+  videoPath String?
+  target    String? // youtube | tiktok | instagram
+  status    String   @default("pending") // pending | review | published | error | deleted
+  createdAt DateTime @default(now())
+}
+
+model ConnectorState {
+  provider    String    @id // fal | heygen | elevenlabs | gemini | github | ai-engine
+  status      String    @default("unset") // ok | error | unset
+  lastChecked DateTime?
+  detail      String?
+  // Las API keys NO se guardan aqui: van al Secret Vault cifrado.
+}
