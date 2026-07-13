@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 type CodeType = "none" | "local" | "github_public" | "github_private";
 
@@ -13,7 +12,6 @@ const CODE_OPTIONS: { id: CodeType; label: string; hint: string }[] = [
 ];
 
 export default function NuevoProyectoPage() {
-  const router = useRouter();
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [codeType, setCodeType] = useState<CodeType>("none");
@@ -47,7 +45,8 @@ export default function NuevoProyectoPage() {
         setBusy(false);
         return;
       }
-      router.push(`/proyecto/${d.projectId}`);
+      // Navegacion dura: garantiza llegar siempre a la vista del pipeline.
+      window.location.href = `/proyecto/${d.projectId}`;
     } catch {
       setError("Error de red al crear el proyecto.");
       setBusy(false);
