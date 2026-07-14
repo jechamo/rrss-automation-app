@@ -9,7 +9,7 @@
 
 | REQ | Nombre | Estado |
 |-----|--------|--------|
-| REQ-001 | Análisis de la appweb → dossier de negocio | 🟡 Implementado — en pruebas del usuario |
+| REQ-001 | Análisis de la appweb → dossier de negocio | 🟢 Verificado end-to-end (run status "ok") — pendiente visto bueno final del usuario |
 | REQ-002 | Análisis de competencia | ⚪ Pendiente (siguiente) |
 | REQ-003 | Scraping de clientes potenciales + estrategia | ⚪ Pendiente |
 | REQ-004 | Scraping de virales del nicho (YT/TikTok/IG) | ⚪ Pendiente |
@@ -24,6 +24,23 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 ---
 
 ## Historial
+
+### 2026-07-14 — Auto-refresh SSE + selección de modelo
+
+**Hecho:**
+- **Fix auto-refresh del pipeline:** la UI se quedaba en "En curso…" al terminar el run
+  y solo se actualizaba al navegar fuera y volver. Causa raíz: `src/core/pipeline/bus.ts`
+  usaba un `Map` a nivel de módulo que **Next.js dev NO comparte entre bundles de rutas**
+  (el route que publica —`executeRun`— y el SSE que se suscribe cargaban Maps distintos),
+  así que los eventos en vivo nunca llegaban al cliente. **Fix:** el Map ahora vive en
+  `globalThis` (singleton real). Además, red de seguridad en el endpoint SSE
+  (`src/app/api/runs/[id]/stream/route.ts`): sondea la BD cada 1.5s y, si el run llega a
+  `ok`/`error`, envía el estado final de nodos + `done` y cierra — garantiza refresco aunque
+  el bus falle. Añadido `cancel()` para limpiar suscripción y poll al cerrar el stream.
+- **Selección de modelo:** nuevo ajuste `aiModel` (`default`/`sonnet`/`opus`/`haiku`) en
+  `src/core/settings.ts`. `AiTask.model` opcional; `claude-cli.ts` añade `--model <alias>`
+  (salvo en "default"). `generateDossier` pasa el modelo de Ajustes. API `ai-engine` acepta
+  `{model}`; `connectors` GET devuelve `aiModel`. Nuevo selector "Modelo de Claude" en Ajustes.
 
 ### 2026-07-13 — Fundación + REQ-001
 
@@ -53,6 +70,14 @@ sufría, por eso "Probar conexión" daba OK pero el análisis fallaba.
 **Fix:** usar `shell:false` cuando el binario es un `.exe` real (spawn directo, cada arg intacto);
 shell solo para `claude` a secas o `.cmd/.bat`. Verificado: con `shell:false` el system prompt
 multilínea llega íntegro como un solo argumento.
+Refuerzo: `CLAUDE_CLI_PATH` fijado en `.env` al binario exacto, y log `[claude-cli] exec: …`
+en el server para depurar. **Verificación end-to-end:** rerun de chafit contra servidor con el
+código nuevo → run `status: "ok"`, dossier generado.
+
+**Segundo factor que confundía el diagnóstico:** un **servidor zombi en el puerto 3000**
+(código viejo) sobrevivía a los reinicios; el `iniciar.bat` esperaba a que el 3000 respondiera y
+abría el navegador contra ESE servidor viejo. Endurecido `iniciar.bat`: bucle que mata cualquier
+PID en el 3000 hasta dejarlo libre antes de arrancar, para no volver a abrir un servidor viejo.
 
 **Pendiente de confirmar por el usuario:** que tras `iniciar.bat` en frío, un análisis "solo web"
 va directo al flujo, sin error de "claude", con nodos actualizándose en vivo.

@@ -12,7 +12,17 @@ export type RunEvent =
 
 export type NodeState = "pending" | "running" | "ok" | "error";
 
-const buses = new Map<string, EventEmitter>();
+// IMPORTANTE: en dev, Next.js puede cargar los route handlers en modulos
+// distintos (bundles separados por ruta). Un `Map` a nivel de modulo NO se
+// comparte entre el route que publica (POST /projects -> executeRun) y el que
+// se suscribe (GET /runs/[id]/stream) -> los eventos en vivo nunca llegan al
+// SSE y la UI se queda "En curso...". Guardar el Map en globalThis lo convierte
+// en un singleton real compartido por todos los bundles.
+const globalForBus = globalThis as unknown as {
+  __rrssBuses?: Map<string, EventEmitter>;
+};
+const buses: Map<string, EventEmitter> =
+  globalForBus.__rrssBuses ?? (globalForBus.__rrssBuses = new Map());
 
 function busFor(runId: string): EventEmitter {
   let b = buses.get(runId);

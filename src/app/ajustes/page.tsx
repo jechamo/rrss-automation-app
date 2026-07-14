@@ -18,6 +18,7 @@ type Provider = {
 export default function AjustesPage() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [aiEngine, setAiEngine] = useState<string>("claude-cli");
+  const [aiModel, setAiModel] = useState<string>("default");
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -25,6 +26,7 @@ export default function AjustesPage() {
     const d = await r.json();
     setProviders(d.providers);
     setAiEngine(d.aiEngine);
+    setAiModel(d.aiModel ?? "default");
     setLoading(false);
   }, []);
 
@@ -45,6 +47,10 @@ export default function AjustesPage() {
       </header>
 
       <EngineSelector value={aiEngine} onChange={setAiEngine} />
+
+      <div className="mt-4">
+        <ModelSelector value={aiModel} onChange={setAiModel} />
+      </div>
 
       <div className="mt-6 flex flex-col gap-4">
         {providers.map((p) => (
@@ -75,6 +81,52 @@ function EngineSelector({ value, onChange }: { value: string; onChange: (v: stri
     <div className="glass glow-border p-5">
       <div className="text-sm font-semibold">Motor de IA</div>
       <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {options.map((o) => (
+          <button
+            key={o.id}
+            disabled={saving}
+            onClick={() => select(o.id)}
+            className={[
+              "rounded-lg border px-3 py-2 text-left text-sm transition",
+              value === o.id
+                ? "border-[var(--color-accent-2)] bg-white/10"
+                : "border-white/10 hover:bg-white/5",
+            ].join(" ")}
+          >
+            <div className="font-medium">{o.label}</div>
+            <div className="text-xs text-white/40">{o.hint}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ModelSelector({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [saving, setSaving] = useState(false);
+  const options = [
+    { id: "default", label: "Automatico", hint: "Deja que Claude elija (recomendado)" },
+    { id: "sonnet", label: "Sonnet", hint: "Equilibrio calidad/velocidad" },
+    { id: "opus", label: "Opus", hint: "Maxima calidad, mas lento" },
+    { id: "haiku", label: "Haiku", hint: "Rapido y economico" },
+  ];
+  async function select(model: string) {
+    setSaving(true);
+    await fetch("/api/ai-engine", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model }),
+    });
+    onChange(model);
+    setSaving(false);
+  }
+  return (
+    <div className="glass glow-border p-5">
+      <div className="text-sm font-semibold">Modelo de Claude</div>
+      <div className="mt-1 text-xs text-white/40">
+        Modelo usado para generar el analisis. Con el plan Pro no tiene coste de API.
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {options.map((o) => (
           <button
             key={o.id}

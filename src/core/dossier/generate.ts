@@ -59,8 +59,9 @@ Devuelve EXCLUSIVAMENTE un objeto JSON con esta forma exacta (en espanol, concis
 }
 No incluyas nada fuera del JSON.`;
 
-  const engine = getEngine(getSettings().aiEngine);
-  const result = await engine.run({ system: SYSTEM, prompt, json: true });
+  const settings = getSettings();
+  const engine = getEngine(settings.aiEngine);
+  const result = await engine.run({ system: SYSTEM, prompt, json: true, model: settings.aiModel });
 
   const data = result.data ?? tryParse(result.text);
   if (!data) {

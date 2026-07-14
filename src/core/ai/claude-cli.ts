@@ -16,6 +16,13 @@ export class ClaudeCliEngine implements AiEngine {
     if (fromEnv && existsSync(fromEnv)) return fromEnv;
 
     const home = os.homedir();
+
+    // Preferido: binario de la app de escritorio de Claude. Es el que tiene la
+    // sesion Pro iniciada (login), asi funciona sin coste de API (D-02). Una copia
+    // recien instalada por npm NO esta logueada ("Not logged in · run /login").
+    const managed = this.resolveManaged(home);
+    if (managed) return managed;
+
     const candidates = [
       path.join(home, ".local", "bin", "claude.exe"),
       path.join(home, ".local", "bin", "claude"),
@@ -24,9 +31,17 @@ export class ClaudeCliEngine implements AiEngine {
     ];
     for (const c of candidates) if (existsSync(c)) return c;
 
-    // App de escritorio de Claude: binario versionado, elegimos la version mas reciente.
-    const managed = this.resolveManaged(home);
-    if (managed) return managed;
+    // Respaldo: binario instalado localmente en el proyecto (requiere `claude /login`
+    // para tener sesion propia; ver AGENTS.md).
+    const localBin = path.join(
+      process.cwd(),
+      "node_modules",
+      "@anthropic-ai",
+      "claude-code",
+      "bin",
+      process.platform === "win32" ? "claude.exe" : "claude",
+    );
+    if (existsSync(localBin)) return localBin;
 
     // Ultima opcion: confiar en el PATH.
     return "claude";
@@ -109,6 +124,8 @@ export class ClaudeCliEngine implements AiEngine {
   async run(task: AiTask): Promise<AiResult> {
     const args = ["-p", "--output-format", "json"];
     if (task.system) args.push("--append-system-prompt", task.system);
+    // Modelo opcional. "default" (o vacio) => no pasar --model, deja que el CLI elija.
+    if (task.model && task.model !== "default") args.push("--model", task.model);
 
     // El prompt se pasa por stdin para evitar limites de longitud de linea.
     const { code, stdout, stderr } = await this.exec(args, task.cwd, task.prompt);

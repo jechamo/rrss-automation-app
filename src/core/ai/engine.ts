@@ -10,6 +10,8 @@ export interface AiTask {
   cwd?: string;
   /** Pide salida JSON parseable. */
   json?: boolean;
+  /** Alias de modelo (sonnet/opus/haiku). Si se omite, el motor usa su default. */
+  model?: string;
 }
 
 export interface AiResult {

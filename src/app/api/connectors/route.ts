@@ -23,5 +23,5 @@ export async function GET() {
     };
   });
 
-  return NextResponse.json({ providers: list, aiEngine: settings.aiEngine });
+  return NextResponse.json({ providers: list, aiEngine: settings.aiEngine, aiModel: settings.aiModel });
 }
