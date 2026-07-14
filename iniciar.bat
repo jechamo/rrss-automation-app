@@ -9,9 +9,15 @@ echo.
 
 echo [1/5] Cerrando servidores Node/Next anteriores...
 taskkill /F /IM node.exe >nul 2>&1
-rem Por si algo sigue escuchando en el puerto 3000:
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr :3000 ^| findstr LISTENING') do taskkill /F /PID %%a >nul 2>&1
-timeout /t 2 >nul
+rem Insistir hasta que el puerto 3000 quede REALMENTE libre. Si queda un servidor
+rem zombi escuchando en el 3000, el navegador abriria el codigo viejo (bug antiguo).
+:killport
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr :3000 ^| findstr LISTENING') do (
+  taskkill /F /PID %%a >nul 2>&1
+  timeout /t 1 >nul
+  goto killport
+)
+timeout /t 1 >nul
 
 echo [2/5] Limpiando cache de compilacion (.next)...
 if exist ".next" rmdir /s /q ".next"

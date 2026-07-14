@@ -52,3 +52,6 @@ pnpm-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# Datos locales del agente (memoria/sesiones)
+.claude/

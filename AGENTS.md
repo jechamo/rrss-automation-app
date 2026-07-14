@@ -38,8 +38,17 @@ requisitos **REQ-001 … REQ-009**, uno a uno, con validación del usuario entre
 - **React Flow (@xyflow/react)** para el grafo de nodos del pipeline.
 - **SSE** (ReadableStream) para progreso en vivo; bus EventEmitter en memoria (`src/core/pipeline/bus.ts`).
 - **Motor IA:** Claude Code CLI en modo headless (`-p --output-format json`), plan Pro = sin coste de API.
-  Auto-descubre el binario versionado en `AppData/Roaming/Claude/claude-code/<ver>/claude.exe`
-  (`src/core/ai/claude-cli.ts`).
+  Resolución del binario en `src/core/ai/claude-cli.ts` (`resolveBinary`), en este orden:
+  1. `CLAUDE_CLI_PATH` (env, override manual).
+  2. **Binario gestionado de la app de escritorio** `AppData/Roaming/Claude/claude-code/<ver>/claude.exe`
+     → **es el que tiene la sesión Pro iniciada**, por eso es el preferido.
+  3. Candidatos en `.local/bin`, `npm`, etc.
+  4. Copia local del proyecto `node_modules/@anthropic-ai/claude-code/bin/claude.exe` (respaldo).
+  5. `claude` del PATH.
+  - **Autenticación:** una copia recién instalada por npm NO está logueada (`Not logged in · run /login`).
+    El binario gestionado sí lo está (login de la app de escritorio). Por eso se prioriza el gestionado.
+  - **Spawn:** para un `.exe` real se usa `shell:false` (cada argumento intacto). Con `shell:true` en
+    Windows los args multilínea (p.ej. `--append-system-prompt`) se rompen vía `cmd.exe`.
 - **Secret Vault** AES-256-GCM para API keys (Ajustes).
 
 ---
