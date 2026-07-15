@@ -157,7 +157,7 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
         </div>
       </header>
 
-      <section className="mb-6">
+      <section id="pipeline" className="mb-6 scroll-mt-6">
         <h2 className="mb-2 text-sm font-semibold text-white/60">Pipeline REQ-001</h2>
         <PipelineGraph nodes={nodes} />
       </section>
@@ -191,7 +191,7 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
       )}
 
       {dossier && (
-        <section>
+        <section id="dossier" className="scroll-mt-6">
           <DossierEditor
             initial={dossier}
             status={dossierStatus}
@@ -204,25 +204,25 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
       )}
 
       {dossier && (
-        <section className="mt-8 border-t border-white/10 pt-8">
+        <section id="competencia" className="mt-8 scroll-mt-6 border-t border-white/10 pt-8">
           <CompetenciaPanel projectId={id} dossierReady={!!dossier} />
         </section>
       )}
 
       {dossier && (
-        <section className="mt-8 border-t border-white/10 pt-8">
+        <section id="leads" className="mt-8 scroll-mt-6 border-t border-white/10 pt-8">
           <LeadsPanel projectId={id} dossierReady={!!dossier} />
         </section>
       )}
 
       {dossier && (
-        <section className="mt-8 border-t border-white/10 pt-8">
+        <section id="virales" className="mt-8 scroll-mt-6 border-t border-white/10 pt-8">
           <ViralesPanel projectId={id} dossierReady={!!dossier} />
         </section>
       )}
 
       {dossier && (
-        <section className="mt-8 border-t border-white/10 pt-8">
+        <section id="contenido" className="mt-8 scroll-mt-6 border-t border-white/10 pt-8">
           <ContentTray projectId={id} ready={!!dossier} />
         </section>
       )}
