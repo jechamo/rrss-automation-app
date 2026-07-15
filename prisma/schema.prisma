@@ -21,6 +21,7 @@ model Project {
   dossier     Dossier?
   competencia Competencia?
   leads       Leads?
+  virales     Virales?
   runs        Run[]
   pieces      ContentPiece[]
 }
@@ -50,6 +51,16 @@ model Leads {
   projectId String   @unique
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   content   String // JSON string con leads + estrategia (REQ-003)
+  status    String   @default("draft") // draft | approved
+  version   Int      @default(1)
+  updatedAt DateTime @updatedAt
+}
+
+model Virales {
+  id        String   @id @default(cuid())
+  projectId String   @unique
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  content   String // JSON string con Top virales + patrones (REQ-004)
   status    String   @default("draft") // draft | approved
   version   Int      @default(1)
   updatedAt DateTime @updatedAt

@@ -143,7 +143,13 @@ conocimiento: skill `rrss-lead-research`.
 
 **Salida:** **Top 20** ordenado por más vistos / más virales.
 
-> ⚠️ Dudas abiertas: método de obtención (APIs oficiales vs scraping), métricas de "viralidad", ventana temporal. Ver §7.
+**Decisión (DA-03 resuelta, ver §7):** fuente = **IA + WebSearch** (el motor `claude -p` localiza
+y describe virales públicos, sin claves API extra); definición de **viral = relativo al autor**
+(≈5× la mediana de vistas del propio canal, para no sesgar hacia cuentas grandes); ventana
+temporal = **30 días** (configurable: 7/14/30/histórico desde la UI). Implementado como pipeline
+REQ-004 (`input → discover(web) → rank(Top 20) → analyze(patrones)`), espejo de REQ-002/003.
+Cada viral se descompone (hook, estructura, share-trigger, patrón transferible) para alimentar
+REQ-005. Apoyo de conocimiento: skill `rrss-viral-analysis`.
 
 ---
 
@@ -259,7 +265,13 @@ Estas no bloquean REQ-001; se resolverán al llegar a cada requisito.
   públicos de empresa, **sin PII de personas físicas**, respetando los ToS de la fuente. **Estrategia:**
   la IA genera canal + estrategia + borrador (correo/guión de visita) por lead y el usuario edita/aprueba
   (patrón Guardar/Aprobar/Regenerar, espejo de dossier/competencia).
-- **DA-03 (REQ-004):** ¿APIs oficiales o scraping para YouTube/TikTok/Instagram? ¿Qué define "viral" y en qué ventana temporal?
+- **DA-03 (REQ-004):** ✅ RESUELTA (2026-07-15, con el usuario). **Fuente:** IA + WebSearch (el
+  motor `claude -p` con WebSearch/WebFetch localiza virales públicos de YT/TikTok/IG; sin claves
+  API ni scraping directo — usa la sesión Pro). **Definición de "viral":** **relativo al autor**
+  (≈5× la mediana de vistas del propio canal), evitando el sesgo hacia cuentas ya grandes.
+  **Ventana temporal:** **30 días** por defecto, configurable en la UI (7/14/30/histórico).
+  **Salida:** Top 20 ordenado por viralidad, con cada pieza descompuesta (hook, estructura,
+  share-trigger, patrón transferible) + patrones recurrentes del nicho, para alimentar REQ-005.
 - **DA-04 (REQ-005):** Criterio para "clonar" sin infringir copyright (reinterpretar el concepto, no copiar literal).
 - **DA-05 (REQ-006):** Almacenamiento seguro de credenciales de login de la appweb objetivo.
 - **DA-06 (REQ-007):** ✅ RESUELTA (2026-07-15). "Skill" = capacidad del entorno de Claude Code

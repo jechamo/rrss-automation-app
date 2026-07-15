@@ -12,7 +12,7 @@
 | REQ-001 | Análisis de la appweb → dossier de negocio | 🟢 Verificado end-to-end (run status "ok") — pendiente visto bueno final del usuario |
 | REQ-002 | Análisis de competencia | 🟡 Implementado — pendiente pruebas del usuario |
 | REQ-003 | Scraping de clientes potenciales + estrategia | 🟡 Implementado (DA-02 resuelta: negocios locales reales vía IA+WebSearch) — pendiente pruebas del usuario |
-| REQ-004 | Scraping de virales del nicho (YT/TikTok/IG) | ⚪ Pendiente |
+| REQ-004 | Scraping de virales del nicho (YT/TikTok/IG) | 🟡 Implementado (DA-03 resuelta: IA+WebSearch, viral relativo al autor, ventana 30d, Top 20) — pendiente pruebas del usuario |
 | REQ-005 | Generación de vídeo (clonado de viral) | ⚪ Pendiente |
 | REQ-006 | Generación de contenido propio de la app | ⚪ Pendiente |
 | REQ-007 | Skills | 🟡 Pase de curación hecho (skills de proyecto + catálogo, DA-06 resuelta); feature UI aplazada |
@@ -24,6 +24,40 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 ---
 
 ## Historial
+
+### 2026-07-15 — REQ-004: Virales del nicho (YT/TikTok/IG) + patrones
+
+**Decisión DA-03 (con el usuario):** **Fuente:** IA + **WebSearch/WebFetch** (el motor `claude -p`
+localiza virales públicos de YT/TikTok/IG; sin claves API ni scraping directo — usa la sesión Pro).
+**Definición de "viral":** **relativo al autor** (≈5× la mediana de vistas del propio canal), para no
+sesgar hacia cuentas ya grandes. **Ventana:** **30 días** por defecto, configurable en la UI
+(7/14/30/histórico). **Salida:** **Top 20** con cada pieza descompuesta (hook, estructura,
+share-trigger, patrón transferible) + patrones recurrentes → alimenta REQ-005.
+
+**Hecho (mismo patrón que REQ-002/003 → máximo reuso):**
+- Modelo `Virales` en Prisma (espejo de `Competencia`/`Leads`: content JSON + status/version) + relación
+  en `Project`.
+- Tipos `Virales`/`Viral`/`PatronViral`/`CriterioViral` con `coerce*` defensivo en
+  `src/core/virales/types.ts` (`DEFAULT_CRITERIO.ventanaDias=30`).
+- Lógica IA en 2 pasos: `discover.ts` (IA + **WebSearch/WebFetch** localiza virales del nicho, estima
+  vistas/`ratioAutor`/`viralScore`, dedupe por URL, conserva semillas manuales; `timeoutMs` 300s) y
+  `analyze.ts` (descompone cada viral: hook, estructura, share-trigger, **patrón transferible** —
+  concepto, no copia — + patrones recurrentes; conserva metadatos y `origen`, corta Top 20).
+- Pipeline `req004.ts`: nodos `input → discover → rank → analyze`. `input` exige dossier y conserva
+  virales manuales; `rank` (puro código) ordena manuales primero y luego por `viralScore`, corta al
+  Top 20; `analyze` hace `upsert` de `Virales`.
+- API: `POST /api/projects/[id]/virales/run` (body opcional `{ ventanaDias }`) y
+  `GET/PUT /api/virales/[projectId]` (GET incluye su `lastRun` de REQ-004 para restaurar el grafo).
+- UI: `ViralesPanel` (autocontenido, SSE propio, reusa `PipelineGraph`, selector de **ventana**) +
+  `ViralesEditor` (tarjeta por viral con plataforma/autor/URL/vistas/score + hook/share-trigger/porqué/
+  patrón transferible, patrones recurrentes, añadir/quitar viral manual, Guardar/Aprobar/Regenerar).
+  Montado en `/proyecto/[id]` bajo los leads. Apoyo de conocimiento: skill `rrss-viral-analysis`.
+- Verificado: `tsc --noEmit` EXIT=0; `prisma db push` en sync.
+
+**Riesgo conocido:** la calidad/exactitud de WebSearch para métricas de vistas concretas es variable;
+mitigado con prompt estricto (`ratioAutor` relativo, no vistas absolutas) + `coerce` defensivo + edición
+manual. **Pendiente:** pruebas del usuario end-to-end (dossier → «Buscar virales» → editar/aprobar);
+verificar auto-invocación de WebSearch en `-p` (necesita red). Al validar → REQ-005 (resolver antes DA-04).
 
 ### 2026-07-15 — REQ-003: Clientes potenciales (negocios locales reales) + estrategia
 

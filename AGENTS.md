@@ -91,11 +91,12 @@ src/app/                      Rutas (App Router)
 src/components/               PipelineGraph, DossierEditor, RecentProjects,
                               CompetenciaPanel, CompetenciaEditor
 src/core/
-  pipeline/                   req001.ts / req002.ts / req003.ts (definen nodos), bus.ts (eventos), engine
+  pipeline/                   req001.ts / req002.ts / req003.ts / req004.ts (definen nodos), bus.ts (eventos), engine
   ai/claude-cli.ts            Motor Claude CLI (resolución de binario, exec con timeout)
   dossier/                    Tipos + generación del dossier (REQ-001)
   competencia/                Tipos + discover.ts (propone competidores) + generate.ts (REQ-002)
   leads/                      Tipos + research.ts (perfil) + discover.ts (IA+WebSearch) + strategy.ts (REQ-003)
+  virales/                    Tipos + discover.ts (IA+WebSearch) + analyze.ts (patrones) (REQ-004)
   crawler/                    Crawl de la web (reutilizado por REQ-001 y REQ-002)
 src/lib/                      prisma, vault (cifrado)
 prisma/schema.prisma          Modelo de datos multiproyecto
@@ -130,7 +131,11 @@ prisma/schema.prisma          Modelo de datos multiproyecto
 - **REQ-003** (clientes potenciales + estrategia): **implementado** (DA-02 resuelta: negocios locales
   reales vía **IA+WebSearch**, solo datos públicos; estrategia IA editable). Pipeline `req003.ts`
   (`input → research → discover(web) → strategy`), motor con `--allowedTools WebSearch`. En pruebas del usuario.
+- **REQ-004** (virales del nicho YT/TikTok/IG): **implementado** (DA-03 resuelta: **IA+WebSearch**,
+  viral **relativo al autor** ≈5× mediana del canal, ventana 30d configurable, **Top 20**). Pipeline
+  `req004.ts` (`input → discover(web) → rank → analyze`), cada viral descompuesto (hook/estructura/
+  share-trigger/patrón transferible) para alimentar REQ-005. Apoyo: skill `rrss-viral-analysis`. En pruebas.
 - **REQ-007** (skills): **pase de curación hecho** (DA-06 resuelta). 3 skills de proyecto en
   `.claude/skills/` + catálogo en `docs/05-skills.md`. Feature de UI aplazada.
-- **Siguiente:** REQ-004 (scraping de virales del nicho YT/TikTok/IG) — resolver antes DA-03 (APIs vs
-  scraping, definición de "viral", ventana). Apoyarse en el skill `rrss-viral-analysis`.
+- **Siguiente:** REQ-005 (generación de vídeo — clonado de viral) — resolver antes DA-04 (criterio para
+  reinterpretar el concepto sin infringir copyright).

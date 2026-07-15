@@ -229,7 +229,7 @@ model ConnectorState {
 }
 ```
 
-> Competidores (REQ-002) y Leads (REQ-003) ya están en el esquema. Virales (REQ-004) se añadirá al abordarlo.
+> Competidores (REQ-002), Leads (REQ-003) y Virales (REQ-004) ya están en el esquema.
 
 ---
 
@@ -262,6 +262,37 @@ manuales). **UI:** `LeadsPanel` + `LeadsEditor` en `/proyecto/[id]`, bajo la com
 
 ---
 
+## 8.2. Arquitectura concreta de REQ-004 (virales del nicho)
+
+**Modelo:** `Virales` (1-a-1 con `Project`, espejo de `Competencia`/`Leads`): `content` JSON
+`{ nicho, criterio{metrica,umbral,ventanaDias}, virales[], patronesRecurrentes[] }` + `status`/`version`.
+Cada `Viral` guarda `{url, plataforma(youtube|tiktok|instagram), titulo, autor, vistas, fecha,
+ratioAutor, viralScore(0-100), formato, hook{tipo,texto,segundos}, estructura[], shareTrigger,
+porQueFunciona, patronTransferible, origen(ia|manual)}`.
+
+**Nodos del pipeline** (`src/core/pipeline/req004.ts`):
+`[Entrada] → [Buscar virales (web)] → [Ranking Top 20] → [Análisis de patrones]`
+
+- **Entrada** (`input`): exige dossier (REQ-001); conserva los virales `origen:"manual"` previos
+  (semillas) para no perderlos al regenerar.
+- **Buscar virales (web)** (`discover.ts`): la IA con **WebSearch/WebFetch** localiza virales
+  públicos del nicho en YT/TikTok/IG y estima vistas/`ratioAutor`/`viralScore`. Dedupe por URL;
+  las semillas manuales van primero. `allowedTools:["WebSearch","WebFetch"]`, timeout 300s.
+- **Ranking Top 20** (`rank`): puro código; ordena manuales primero, luego por `viralScore` desc,
+  y corta al Top 20 (`TOP_N`). Marca `origen` casando URLs con las semillas manuales.
+- **Análisis de patrones** (`analyze.ts`): la IA descompone cada viral (hook, estructura,
+  share-trigger, **patrón transferible** — concepto, no copia) en el contexto del dossier y extrae
+  `patronesRecurrentes` del nicho. `upsert` de `Virales`. Definición de viralidad **relativa al
+  autor** (≈5× la mediana del canal); ventana configurable (`ventanaDias`: 7/14/30/0=histórico).
+  Apoyo: skill `rrss-viral-analysis`.
+
+**Endpoints:** `POST /api/projects/:id/virales/run` (409 si no hay dossier; body opcional
+`{ ventanaDias }`), `GET/PUT /api/virales/:projectId` (GET incluye su `lastRun` de REQ-004; PUT
+guarda/aprueba y conserva manuales). **UI:** `ViralesPanel` (con selector de ventana) + `ViralesEditor`
+en `/proyecto/[id]`, bajo los leads.
+
+---
+
 ## 9. Arquitectura concreta de REQ-001 (primer requisito)
 
 **Nodos del pipeline** (Diseño §5):
@@ -288,7 +319,7 @@ manuales). **UI:** `LeadsPanel` + `LeadsEditor` en `/proyecto/[id]`, bajo la com
 | REQ-001 | crawler, repo, ai, pipeline, dossier |
 | REQ-002 | ai, connectors(web/search), pipeline |
 | REQ-003 | ai, connectors, pipeline |
-| REQ-004 | connectors(gemini/APIs RRSS), pipeline |
+| REQ-004 | ai(WebSearch/WebFetch), virales, pipeline |
 | REQ-005 | ai, connectors(fal/heygen/elevenlabs), montage, pipeline |
 | REQ-006 | crawler(Playwright móvil), ai, fal, elevenlabs, montage |
 | REQ-007 | skills (catálogo/instalación) |

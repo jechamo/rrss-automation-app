@@ -5,6 +5,7 @@ import { PipelineGraph, type GraphNode, type NodeState } from "@/components/Pipe
 import { DossierEditor, type Dossier } from "@/components/DossierEditor";
 import { CompetenciaPanel } from "@/components/CompetenciaPanel";
 import { LeadsPanel } from "@/components/LeadsPanel";
+import { ViralesPanel } from "@/components/ViralesPanel";
 
 type RunEvent =
   | { type: "node"; nodeId: string; state: NodeState; detail?: string }
@@ -210,6 +211,12 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
       {dossier && (
         <section className="mt-8 border-t border-white/10 pt-8">
           <LeadsPanel projectId={id} dossierReady={!!dossier} />
+        </section>
+      )}
+
+      {dossier && (
+        <section className="mt-8 border-t border-white/10 pt-8">
+          <ViralesPanel projectId={id} dossierReady={!!dossier} />
         </section>
       )}
     </div>
