@@ -40,6 +40,7 @@ function StepNode({ data }: NodeProps) {
         minWidth: 170,
         border: `1px solid ${s.ring}`,
         boxShadow: d.state === "running" ? `0 0 18px ${s.ring}` : undefined,
+        transition: "border-color 0.35s ease, box-shadow 0.35s ease",
       }}
     >
       <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />

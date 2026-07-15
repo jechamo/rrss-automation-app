@@ -96,7 +96,8 @@ src/app/                      Rutas (App Router)
                               [pieceId]/upload      POST sube screencast manual → recordingPath (REQ-006)
     providers/[provider]/options  GET modelos/voces/avatares para el modal (REQ-005)
 src/components/               PipelineGraph, DossierEditor, RecentProjects, CompetenciaPanel,
-                              CompetenciaEditor, ContentTray, GenerateContentModal, DemoContentModal
+                              CompetenciaEditor, ContentTray, GenerateContentModal, DemoContentModal,
+                              PieceCarousel (carrusel 360 cover-flow, REQ-009)
 src/core/
   pipeline/                   req001..req006.ts (definen nodos), bus.ts (eventos), engine
   ai/claude-cli.ts            Motor Claude CLI (resolución de binario, exec con timeout)
@@ -164,5 +165,12 @@ prisma/schema.prisma          Modelo de datos multiproyecto
   usuario.**
 - **REQ-007** (skills): **pase de curación hecho** (DA-06 resuelta). 3 skills de proyecto en
   `.claude/skills/` + catálogo en `docs/05-skills.md`. Feature de UI aplazada.
-- **Siguiente:** REQ-003 (leads) ya está implementado; al validar REQ-006 con el usuario, continuar
-  con las pruebas/afinado de REQ-003 apoyándose en el skill `rrss-lead-research`.
+- **REQ-008** (Ajustes/APIs): **implementado**. Selector de motor + modelo, tarjeta por proveedor con
+  guardar/probar, keys cifradas, **test de conexión real** (Gemini/ElevenLabs/HeyGen/GitHub; fal.ai
+  valida formato). `src/core/connectors/` + `app/ajustes/` + `api/connectors/`.
+- **REQ-009** (experiencia visual): **implementado** (pase transversal, solo Tailwind+CSS). Dashboard
+  con **hero de aurora**, tarjetas con **elevación 3D** + entrada escalonada, **carrusel 360°
+  cover-flow** de piezas (`PieceCarousel`, toggle Lista/Carrusel en `ContentTray`), **skeletons** y
+  transiciones de estado. Respeta `prefers-reduced-motion`. Primitivas en `globals.css`.
+- **Siguiente:** roadmap **REQ-001→009 implementado**. Queda el **visto bueno end-to-end del usuario**
+  (pruebas reales con red+keys+`npx playwright install chromium` en su máquina) para cerrar v1.

@@ -33,8 +33,12 @@ export function RecentProjects({ initial }: { initial: RecentProject[] }) {
     <section className="mt-8">
       <h2 className="mb-3 text-sm font-semibold text-white/60">Proyectos recientes</h2>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {projects.map((p) => (
-          <div key={p.id} className="glass group relative p-4 transition hover:bg-white/[0.06]">
+        {projects.map((p, i) => (
+          <div
+            key={p.id}
+            className="glass card-lift animate-in group relative p-4"
+            style={{ animationDelay: `${i * 60}ms` }}
+          >
             <Link href={`/proyecto/${p.id}`} className="block">
               <div className="flex items-center justify-between gap-2 pr-6">
                 <span className="truncate font-medium">{p.name}</span>

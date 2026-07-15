@@ -17,13 +17,34 @@
 | REQ-006 | Generación de contenido propio de la app | 🟡 Implementado (DA-05 resuelta: login cifrado en vault por proyecto, grabación Playwright móvil + fallback manual, cortes B-roll + locución, montaje stub) — pendiente pruebas del usuario (red+keys+navegador Playwright) |
 | REQ-007 | Skills | 🟡 Pase de curación hecho (skills de proyecto + catálogo, DA-06 resuelta); feature UI aplazada |
 | REQ-008 | Configuración de herramientas/APIs (Ajustes) | 🟡 Base construida (shell de Ajustes) |
-| REQ-009 | Experiencia visual | 🟡 Transversal — grafo de nodos ya animado |
+| REQ-009 | Experiencia visual | 🟡 Implementado (hero con aurora, tarjetas con elevación 3D + entrada escalonada, carrusel 360 cover-flow de piezas, skeletons, transiciones de estado) — pendiente visto bueno del usuario |
 
 Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ---
 
 ## Historial
+
+### 2026-07-15 — REQ-009: Experiencia visual (hero, carrusel 360, animaciones)
+
+**Decisión (con el usuario):** pase transversal de pulido visual sobre lo existente, **sin
+dependencias nuevas** (solo Tailwind + CSS), respetando `prefers-reduced-motion` y RNF-08 (Windows).
+
+**Hecho:**
+- `globals.css`: utilidades reutilizables — `.hero` (aurora en movimiento con `aurora-drift`),
+  `.animate-in` (entrada escalonada `fade-in-up`), `.card-lift` (elevación 3D + glow al hover),
+  `.skeleton` (shimmer de carga), `.coverflow`/`.coverflow-item` (carrusel 360 en perspectiva).
+- Dashboard (`app/page.tsx`): cabecera **hero** con aurora + CTAs, `Stat`/`Card` con entrada
+  escalonada y elevación; `RecentProjects` con las mismas micro-animaciones.
+- **Carrusel 360** (`components/PieceCarousel.tsx`): cover-flow de piezas (rotación `rotateY` en 3D,
+  centro con preview de vídeo/grabación, indicadores + navegación ‹/›). Integrado en `ContentTray`
+  con toggle **Lista / Carrusel** (aparece con ≥2 piezas); la pieza central abre su `PieceCard`.
+- Pulido de estados: transición suave del borde/sombra en los nodos del `PipelineGraph`, transición
+  de color en los chips de estado y **skeletons** de carga en `ContentTray`.
+- Verificado: `tsc --noEmit` EXIT=0; `next build` EXIT=0.
+
+**Siguiente:** roadmap REQ-001→009 implementado; queda el **visto bueno end-to-end del usuario**
+(pruebas con red+keys+Playwright en su máquina) antes de cerrar v1.
 
 ### 2026-07-15 — REQ-005: Generación de contenido (clonado de viral) + cableado real
 

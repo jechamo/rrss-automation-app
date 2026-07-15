@@ -235,6 +235,11 @@ dejándolo para revisión y publicación con 1 clic.
 - Elementos visuales impactantes, **carruseles 360°**, animaciones.
 - Historial y bandejas de estado claras.
 
+> **Implementado (2026-07-15):** pase transversal — dashboard con **hero de aurora** animada, tarjetas
+> con **elevación 3D** y entrada escalonada, **carrusel 360° (cover-flow)** de piezas en `ContentTray`
+> (toggle Lista/Carrusel), **skeletons** de carga y transiciones suaves en el grafo de nodos y los
+> chips de estado. Solo Tailwind + CSS (sin dependencias nuevas), respetando `prefers-reduced-motion`.
+
 ---
 
 ## 5. Requisitos no funcionales

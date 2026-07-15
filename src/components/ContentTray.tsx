@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { PipelineGraph, type GraphNode, type NodeState } from "@/components/PipelineGraph";
 import { GenerateContentModal } from "@/components/GenerateContentModal";
 import { DemoContentModal } from "@/components/DemoContentModal";
+import { PieceCarousel } from "@/components/PieceCarousel";
 import type { ContentPiece, DemoConfig, MediaConfig } from "@/core/content/types";
 
 type RunEvent =
@@ -59,16 +60,23 @@ export function ContentTray({
   const [showModal, setShowModal] = useState(false);
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [view, setView] = useState<"lista" | "carrusel">("lista");
+  const [focusedPieceId, setFocusedPieceId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const esRef = useRef<Map<string, EventSource>>(new Map());
 
   const load = useCallback(async () => {
     const r = await fetch(`/api/content/${projectId}`);
-    if (!r.ok) return;
+    if (!r.ok) {
+      setLoading(false);
+      return;
+    }
     const d = (await r.json()) as {
       pieces: ContentPiece[];
       runs: Record<string, { status: string; nodes: string }>;
     };
+    setLoading(false);
     setPieces(d.pieces);
     const nodesMap: Record<string, GraphNode[]> = {};
     for (const [runId, run] of Object.entries(d.runs)) {
@@ -206,7 +214,23 @@ export function ContentTray({
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-bold">Contenido generado (REQ-005 / REQ-006)</h2>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {pieces.length > 1 && (
+            <div className="mr-1 flex rounded-lg border border-white/10 p-0.5 text-xs">
+              {(["lista", "carrusel"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setView(v)}
+                  className={[
+                    "rounded-md px-2.5 py-1 capitalize transition",
+                    view === v ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70",
+                  ].join(" ")}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          )}
           <button
             onClick={() => setShowModal(true)}
             disabled={!canGenerate}
@@ -237,28 +261,71 @@ export function ContentTray({
         </div>
       )}
 
-      {pieces.length === 0 && ready && (
+      {loading && (
+        <div className="flex flex-col gap-3">
+          {[0, 1].map((i) => (
+            <div key={i} className="glass p-4">
+              <div className="flex items-center gap-2">
+                <div className="skeleton h-5 w-24" />
+                <div className="skeleton h-5 w-16" />
+              </div>
+              <div className="skeleton mt-3 h-4 w-2/3" />
+              <div className="skeleton mt-4 h-40 w-full" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && pieces.length === 0 && ready && (
         <div className="glass p-4 text-xs text-white/40">
           Sin piezas todavía. «Clonar viral» reinterpreta un viral; «Contenido propio» muestra tu app.
         </div>
       )}
 
-      <div className="flex flex-col gap-4">
-        {pieces.map((p) => (
-          <PieceCard
-            key={p.id}
+      {view === "carrusel" && pieces.length > 1 ? (
+        <div className="flex flex-col gap-4">
+          <PieceCarousel
             projectId={projectId}
-            piece={p}
-            nodes={p.runId ? runNodes[p.runId] : undefined}
-            expanded={!!expanded[p.id]}
-            onToggle={() => setExpanded((e) => ({ ...e, [p.id]: !e[p.id] }))}
-            onPublish={() => updatePiece(p.id, { status: "publicado" })}
-            onRegenerate={() => (p.origin === "own" ? setShowDemoModal(true) : setShowModal(true))}
-            onDelete={() => removePiece(p.id)}
-            onUpload={(file) => uploadScreencast(p.id, file)}
+            pieces={pieces}
+            onSelect={(id) => setFocusedPieceId(id)}
           />
-        ))}
-      </div>
+          {(() => {
+            const focus = pieces.find((p) => p.id === focusedPieceId) ?? pieces[0];
+            return (
+              <PieceCard
+                key={focus.id}
+                projectId={projectId}
+                piece={focus}
+                nodes={focus.runId ? runNodes[focus.runId] : undefined}
+                expanded={!!expanded[focus.id]}
+                onToggle={() => setExpanded((e) => ({ ...e, [focus.id]: !e[focus.id] }))}
+                onPublish={() => updatePiece(focus.id, { status: "publicado" })}
+                onRegenerate={() => (focus.origin === "own" ? setShowDemoModal(true) : setShowModal(true))}
+                onDelete={() => removePiece(focus.id)}
+                onUpload={(file) => uploadScreencast(focus.id, file)}
+              />
+            );
+          })()}
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {pieces.map((p, i) => (
+            <div key={p.id} className="animate-in" style={{ animationDelay: `${i * 50}ms` }}>
+              <PieceCard
+                projectId={projectId}
+                piece={p}
+                nodes={p.runId ? runNodes[p.runId] : undefined}
+                expanded={!!expanded[p.id]}
+                onToggle={() => setExpanded((e) => ({ ...e, [p.id]: !e[p.id] }))}
+                onPublish={() => updatePiece(p.id, { status: "publicado" })}
+                onRegenerate={() => (p.origin === "own" ? setShowDemoModal(true) : setShowModal(true))}
+                onDelete={() => removePiece(p.id)}
+                onUpload={(file) => uploadScreencast(p.id, file)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
 
       {showModal && (
         <GenerateContentModal
@@ -309,12 +376,12 @@ function PieceCard({
   const isOwn = piece.origin === "own";
 
   return (
-    <div className="glass p-4">
+    <div className="glass card-lift p-4">
       <div className="mb-3 flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span
-              className="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium"
+              className="shrink-0 rounded-full px-2 py-0.5 text-xs font-medium transition-colors duration-300"
               style={{ background: `${meta.color}22`, color: meta.color }}
             >
               {meta.text}

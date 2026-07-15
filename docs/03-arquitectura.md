@@ -397,6 +397,36 @@ y ofrece subida/reemplazo manual de vídeo.
 
 ---
 
+## 8.5. Arquitectura concreta de REQ-009 (experiencia visual)
+
+**Enfoque:** pase transversal de pulido, **sin dependencias nuevas** (solo Tailwind v4 + CSS en
+`globals.css`), respetando `prefers-reduced-motion` (regla global que anula animaciones) y RNF-08.
+
+**Primitivas CSS reutilizables** (`src/app/globals.css`):
+- `.hero` + `@keyframes aurora-drift`: dos capas de gradientes radiales desenfocados en movimiento
+  lento (aurora) tras el contenido (`z-index` gestionado).
+- `.animate-in` + `@keyframes fade-in-up`: entrada escalonada (el retardo se pasa por
+  `style={{ animationDelay }}` en cada tarjeta).
+- `.card-lift`: elevación 3D ligera + glow al hover (transform + box-shadow).
+- `.skeleton` + `@keyframes shimmer`: placeholders de carga.
+- `.coverflow` (perspectiva) + `.coverflow-item` (transición de transform/opacidad) para el carrusel.
+
+**Componentes:**
+- `app/page.tsx`: dashboard con **hero** (aurora + CTAs), `Stat`/`Card` con `card-lift` + `animate-in`
+  escalonado; `RecentProjects` idem.
+- `components/PieceCarousel.tsx` (**nuevo**, cliente): carrusel **360° cover-flow** de `ContentPiece`.
+  Estado `active`; cada ítem se posiciona con `translateX`/`rotateY`/`scale` según su offset al centro
+  (ventana de ±2, `z-index`/opacidad decrecientes); el centro renderiza un `<video>` con el
+  `recordingPath`/`videoPath`; indicadores de puntos + navegación ‹/›. `onSelect` eleva el id enfocado.
+- `components/ContentTray.tsx`: toggle **Lista / Carrusel** (visible con ≥2 piezas); en carrusel, la
+  pieza central abre su `PieceCard` completo debajo. `PieceCard` gana `card-lift`; **skeletons** de
+  carga mientras resuelve `GET /api/content/:projectId` (`loading`).
+- `components/PipelineGraph.tsx`: transición suave de borde/sombra al cambiar de estado un nodo.
+
+> Sin cambios de datos ni de API; es capa de presentación. Verificado con `tsc` + `next build`.
+
+---
+
 ## 9. Arquitectura concreta de REQ-001 (primer requisito)
 
 **Nodos del pipeline** (Diseño §5):
