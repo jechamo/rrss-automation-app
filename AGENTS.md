@@ -86,22 +86,28 @@ src/app/                      Rutas (App Router)
     projects/                 CRUD proyectos (POST crea+lanza run, DELETE, [id] GET/rerun)
                               [id]/competencia/run  POST lanza run REQ-002
                               [id]/content/run      POST crea pieza + lanza run REQ-005
+                              [id]/content/demo/run POST crea pieza own + lanza run REQ-006
+                              [id]/functions        POST analiza funciones de la app con IA (REQ-006)
+                              [id]/login            GET/PUT/DELETE credenciales cifradas (REQ-006/DA-05)
     runs/[id]/stream/         Endpoint SSE del run
     dossier/[projectId]/      GET/PUT del dossier
     competencia/[projectId]/  GET/PUT de la competencia (REQ-002); GET incluye su lastRun
     content/[projectId]/      GET piezas+runs; [pieceId] PUT/DELETE; [pieceId]/asset sirve asset local (REQ-005)
+                              [pieceId]/upload      POST sube screencast manual → recordingPath (REQ-006)
     providers/[provider]/options  GET modelos/voces/avatares para el modal (REQ-005)
-src/components/               PipelineGraph, DossierEditor, RecentProjects,
-                              CompetenciaPanel, CompetenciaEditor, ContentTray, GenerateContentModal
+src/components/               PipelineGraph, DossierEditor, RecentProjects, CompetenciaPanel,
+                              CompetenciaEditor, ContentTray, GenerateContentModal, DemoContentModal
 src/core/
-  pipeline/                   req001..req005.ts (definen nodos), bus.ts (eventos), engine
+  pipeline/                   req001..req006.ts (definen nodos), bus.ts (eventos), engine
   ai/claude-cli.ts            Motor Claude CLI (resolución de binario, exec con timeout)
   dossier/                    Tipos + generación del dossier (REQ-001)
   competencia/                Tipos + discover.ts (propone competidores) + generate.ts (REQ-002)
   leads/                      Tipos + research.ts (perfil) + discover.ts (IA+WebSearch) + strategy.ts (REQ-003)
   virales/                    Tipos + discover.ts (IA+WebSearch) + analyze.ts (patrones) (REQ-004)
-  content/                    Tipos + extract.ts (reutiliza viral + Gemini) + guion.ts (guion original) (REQ-005)
-  media/                      Conectores reales fal/heygen/elevenlabs/gemini + storage/http/listOptions (REQ-005)
+  content/                    Tipos + extract.ts + guion.ts (REQ-005) + demo.ts (analyze/guion demo, REQ-006)
+  media/                      Conectores fal/heygen/elevenlabs/gemini + storage/http/listOptions (REQ-005)
+                              + recorder.ts (Playwright móvil, import dinámico, fallback) (REQ-006)
+  secrets/login.ts            Credenciales de login cifradas por proyecto sobre el vault (REQ-006/DA-05)
   crawler/                    Crawl de la web (reutilizado por REQ-001 y REQ-002)
 src/lib/                      prisma, vault (cifrado)
 prisma/schema.prisma          Modelo de datos multiproyecto
@@ -147,7 +153,16 @@ prisma/schema.prisma          Modelo de datos multiproyecto
   (`input → extract → guion → media → voz → montaje`; montaje = **stub** FFmpeg). UI `ContentTray` +
   `GenerateContentModal`. Apoyo: skill `rrss-content-generation`. **Solo verificable con red+keys en
   la máquina del usuario** (la shell del agente no tiene red).
+- **REQ-006** (contenido propio — mostrar la app): **implementado** (DA-05 resuelta:
+  **credenciales cifradas en el vault por proyecto**, `login:<projectId>`; la contraseña nunca la
+  devuelve la API). **Grabación** = **Playwright** móvil (import dinámico, iPhone 13 + `recordVideo`
+  + login scriptado) con **fallback a subida manual**. IA propone funciones del dossier; guion
+  **product-led** con **cortes B-roll** (fal.ai) intercalados + locución ElevenLabs. Reutiliza
+  `ContentPiece` (`origin="own"`) y `ContentTray`. Pipeline `req006.ts` (`input → grabacion → guion →
+  media → voz → montaje`; montaje = **stub**). UI `DemoContentModal` + `PieceCard` (player/upload de
+  grabación). **Solo verificable con red+keys+`npx playwright install chromium` en la máquina del
+  usuario.**
 - **REQ-007** (skills): **pase de curación hecho** (DA-06 resuelta). 3 skills de proyecto en
   `.claude/skills/` + catálogo en `docs/05-skills.md`. Feature de UI aplazada.
-- **Siguiente:** REQ-006 (contenido propio de la app) — resolver antes DA-05 (almacenamiento seguro
-  de credenciales de login de la appweb objetivo).
+- **Siguiente:** REQ-003 (leads) ya está implementado; al validar REQ-006 con el usuario, continuar
+  con las pruebas/afinado de REQ-003 apoyándose en el skill `rrss-lead-research`.

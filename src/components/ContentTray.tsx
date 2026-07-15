@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PipelineGraph, type GraphNode, type NodeState } from "@/components/PipelineGraph";
 import { GenerateContentModal } from "@/components/GenerateContentModal";
-import type { ContentPiece, MediaConfig } from "@/core/content/types";
+import { DemoContentModal } from "@/components/DemoContentModal";
+import type { ContentPiece, DemoConfig, MediaConfig } from "@/core/content/types";
 
 type RunEvent =
   | { type: "node"; nodeId: string; state: NodeState; detail?: string }
@@ -13,7 +14,7 @@ type RunEvent =
 
 type ViralPick = { url: string; titulo: string; plataforma: string };
 
-// Pasos estaticos del pipeline REQ-005 (evita importar el modulo de servidor).
+// Pasos estaticos de los pipelines (evita importar el modulo de servidor).
 const REQ005_STEPS: { id: string; label: string }[] = [
   { id: "input", label: "Entrada" },
   { id: "extract", label: "Extraer" },
@@ -23,8 +24,19 @@ const REQ005_STEPS: { id: string; label: string }[] = [
   { id: "montaje", label: "Montaje" },
 ];
 
-const initialNodes = (): GraphNode[] =>
-  REQ005_STEPS.map((s) => ({ id: s.id, label: s.label, state: "pending" as NodeState }));
+const REQ006_STEPS: { id: string; label: string }[] = [
+  { id: "input", label: "Entrada" },
+  { id: "grabacion", label: "Grabar app" },
+  { id: "guion", label: "Guion" },
+  { id: "media", label: "Cortes" },
+  { id: "voz", label: "Locución" },
+  { id: "montaje", label: "Montaje" },
+];
+
+const nodesFrom = (steps: { id: string; label: string }[]): GraphNode[] =>
+  steps.map((s) => ({ id: s.id, label: s.label, state: "pending" as NodeState }));
+
+const initialNodes = (): GraphNode[] => nodesFrom(REQ005_STEPS);
 
 const STATUS_META: Record<string, { text: string; color: string }> = {
   borrador: { text: "Borrador", color: "var(--color-state-pending)" },
@@ -45,6 +57,7 @@ export function ContentTray({
   const [runNodes, setRunNodes] = useState<Record<string, GraphNode[]>>({});
   const [virales, setVirales] = useState<ViralPick[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [showDemoModal, setShowDemoModal] = useState(false);
   const [busy, setBusy] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const esRef = useRef<Map<string, EventSource>>(new Map());
@@ -145,6 +158,33 @@ export function ContentTray({
     }
   }
 
+  async function generateDemo(demo: DemoConfig, config: Partial<MediaConfig>) {
+    setBusy(true);
+    const r = await fetch(`/api/projects/${projectId}/content/demo/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ demo, config }),
+    });
+    setBusy(false);
+    if (r.ok) {
+      const d = (await r.json()) as { runId: string; pieceId: string };
+      setRunNodes((prev) => ({ ...prev, [d.runId]: nodesFrom(REQ006_STEPS) }));
+      setShowDemoModal(false);
+      subscribe(d.runId);
+      await load();
+    }
+  }
+
+  async function uploadScreencast(pieceId: string, file: File) {
+    const form = new FormData();
+    form.append("file", file);
+    const r = await fetch(`/api/content/${projectId}/${pieceId}/upload`, {
+      method: "POST",
+      body: form,
+    });
+    if (r.ok) load();
+  }
+
   async function updatePiece(pieceId: string, patch: { status?: string }) {
     await fetch(`/api/content/${projectId}/${pieceId}`, {
       method: "PUT",
@@ -165,31 +205,41 @@ export function ContentTray({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-bold">Contenido generado (REQ-005)</h2>
-        <button
-          onClick={() => setShowModal(true)}
-          disabled={!canGenerate}
-          className="rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium disabled:opacity-40"
-          title={canGenerate ? undefined : "Necesitas virales del nicho (REQ-004) para clonar."}
-        >
-          + Generar contenido
-        </button>
+        <h2 className="text-lg font-bold">Contenido generado (REQ-005 / REQ-006)</h2>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowModal(true)}
+            disabled={!canGenerate}
+            className="rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium disabled:opacity-40"
+            title={canGenerate ? undefined : "Necesitas virales del nicho (REQ-004) para clonar."}
+          >
+            + Clonar viral
+          </button>
+          <button
+            onClick={() => setShowDemoModal(true)}
+            disabled={!ready}
+            className="rounded-lg border border-[var(--color-accent-2)]/50 px-3 py-2 text-sm font-medium text-[var(--color-accent-2)] hover:bg-[var(--color-accent-2)]/10 disabled:opacity-40"
+            title={ready ? undefined : "Genera primero el dossier (REQ-001)."}
+          >
+            + Contenido propio
+          </button>
+        </div>
       </div>
 
       {!ready && (
         <div className="glass p-4 text-sm text-white/50">
-          Genera el dossier (REQ-001) y los virales del nicho (REQ-004) para clonar contenido.
+          Genera el dossier (REQ-001) para crear contenido. Para clonar virales necesitas además REQ-004.
         </div>
       )}
       {ready && virales.length === 0 && (
         <div className="glass p-4 text-sm text-white/50">
-          No hay virales en el Top. Ejecuta REQ-004 primero.
+          No hay virales en el Top (para «Clonar viral» ejecuta REQ-004). Puedes usar «Contenido propio» ya.
         </div>
       )}
 
-      {pieces.length === 0 && ready && virales.length > 0 && (
+      {pieces.length === 0 && ready && (
         <div className="glass p-4 text-xs text-white/40">
-          Sin piezas todavía. Pulsa «Generar contenido» para clonar un viral por reinterpretación.
+          Sin piezas todavía. «Clonar viral» reinterpreta un viral; «Contenido propio» muestra tu app.
         </div>
       )}
 
@@ -203,8 +253,9 @@ export function ContentTray({
             expanded={!!expanded[p.id]}
             onToggle={() => setExpanded((e) => ({ ...e, [p.id]: !e[p.id] }))}
             onPublish={() => updatePiece(p.id, { status: "publicado" })}
-            onRegenerate={() => setShowModal(true)}
+            onRegenerate={() => (p.origin === "own" ? setShowDemoModal(true) : setShowModal(true))}
             onDelete={() => removePiece(p.id)}
+            onUpload={(file) => uploadScreencast(p.id, file)}
           />
         ))}
       </div>
@@ -214,6 +265,15 @@ export function ContentTray({
           virales={virales}
           onClose={() => setShowModal(false)}
           onGenerate={generate}
+          busy={busy}
+        />
+      )}
+
+      {showDemoModal && (
+        <DemoContentModal
+          projectId={projectId}
+          onClose={() => setShowDemoModal(false)}
+          onGenerate={generateDemo}
           busy={busy}
         />
       )}
@@ -230,6 +290,7 @@ function PieceCard({
   onPublish,
   onRegenerate,
   onDelete,
+  onUpload,
 }: {
   projectId: string;
   piece: ContentPiece;
@@ -239,11 +300,13 @@ function PieceCard({
   onPublish: () => void;
   onRegenerate: () => void;
   onDelete: () => void;
+  onUpload: (file: File) => void;
 }) {
   const meta = STATUS_META[piece.status] ?? STATUS_META.borrador;
   const asset = (rel: string) =>
     `/api/content/${projectId}/${piece.id}/asset?path=${encodeURIComponent(rel)}`;
   const g = piece.content.guion;
+  const isOwn = piece.origin === "own";
 
   return (
     <div className="glass p-4">
@@ -259,9 +322,15 @@ function PieceCard({
             <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/50">
               {piece.plataforma}
             </span>
-            <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/50">
-              {piece.config.rama === "heygen" ? "HeyGen" : "fal.ai"}
-            </span>
+            {isOwn ? (
+              <span className="rounded-full bg-[var(--color-accent-2)]/15 px-2 py-0.5 text-[10px] text-[var(--color-accent-2)]">
+                Propio · app
+              </span>
+            ) : (
+              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/50">
+                {piece.config.rama === "heygen" ? "HeyGen" : "fal.ai"}
+              </span>
+            )}
           </div>
           <div className="mt-1 truncate text-sm font-semibold">
             {piece.titulo || g.gancho || "(sin título)"}
@@ -322,6 +391,42 @@ function PieceCard({
       {piece.assets.clips.length > 1 && (
         <div className="mb-3 text-xs text-white/50">
           {piece.assets.clips.length} cortes generados (montaje con FFmpeg pendiente).
+        </div>
+      )}
+
+      {/* Grabación real de la app (REQ-006) + subida manual */}
+      {isOwn && (
+        <div className="mb-3 rounded-lg bg-white/5 p-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className="text-xs text-white/50">Grabación de la app</span>
+            <label className="cursor-pointer rounded-lg border border-white/15 px-2 py-1 text-xs hover:bg-white/5">
+              {piece.assets.recordingPath ? "Reemplazar vídeo" : "Subir vídeo"}
+              <input
+                type="file"
+                accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) onUpload(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          </div>
+          {piece.assets.recordingPath ? (
+            <video
+              key={piece.assets.recordingPath}
+              controls
+              className="max-h-80 w-full rounded-lg bg-black"
+              src={asset(piece.assets.recordingPath)}
+            />
+          ) : (
+            <p className="text-[11px] text-white/40">
+              {piece.config.demo?.grabacionModo === "manual"
+                ? "Modo manual: sube el screencast de la app."
+                : "Sin grabación automática (Playwright). Puedes subir un vídeo manual."}
+            </p>
+          )}
         </div>
       )}
 

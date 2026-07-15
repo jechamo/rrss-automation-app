@@ -31,7 +31,11 @@ export async function GET(
     ? "audio/mpeg"
     : rel.endsWith(".wav")
       ? "audio/wav"
-      : "video/mp4";
+      : rel.endsWith(".webm")
+        ? "video/webm"
+        : rel.endsWith(".mov")
+          ? "video/quicktime"
+          : "video/mp4";
   return new NextResponse(buf, {
     headers: { "Content-Type": type, "Content-Length": String(buf.length), "Cache-Control": "no-store" },
   });

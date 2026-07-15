@@ -343,6 +343,60 @@ key, sin romper el modal). **UI:** `ContentTray` (bandeja + SSE por pieza en gen
 
 ---
 
+## 8.4. Arquitectura concreta de REQ-006 (contenido propio / mostrar la app)
+
+**Reutiliza REQ-005** — misma `ContentPiece` con `origin="own"`, misma bandeja `ContentTray`, mismos
+endpoints de listado/asset/PUT/DELETE. Sin cambio de esquema Prisma: la config del demo viaja dentro
+del blob `config` JSON.
+
+**Tipos nuevos** (`src/core/content/types.ts`): `DemoConfig{funcion, funcionUrl, pasos[], usarLogin,
+grabacionModo(auto|manual)}` como campo opcional `demo?` de `MediaConfig`; `PieceAssets` gana
+`recordingPath` (screencast real de la app). `coerceDemo()` + `EMPTY_DEMO`.
+
+**Credenciales (DA-05)** (`src/core/secrets/login.ts`): `setLogin/getLogin/hasLogin/deleteLogin` sobre
+el Vault existente (AES-256-GCM) con clave `login:<projectId>`. La contraseña **nunca** sale de la API.
+
+**Grabación** (`src/core/media/recorder.ts`): `recordDemo({pieceId,url,pasos,login,log})` con
+**import dinámico** de `playwright` (chromium + `devices["iPhone 13"]` + `recordVideo` 390×844).
+Login best-effort (selectores usuario/pass/submit), recorre `pasos` con scroll, guarda
+`screencast.webm` (ruta relativa). Lanza errores amistosos si falta el paquete/navegador → el
+pipeline degrada a manual.
+
+**Lógica IA** (`src/core/content/demo.ts`): `analyzeFunctions({dossier,appUrl})` propone 3-6
+`AppFuncion{nombre,descripcion,url,pasos[]}` leyendo el dossier; `generateDemoGuion({dossier,funcion,
+plataforma})` genera un `PieceContent` **product-led** cuya escaleta alterna planos de grabación de
+pantalla (prompt vacío) y **cortes B-roll** (prompt en inglés para fal.ai).
+
+**Nodos del pipeline** (`src/core/pipeline/req006.ts`):
+`[Entrada] → [Grabar app] → [Guion] → [Cortes] → [Locución] → [Montaje]`
+- **Entrada** (`input`): carga pieza/dossier, exige `config.demo`, preserva `recordingPath` previo,
+  pone `status:generando` + `runId`.
+- **Grabar app** (`grabacion`): manual → usa el `recordingPath` subido; auto → `getLogin` si
+  `usarLogin` y `recordDemo(...)`; si falla, **loguea y continúa** (no lanza) para permitir subida
+  manual posterior.
+- **Guion** (`guion`): `generateDemoGuion` (plataforma `youtube` fija en esta pasada), persiste pronto.
+- **Cortes** (`media`): filtra planos con prompt no vacío (B-roll) → `fal.generateClip` (máx. 6);
+  `videoPath = recordingPath || clips[0]`.
+- **Locución** (`voz`): ElevenLabs TTS.
+- **Montaje** (`montaje`): **stub** (intercalado grabación+cortes con FFmpeg pendiente), avisa si no
+  hay grabación, pone `status:listo`, `version++`.
+
+**Endpoints nuevos:** `POST /api/projects/:id/content/demo/run` (crea pieza `own` + run REQ-006,
+fuerza `config.rama=fal`, 409 sin dossier), `POST /api/projects/:id/functions` (analiza funciones con
+IA), `GET/PUT/DELETE /api/projects/:id/login` (credenciales cifradas; GET solo informa `configured`),
+`POST /api/content/:projectId/:pieceId/upload` (multipart, sube screencast manual → `recordingPath`).
+El endpoint `asset` amplía content-type a `.webm`/`.mov`.
+
+**UI:** `DemoContentModal` (analizar funciones con IA + elegir/editar, modo grabación auto/manual,
+login cifrado, atributos vídeo/voz) lanzado desde el botón «+ Contenido propio» de `ContentTray`.
+`PieceCard` distingue piezas propias (chip «Propio · app»), reproduce la grabación (`recordingPath`)
+y ofrece subida/reemplazo manual de vídeo.
+
+> Playwright con navegador real y las llamadas a proveedores solo se validan en la máquina del
+> usuario (la shell del agente no tiene red; requiere `npx playwright install chromium` + keys).
+
+---
+
 ## 9. Arquitectura concreta de REQ-001 (primer requisito)
 
 **Nodos del pipeline** (Diseño §5):

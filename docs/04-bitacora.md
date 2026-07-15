@@ -14,7 +14,7 @@
 | REQ-003 | Scraping de clientes potenciales + estrategia | 🟡 Implementado (DA-02 resuelta: negocios locales reales vía IA+WebSearch) — pendiente pruebas del usuario |
 | REQ-004 | Scraping de virales del nicho (YT/TikTok/IG) | 🟡 Implementado (DA-03 resuelta: IA+WebSearch, viral relativo al autor, ventana 30d, Top 20) — pendiente pruebas del usuario |
 | REQ-005 | Generación de vídeo (clonado de viral) | 🟡 Implementado (DA-04 resuelta: reinterpretación conceptual + cableado real fal/HeyGen/ElevenLabs/Gemini, atributos auto/manual, montaje stub) — pendiente pruebas del usuario (red+keys) |
-| REQ-006 | Generación de contenido propio de la app | ⚪ Pendiente |
+| REQ-006 | Generación de contenido propio de la app | 🟡 Implementado (DA-05 resuelta: login cifrado en vault por proyecto, grabación Playwright móvil + fallback manual, cortes B-roll + locución, montaje stub) — pendiente pruebas del usuario (red+keys+navegador Playwright) |
 | REQ-007 | Skills | 🟡 Pase de curación hecho (skills de proyecto + catálogo, DA-06 resuelta); feature UI aplazada |
 | REQ-008 | Configuración de herramientas/APIs (Ajustes) | 🟡 Base construida (shell de Ajustes) |
 | REQ-009 | Experiencia visual | 🟡 Transversal — grafo de nodos ya animado |
@@ -68,6 +68,42 @@ contenido end-to-end (fal/HeyGen/ElevenLabs/Gemini) — la shell del agente no t
 que el render real solo se puede validar en la máquina del usuario. **Riesgo:** cada proveedor tiene
 su forma de API/estado; mitigado con `coerce`/timeouts/logs por pieza y guion persistido pronto.
 **Siguiente:** al validar → REQ-006 (resolver antes DA-05: credenciales de login de la appweb).
+
+### 2026-07-15 — REQ-006: Contenido propio (mostrar la app) + grabación Playwright
+
+**Decisión DA-05 (con el usuario):** **credenciales** de login de la appweb en el **Vault por
+proyecto** (AES-256-GCM, clave `login:<projectId>`; la contraseña nunca la devuelve la API).
+**Grabación** = **Playwright real** (móvil iPhone 13 + `recordVideo` + login scriptado) con
+**fallback a subida manual**. **Función** = la IA la propone leyendo el dossier y el usuario
+elige/edita. **Render/bandeja** = reutiliza REQ-005 (misma `ContentPiece` con `origin="own"`;
+fal.ai cortes B-roll + locución ElevenLabs; montaje stub).
+
+**Hecho (reutiliza infra de REQ-005, sin cambio de esquema Prisma):**
+- Tipos en `types.ts`: `DemoConfig{funcion,funcionUrl,pasos[],usarLogin,grabacionModo}` (campo
+  opcional `demo?` de `MediaConfig`); `PieceAssets.recordingPath`; `coerceDemo`/`EMPTY_DEMO`.
+- `src/core/secrets/login.ts`: `setLogin/getLogin/hasLogin/deleteLogin` sobre el vault existente.
+- `src/core/media/recorder.ts`: `recordDemo()` con **import dinámico** de `playwright` (chromium +
+  `devices["iPhone 13"]` + `recordVideo` 390×844), login best-effort por selectores, recorre pasos,
+  guarda `screencast.webm`; errores amistosos si falta paquete/navegador → degrada a manual.
+- `src/core/content/demo.ts`: `analyzeFunctions()` (propone 3-6 funciones del dossier) y
+  `generateDemoGuion()` (guion **product-led**; escaleta alterna grabación de pantalla + cortes
+  B-roll con prompt en inglés para fal.ai).
+- Pipeline `req006.ts`: `input → grabacion → guion → media(cortes) → voz → montaje`. `grabacion`
+  no lanza si Playwright falla (permite subida manual posterior); `videoPath = recordingPath ||
+  clips[0]`; `montaje` stub → `status:listo`, `version++`.
+- API: `POST /api/projects/[id]/content/demo/run` (pieza `own` + run REQ-006, 409 sin dossier),
+  `POST …/functions` (analiza con IA), `GET/PUT/DELETE …/login` (credenciales cifradas),
+  `POST /api/content/[projectId]/[pieceId]/upload` (screencast manual → `recordingPath`); `asset`
+  amplía content-type a `.webm`/`.mov`.
+- UI: `DemoContentModal` (analizar funciones con IA, elegir/editar, grabación auto/manual, login
+  cifrado, atributos vídeo/voz) + botón «+ Contenido propio» en `ContentTray`; `PieceCard` distingue
+  piezas propias (chip «Propio · app»), reproduce la grabación y ofrece subida/reemplazo manual.
+- Verificado: `tsc --noEmit` EXIT=0; `prisma db push` en sync (sin cambio de esquema).
+
+**Pendiente (usuario, necesita red+keys+navegador):** `npx playwright install chromium`, configurar
+login y keys, y generar contenido propio end-to-end. Playwright real y proveedores solo se validan en
+la máquina del usuario (la shell del agente no tiene red). **Siguiente:** al validar → REQ-003 (leads),
+apoyándose en el skill `rrss-lead-research`.
 
 ### 2026-07-15 — REQ-004: Virales del nicho (YT/TikTok/IG) + patrones
 

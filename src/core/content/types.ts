@@ -35,6 +35,21 @@ export interface PieceContent {
   notaLegal: string; // recordatorio: concepto reinterpretado, no copia
 }
 
+/** Modo de grabacion de la demo (REQ-006). */
+export type GrabacionModo = "auto" | "manual"; // auto = Playwright movil | manual = subir screencast
+
+/**
+ * Config extra de REQ-006 (contenido propio de la app): que funcionalidad se
+ * demuestra y como se graba. Vive dentro del blob `config` bajo `demo`.
+ */
+export interface DemoConfig {
+  funcion: string; // nombre de la funcionalidad a mostrar
+  funcionUrl: string; // ruta/URL concreta a navegar y grabar
+  pasos: string[]; // pasos de navegacion (Playwright / guia manual)
+  usarLogin: boolean; // requiere login (credenciales cifradas por proyecto en el vault)
+  grabacionModo: GrabacionModo;
+}
+
 /** El blob `config`: eleccion de proveedores/atributos por pieza. */
 export interface MediaConfig {
   rama: Rama; // fal (cortes generados) | heygen (avatar con foto+voz)
@@ -47,6 +62,8 @@ export interface MediaConfig {
   vozId: string; // id de voz ("" si auto)
   // comprension del viral fuente
   usarGemini: boolean; // true = analizar el video con Gemini; false = reusar datos REQ-004
+  // REQ-006 (solo piezas origin="own"): demo de la propia app
+  demo?: DemoConfig;
 }
 
 /** El blob `assets`: rutas/urls de lo generado. */
@@ -54,6 +71,7 @@ export interface PieceAssets {
   videoPath: string; // ruta local en data/media/<id>/ (rama fal: montaje; heygen: avatar)
   audioPath: string; // locucion (rama fal)
   clips: string[]; // cortes de fal por plano
+  recordingPath: string; // screencast de la app (REQ-006: Playwright o subido a mano)
   externalUrl: string; // url del proveedor si no se descargo
   logs: string[]; // trazas de generacion
 }
@@ -107,8 +125,17 @@ export const EMPTY_ASSETS: PieceAssets = {
   videoPath: "",
   audioPath: "",
   clips: [],
+  recordingPath: "",
   externalUrl: "",
   logs: [],
+};
+
+export const EMPTY_DEMO: DemoConfig = {
+  funcion: "",
+  funcionUrl: "",
+  pasos: [],
+  usarLogin: false,
+  grabacionModo: "auto",
 };
 
 // ---- coerce (defensivo) ----
@@ -169,11 +196,22 @@ export function coerceContent(raw: unknown): PieceContent {
   };
 }
 
+export function coerceDemo(raw: unknown): DemoConfig {
+  const o = (raw ?? {}) as Record<string, unknown>;
+  return {
+    funcion: str(o.funcion),
+    funcionUrl: str(o.funcionUrl),
+    pasos: strArr(o.pasos),
+    usarLogin: bool(o.usarLogin, false),
+    grabacionModo: str(o.grabacionModo) === "manual" ? "manual" : "auto",
+  };
+}
+
 export function coerceConfig(raw: unknown): MediaConfig {
   const o = (raw ?? {}) as Record<string, unknown>;
   const rama: Rama = str(o.rama) === "heygen" ? "heygen" : "fal";
   const vozProveedor: VozProveedor = str(o.vozProveedor) === "heygen" ? "heygen" : "elevenlabs";
-  return {
+  const config: MediaConfig = {
     rama,
     videoAuto: bool(o.videoAuto, true),
     videoModelo: str(o.videoModelo),
@@ -182,6 +220,8 @@ export function coerceConfig(raw: unknown): MediaConfig {
     vozId: str(o.vozId),
     usarGemini: bool(o.usarGemini, false),
   };
+  if (o.demo && typeof o.demo === "object") config.demo = coerceDemo(o.demo);
+  return config;
 }
 
 export function coerceAssets(raw: unknown): PieceAssets {
@@ -190,6 +230,7 @@ export function coerceAssets(raw: unknown): PieceAssets {
     videoPath: str(o.videoPath),
     audioPath: str(o.audioPath),
     clips: strArr(o.clips),
+    recordingPath: str(o.recordingPath),
     externalUrl: str(o.externalUrl),
     logs: strArr(o.logs),
   };

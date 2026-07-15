@@ -288,7 +288,15 @@ Estas no bloquean REQ-001; se resolverán al llegar a cada requisito.
   usuario). **Comprensión del viral:** reutiliza los datos capturados en REQ-004 por defecto + Gemini
   **opcional** para enriquecer. **Rama de vídeo:** ambas **elegibles por pieza** — fal.ai (cortes
   generados) o HeyGen (avatar foto+voz). **Montaje** (FFmpeg, D-12) queda como **stub** en esta pasada.
-- **DA-05 (REQ-006):** Almacenamiento seguro de credenciales de login de la appweb objetivo.
+- **DA-05 (REQ-006):** ✅ RESUELTA (2026-07-15, con el usuario). **Credenciales:** se guardan en el
+  **Vault por proyecto** (AES-256-GCM, `data/vault.enc`) bajo la clave `login:<projectId>`; se configuran
+  una vez y **la contraseña nunca la devuelve la API** (solo `configured: true/false`). **Grabación:**
+  **Playwright real** (emulación de móvil iPhone 13 + `recordVideo` + login scriptado) con **fallback a
+  subida manual** de un screencast (`.mp4/.webm/.mov`) si Playwright/navegador no están disponibles o
+  fallan. **Selección de función:** la IA la propone leyendo el `dossier` y el usuario elige/edita.
+  **Render/bandeja:** reutiliza la infraestructura de REQ-005 (misma `ContentPiece` con `origin="own"`;
+  fal.ai genera **cortes B-roll** para intercalar con la grabación real + locución ElevenLabs). El
+  **montaje** (FFmpeg, D-12) sigue como **stub** en esta pasada; se valida antes de montar.
 - **DA-06 (REQ-007):** ✅ RESUELTA (2026-07-15). "Skill" = capacidad del entorno de Claude Code
   (skills de proyecto `.claude/skills/` + plugins del marketplace) como toolkit del agente/motor;
   instalación **curada**. Catálogo en `docs/05-skills.md`; UI aplazada.
