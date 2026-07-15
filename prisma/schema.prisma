@@ -79,15 +79,21 @@ model Run {
 }
 
 model ContentPiece {
-  id        String   @id @default(cuid())
-  projectId String
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  origin    String // viral | own
-  script    String?
-  videoPath String?
-  target    String? // youtube | tiktok | instagram
-  status    String   @default("pending") // pending | review | published | error | deleted
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  origin     String   @default("viral") // viral (REQ-005) | own (REQ-006)
+  sourceUrl  String? // URL del viral clonado (REQ-005)
+  titulo     String   @default("")
+  plataforma String? // youtube | tiktok | instagram
+  content    String   @default("{}") // JSON: guion + escaleta + patron aplicado
+  config     String   @default("{}") // JSON: rama (fal|heygen) + modelo video + voz
+  assets     String   @default("{}") // JSON: videoPath + audioPath + clips + logs
+  runId      String? // ultimo run de generacion (REQ-005) para restaurar el grafo
+  status     String   @default("borrador") // borrador | generando | listo | publicado | error
+  version    Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model ConnectorState {

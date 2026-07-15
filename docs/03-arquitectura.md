@@ -293,6 +293,56 @@ en `/proyecto/[id]`, bajo los leads.
 
 ---
 
+## 8.3. Arquitectura concreta de REQ-005 (generación de contenido / clonado de viral)
+
+**Modelo:** `ContentPiece` — a diferencia de los contenedores 1-a-1, es **muchos por proyecto**
+(bandeja de estados). Campos: `origin(viral|own)`, `sourceUrl`, `titulo`, `plataforma`,
+`content` JSON (`{plataforma, guion{gancho,desarrollo,cta,locucion,hashtags[],duracionTotal},
+escaleta:Shot[], patronAplicado, notaLegal}`), `config` JSON (`MediaConfig{rama, videoAuto,
+videoModelo, vozProveedor, vozAuto, vozId, usarGemini}`), `assets` JSON (`{videoPath, audioPath,
+clips[], externalUrl, logs[]}`), `runId`, `status(borrador|generando|listo|publicado|error)`,
+`version`. `rowToPiece()` parsea los JSON a objetos tipados.
+
+**Módulos de media** (`src/core/media/`, cada uno tira su key del vault):
+- `fal.ts`: `FAL_MODELS` (curados: ltx-video, kling, minimax, luma, hunyuan), `listModels()`,
+  `autoModel()`, `generateClip({pieceId,index,prompt,model})` (cola `queue.fal.run`, polling,
+  descarga `clip-N.mp4`).
+- `heygen.ts`: `listAvatars()`, `listVoices()` (v2), `generateAvatarVideo(...)` (v2/generate +
+  v1/video_status, vertical 720×1280, requiere `avatarId`).
+- `elevenlabs.ts`: `listVoices()`, `tts(pieceId,text,voiceId)` (guarda `locucion.mp3`).
+- `gemini.ts`: `describeViral(...)` (enriquecimiento opcional; comprensión real de vídeo vía
+  Files API queda a futuro).
+- `index.ts`: `listOptions(provider,kind)` despacha modelos/voces/avatares para el modal.
+- `storage.ts`: assets bajo `data/media/<pieceId>/`, rutas **relativas** a `data/`, guard
+  anti-traversal. `http.ts`: fetch con timeout.
+
+**Lógica IA** (`src/core/content/`): `extract.ts` reutiliza el `Viral` de REQ-004 (+ Gemini si
+`usarGemini`) → `ViralExtract`; `guion.ts` genera un `PieceContent` **original** (system prompt:
+reinterpreta el concepto, no copies; español; JSON) tirando del dossier (marca, público, CTAs).
+
+**Nodos del pipeline** (`src/core/pipeline/req005.ts`):
+`[Entrada] → [Extraer] → [Guion] → [Vídeo] → [Locución] → [Montaje]`
+- **Entrada** (`input`): carga pieza/dossier/virales, casa el viral por URL normalizada, pone
+  `status:generando` + `runId`.
+- **Extraer**/**Guion**: guion se **persiste pronto** (revisable aunque el render falle luego).
+- **Vídeo** (`media`): bifurca — `heygen` → `generateAvatarVideo` (usa `videoModelo` como avatar);
+  `fal` → recorre la escaleta (máx. `MAX_CLIPS=6`) `generateClip` → `clips[]`, `videoPath=clips[0]`.
+- **Locución** (`voz`): `fal` → ElevenLabs TTS; `heygen` → se omite (ya lleva voz).
+- **Montaje** (`montaje`): **stub** (registra FFmpeg pendiente), pone `status:listo`, `version++`.
+
+**Endpoints:** `POST /api/projects/:id/content/run` (valida sourceUrl + config, 409 sin
+dossier/virales, crea pieza + run, fire-and-forget `executeRun` con reconciliación de estado),
+`GET /api/content/:projectId` (piezas + runs), `PUT/DELETE /api/content/:projectId/:pieceId`,
+`GET …/:pieceId/asset?path=` (sirve asset local, valida prefijo `media/<pieceId>/`),
+`GET /api/providers/:provider/options?kind=` (modelos/voces/avatares; devuelve `error` si falta
+key, sin romper el modal). **UI:** `ContentTray` (bandeja + SSE por pieza en generación) +
+`GenerateContentModal` (selector de viral + rama + auto/manual) en `/proyecto/[id]`, bajo virales.
+
+> El punto de entrada de generación vive en `ContentTray` (selector de viral dentro del propio
+> modal), no en un botón dentro de `ViralesEditor`.
+
+---
+
 ## 9. Arquitectura concreta de REQ-001 (primer requisito)
 
 **Nodos del pipeline** (Diseño §5):

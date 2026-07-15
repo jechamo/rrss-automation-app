@@ -80,23 +80,28 @@ requisitos **REQ-001 … REQ-009**, uno a uno, con validación del usuario entre
 src/app/                      Rutas (App Router)
   page.tsx                    Dashboard (server) + <RecentProjects/>
   proyecto/nuevo/page.tsx     Formulario de nuevo análisis
-  proyecto/[id]/page.tsx      Vista de proyecto: pipeline + logs + dossier + competencia (client, SSE)
+  proyecto/[id]/page.tsx      Vista de proyecto: pipeline + logs + dossier + competencia + leads + virales + contenido (client, SSE)
   ajustes/                    Pantalla de conectores/API keys (REQ-008)
   api/
     projects/                 CRUD proyectos (POST crea+lanza run, DELETE, [id] GET/rerun)
                               [id]/competencia/run  POST lanza run REQ-002
+                              [id]/content/run      POST crea pieza + lanza run REQ-005
     runs/[id]/stream/         Endpoint SSE del run
     dossier/[projectId]/      GET/PUT del dossier
     competencia/[projectId]/  GET/PUT de la competencia (REQ-002); GET incluye su lastRun
+    content/[projectId]/      GET piezas+runs; [pieceId] PUT/DELETE; [pieceId]/asset sirve asset local (REQ-005)
+    providers/[provider]/options  GET modelos/voces/avatares para el modal (REQ-005)
 src/components/               PipelineGraph, DossierEditor, RecentProjects,
-                              CompetenciaPanel, CompetenciaEditor
+                              CompetenciaPanel, CompetenciaEditor, ContentTray, GenerateContentModal
 src/core/
-  pipeline/                   req001.ts / req002.ts / req003.ts / req004.ts (definen nodos), bus.ts (eventos), engine
+  pipeline/                   req001..req005.ts (definen nodos), bus.ts (eventos), engine
   ai/claude-cli.ts            Motor Claude CLI (resolución de binario, exec con timeout)
   dossier/                    Tipos + generación del dossier (REQ-001)
   competencia/                Tipos + discover.ts (propone competidores) + generate.ts (REQ-002)
   leads/                      Tipos + research.ts (perfil) + discover.ts (IA+WebSearch) + strategy.ts (REQ-003)
   virales/                    Tipos + discover.ts (IA+WebSearch) + analyze.ts (patrones) (REQ-004)
+  content/                    Tipos + extract.ts (reutiliza viral + Gemini) + guion.ts (guion original) (REQ-005)
+  media/                      Conectores reales fal/heygen/elevenlabs/gemini + storage/http/listOptions (REQ-005)
   crawler/                    Crawl de la web (reutilizado por REQ-001 y REQ-002)
 src/lib/                      prisma, vault (cifrado)
 prisma/schema.prisma          Modelo de datos multiproyecto
@@ -135,7 +140,14 @@ prisma/schema.prisma          Modelo de datos multiproyecto
   viral **relativo al autor** ≈5× mediana del canal, ventana 30d configurable, **Top 20**). Pipeline
   `req004.ts` (`input → discover(web) → rank → analyze`), cada viral descompuesto (hook/estructura/
   share-trigger/patrón transferible) para alimentar REQ-005. Apoyo: skill `rrss-viral-analysis`. En pruebas.
+- **REQ-005** (generación de contenido — clonado de viral): **implementado** (DA-04 resuelta:
+  **reinterpretación conceptual**, no copia). Cableado a **proveedores reales** (fal.ai/HeyGen/
+  ElevenLabs/Gemini) con keys de Ajustes, **atributos auto/manual por pieza**, **rama fal|heygen
+  elegible**. `ContentPiece` **muchos por proyecto** (bandeja de estados). Pipeline `req005.ts`
+  (`input → extract → guion → media → voz → montaje`; montaje = **stub** FFmpeg). UI `ContentTray` +
+  `GenerateContentModal`. Apoyo: skill `rrss-content-generation`. **Solo verificable con red+keys en
+  la máquina del usuario** (la shell del agente no tiene red).
 - **REQ-007** (skills): **pase de curación hecho** (DA-06 resuelta). 3 skills de proyecto en
   `.claude/skills/` + catálogo en `docs/05-skills.md`. Feature de UI aplazada.
-- **Siguiente:** REQ-005 (generación de vídeo — clonado de viral) — resolver antes DA-04 (criterio para
-  reinterpretar el concepto sin infringir copyright).
+- **Siguiente:** REQ-006 (contenido propio de la app) — resolver antes DA-05 (almacenamiento seguro
+  de credenciales de login de la appweb objetivo).

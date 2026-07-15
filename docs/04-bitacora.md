@@ -13,7 +13,7 @@
 | REQ-002 | Análisis de competencia | 🟡 Implementado — pendiente pruebas del usuario |
 | REQ-003 | Scraping de clientes potenciales + estrategia | 🟡 Implementado (DA-02 resuelta: negocios locales reales vía IA+WebSearch) — pendiente pruebas del usuario |
 | REQ-004 | Scraping de virales del nicho (YT/TikTok/IG) | 🟡 Implementado (DA-03 resuelta: IA+WebSearch, viral relativo al autor, ventana 30d, Top 20) — pendiente pruebas del usuario |
-| REQ-005 | Generación de vídeo (clonado de viral) | ⚪ Pendiente |
+| REQ-005 | Generación de vídeo (clonado de viral) | 🟡 Implementado (DA-04 resuelta: reinterpretación conceptual + cableado real fal/HeyGen/ElevenLabs/Gemini, atributos auto/manual, montaje stub) — pendiente pruebas del usuario (red+keys) |
 | REQ-006 | Generación de contenido propio de la app | ⚪ Pendiente |
 | REQ-007 | Skills | 🟡 Pase de curación hecho (skills de proyecto + catálogo, DA-06 resuelta); feature UI aplazada |
 | REQ-008 | Configuración de herramientas/APIs (Ajustes) | 🟡 Base construida (shell de Ajustes) |
@@ -24,6 +24,50 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 ---
 
 ## Historial
+
+### 2026-07-15 — REQ-005: Generación de contenido (clonado de viral) + cableado real
+
+**Decisión DA-04 (con el usuario):** **anti-copyright = reinterpretación conceptual** (usar el
+`patronTransferible` del viral para un guion **original** de la marca, no copia literal). **Alcance
+ampliado por el usuario:** cableado a **proveedores reales** (fal.ai/HeyGen/ElevenLabs/Gemini) con
+keys en Ajustes + test de conexión, y **selección de atributos por pieza** (modelo/voz/avatar en
+**auto** = decide la IA, o **manual**). **Comprensión del viral:** reutiliza datos de REQ-004 +
+Gemini opcional. **Rama de vídeo:** ambas elegibles por pieza (fal.ai cortes | HeyGen avatar).
+**Montaje** (FFmpeg) = stub en esta pasada.
+
+**Hecho (primer modelo *muchos por proyecto* → bandeja de estados):**
+- Modelo `ContentPiece` en Prisma (muchos por `Project`): `origin/sourceUrl/titulo/plataforma/
+  content/config/assets` (JSON) + `runId/status/version`. `rowToPiece()` parsea a tipos.
+- Tipos en `src/core/content/types.ts` (`Rama`, `Guion`, `Shot`, `PieceContent`, `MediaConfig`,
+  `PieceAssets`, `PieceStatus`) con `coerce*` defensivo.
+- Módulos de media `src/core/media/` (cada uno tira su key del vault): `fal.ts` (modelos curados +
+  `generateClip` por cola/polling), `heygen.ts` (avatares/voces + `generateAvatarVideo` vertical),
+  `elevenlabs.ts` (voces + `tts`), `gemini.ts` (`describeViral` opcional), `index.ts`
+  (`listOptions`), `storage.ts` (assets en `data/media/<pieceId>/`, guard anti-traversal), `http.ts`.
+- Lógica IA: `extract.ts` (reutiliza el `Viral` de REQ-004 + Gemini si `usarGemini`) y `guion.ts`
+  (guion **original**: reinterpreta el concepto, no copia; español; tira del dossier).
+- Pipeline `req005.ts`: `input → extract → guion → media → voz → montaje`. Guion se persiste pronto
+  (revisable aunque el render falle); `media` bifurca fal (cortes, máx. 6)/heygen (avatar); `voz`
+  ElevenLabs solo en fal; `montaje` stub → `status:listo`, `version++`.
+- API: `POST /api/projects/[id]/content/run` (409 sin dossier/virales, fire-and-forget con
+  reconciliación de estado), `GET /api/content/[projectId]`, `PUT/DELETE …/[pieceId]`,
+  `GET …/[pieceId]/asset?path=` (sirve asset local validado), `GET /api/providers/[provider]/
+  options?kind=` (modelos/voces/avatares; `error` si falta key sin romper el modal).
+- UI: `ContentTray` (bandeja, SSE por pieza en generación, reproductores vídeo/audio, guion+escaleta,
+  acciones publicar/regenerar/eliminar) + `GenerateContentModal` (selector de viral + rama +
+  auto/manual de modelo/voz/avatar). Montado en `/proyecto/[id]` bajo virales. Apoyo de conocimiento:
+  skill `rrss-content-generation`.
+- Verificado: `tsc --noEmit` EXIT=0; `prisma db push` en sync.
+
+**Desviación vs. plan:** el punto de entrada de generación vive en `ContentTray` (selector de viral
+dentro del propio modal), no en un botón dentro de `ViralesEditor` — se eligió el patrón de panel
+autocontenido, coherente con el resto de REQs.
+
+**Pendiente (usuario, necesita red+keys):** configurar keys en Ajustes + test de conexión, y generar
+contenido end-to-end (fal/HeyGen/ElevenLabs/Gemini) — la shell del agente no tiene red ni keys, así
+que el render real solo se puede validar en la máquina del usuario. **Riesgo:** cada proveedor tiene
+su forma de API/estado; mitigado con `coerce`/timeouts/logs por pieza y guion persistido pronto.
+**Siguiente:** al validar → REQ-006 (resolver antes DA-05: credenciales de login de la appweb).
 
 ### 2026-07-15 — REQ-004: Virales del nicho (YT/TikTok/IG) + patrones
 

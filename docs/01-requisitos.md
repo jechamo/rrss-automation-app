@@ -173,6 +173,13 @@ dejándolo para revisión y publicación con 1 clic.
 - **Historial** y opción de **nueva ejecución**.
 - Bandeja de estados: **pendiente de publicar**, **eliminar**, **regenerar**, **publicado**.
 
+> ✅ DA-04 resuelta (ver §7). **Implementado (v1, 2026-07-15):** `ContentPiece` **muchos por
+> proyecto** (bandeja de estados); pipeline `input → extract → guion → media → voz → montaje`
+> (montaje = stub FFmpeg); conectores reales **fal.ai/HeyGen/ElevenLabs/Gemini** con keys de
+> Ajustes; modal de generación con **selección auto/manual** de modelo/voz/avatar; guion
+> **reinterpretado** (no copia). Entrada: panel **ContentTray** (selector de viral dentro del
+> propio modal). Assets locales servidos por ruta protegida `…/asset?path=`.
+
 ---
 
 ### REQ-006 — Generación de contenido propio de la app para RRSS
@@ -272,7 +279,15 @@ Estas no bloquean REQ-001; se resolverán al llegar a cada requisito.
   **Ventana temporal:** **30 días** por defecto, configurable en la UI (7/14/30/histórico).
   **Salida:** Top 20 ordenado por viralidad, con cada pieza descompuesta (hook, estructura,
   share-trigger, patrón transferible) + patrones recurrentes del nicho, para alimentar REQ-005.
-- **DA-04 (REQ-005):** Criterio para "clonar" sin infringir copyright (reinterpretar el concepto, no copiar literal).
+- **DA-04 (REQ-005):** ✅ RESUELTA (2026-07-15, con el usuario). **Criterio anti-copyright:**
+  **reinterpretación conceptual** — se usa el `patronTransferible` del viral (REQ-004) para generar
+  un guion **original** sobre la marca/app del usuario, **no una copia literal** (hook/estructura como
+  inspiración, contenido nuevo). **Alcance:** cableado a **proveedores reales** (fal.ai, HeyGen,
+  ElevenLabs, Gemini) con keys en Ajustes + test de conexión (REQ-008), y **selección de atributos por
+  pieza** (modelo de vídeo / voz / avatar en modo **auto** = decide la IA, o **manual** = lo elige el
+  usuario). **Comprensión del viral:** reutiliza los datos capturados en REQ-004 por defecto + Gemini
+  **opcional** para enriquecer. **Rama de vídeo:** ambas **elegibles por pieza** — fal.ai (cortes
+  generados) o HeyGen (avatar foto+voz). **Montaje** (FFmpeg, D-12) queda como **stub** en esta pasada.
 - **DA-05 (REQ-006):** Almacenamiento seguro de credenciales de login de la appweb objetivo.
 - **DA-06 (REQ-007):** ✅ RESUELTA (2026-07-15). "Skill" = capacidad del entorno de Claude Code
   (skills de proyecto `.claude/skills/` + plugins del marketplace) como toolkit del agente/motor;
