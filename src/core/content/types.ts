@@ -74,6 +74,8 @@ export interface PieceAssets {
   recordingPath: string; // screencast de la app (REQ-006: Playwright o subido a mano)
   externalUrl: string; // url del proveedor si no se descargo
   logs: string[]; // trazas de generacion
+  publishedTo: string; // REQ-010: red donde se marco publicado ("" si no)
+  publishedAt: string; // REQ-010: ISO de la marca de publicacion ("" si no)
 }
 
 export interface ContentPiece {
@@ -128,6 +130,8 @@ export const EMPTY_ASSETS: PieceAssets = {
   recordingPath: "",
   externalUrl: "",
   logs: [],
+  publishedTo: "",
+  publishedAt: "",
 };
 
 export const EMPTY_DEMO: DemoConfig = {
@@ -233,6 +237,8 @@ export function coerceAssets(raw: unknown): PieceAssets {
     recordingPath: str(o.recordingPath),
     externalUrl: str(o.externalUrl),
     logs: strArr(o.logs),
+    publishedTo: str(o.publishedTo),
+    publishedAt: str(o.publishedAt),
   };
 }
 

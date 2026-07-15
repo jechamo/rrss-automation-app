@@ -10,7 +10,9 @@ export async function GET(
   ctx: { params: Promise<{ projectId: string; pieceId: string }> },
 ) {
   const { pieceId } = await ctx.params;
-  const rel = new URL(req.url).searchParams.get("path") ?? "";
+  const params = new URL(req.url).searchParams;
+  const rel = params.get("path") ?? "";
+  const download = params.get("download") === "1";
   // Solo se sirven assets dentro del directorio de la propia pieza.
   if (!rel.startsWith(`media/${pieceId}/`)) {
     return NextResponse.json({ error: "Ruta invalida." }, { status: 400 });
@@ -36,7 +38,14 @@ export async function GET(
         : rel.endsWith(".mov")
           ? "video/quicktime"
           : "video/mp4";
-  return new NextResponse(buf, {
-    headers: { "Content-Type": type, "Content-Length": String(buf.length), "Cache-Control": "no-store" },
-  });
+  const headers: Record<string, string> = {
+    "Content-Type": type,
+    "Content-Length": String(buf.length),
+    "Cache-Control": "no-store",
+  };
+  if (download) {
+    const filename = rel.split("/").pop() || "video.mp4";
+    headers["Content-Disposition"] = `attachment; filename="${filename}"`;
+  }
+  return new NextResponse(buf, { headers });
 }

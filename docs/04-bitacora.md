@@ -18,12 +18,37 @@
 | REQ-007 | Skills | 🟡 Pase de curación hecho (skills de proyecto + catálogo, DA-06 resuelta); feature UI aplazada |
 | REQ-008 | Configuración de herramientas/APIs (Ajustes) | 🟡 Base construida (shell de Ajustes) |
 | REQ-009 | Experiencia visual | 🟡 Implementado (hero con aurora, tarjetas con elevación 3D + entrada escalonada, carrusel 360 cover-flow de piezas, skeletons, transiciones de estado) — pendiente visto bueno del usuario |
+| REQ-010 | Publicación asistida en redes | 🟡 Implementado (D-06: descargar vídeo + copiar copy + abrir red; sin APIs/tokens; marca `publicado` con `publishedTo`/`publishedAt`) — pendiente pruebas del usuario |
 
 Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ---
 
 ## Historial
+
+### 2026-07-15 — REQ-010: Publicación asistida en redes (D-06, opción manual)
+
+**Contexto:** el usuario preguntó si la app puede "autosubir" a TikTok/Instagram/YouTube. No: la
+subida 100% automática por API oficial exige OAuth + apps aprobadas por cada plataforma (§6 fuera
+de alcance). Se implementa la **opción A** ya prevista en **D-06**: publicación **manual asistida**.
+
+**Decisión (con el usuario, "haz A"):** dejar la pieza lista para publicar en un par de clics, sin
+APIs ni tokens: descargar el vídeo final + copiar el copy al portapapeles + abrir la red destino.
+
+**Hecho:**
+- `core/content/publish.ts` (**nuevo**): `PUBLISH_TARGETS` (URL de subida web por red + hint),
+  `composeCaption` (título + CTA + hashtags) y `finalVideoPath` (montaje > grabación).
+- `components/PublishModal.tsx` (**nuevo**): modal de 4 pasos (descargar · copiar copy editable ·
+  abrir red en pestaña nueva · marcar publicado) + selector de red.
+- `ContentTray`/`PieceCard`: botón **«Publicar ↗»** en piezas `listo`/`publicado` que abre el modal;
+  recarga la bandeja al marcar publicado. Se retira el antiguo botón "Marcar publicado" (lo cubre el modal).
+- Ruta de assets: `?download=1` fuerza `Content-Disposition: attachment`.
+- `PUT …/:pieceId`: al marcar publicado persiste `publishedTo` + `publishedAt` en el blob `assets`
+  (nuevos campos en `PieceAssets`/`coerceAssets`, sin cambio de esquema Prisma).
+- Verificado: `tsc --noEmit` EXIT=0; `next build` EXIT=0.
+
+**Siguiente:** pruebas del usuario (descargar + pegar en cada red). Subida automática por API queda
+para un requisito futuro (OAuth por plataforma).
 
 ### 2026-07-15 — REQ-009: Experiencia visual (hero, carrusel 360, animaciones)
 
@@ -41,6 +66,11 @@ dependencias nuevas** (solo Tailwind + CSS), respetando `prefers-reduced-motion`
   con toggle **Lista / Carrusel** (aparece con ≥2 piezas); la pieza central abre su `PieceCard`.
 - Pulido de estados: transición suave del borde/sombra en los nodos del `PipelineGraph`, transición
   de color en los chips de estado y **skeletons** de carga en `ContentTray`.
+- **Fix de navegación (barra lateral):** la `Sidebar` enlazaba a rutas inexistentes (`/proyecto`,
+  `/analisis`, `/rrss`, `/historial`, `/skills`) → todas daban **404**. Reconstruida para enlazar
+  **solo rutas reales** (Dashboard, Nuevo análisis, Ajustes) + **navegación por secciones** dentro de
+  un proyecto (anclas `#pipeline/#dossier/#competencia/#leads/#virales/#contenido`, añadidas con
+  `scroll-mt` en `proyecto/[id]`). El carrusel 360 aparece con **≥1 pieza** (toggle Lista/Carrusel).
 - Verificado: `tsc --noEmit` EXIT=0; `next build` EXIT=0.
 
 **Siguiente:** roadmap REQ-001→009 implementado; queda el **visto bueno end-to-end del usuario**

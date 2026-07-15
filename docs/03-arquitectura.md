@@ -427,6 +427,36 @@ y ofrece subida/reemplazo manual de vídeo.
 
 ---
 
+## 8.6. Arquitectura concreta de REQ-010 (publicación asistida)
+
+**Enfoque:** materializa **D-06** sin APIs oficiales ni OAuth. Todo cliente + una mejora
+mínima en la ruta de assets; ningún proveedor externo, ningún token.
+
+**Módulo de dominio** (`src/core/content/publish.ts`):
+- `PUBLISH_TARGETS` / `PUBLISH_TARGET_LIST`: por `Plataforma`, la URL web de subida
+  (`youtube.com/upload`, `tiktok.com/upload`, `instagram.com`) + `hint`.
+- `composeCaption(piece)`: copy sugerido = título/gancho + CTA + hashtags.
+- `finalVideoPath(piece)`: `assets.videoPath || assets.recordingPath` (montaje > grabación).
+
+**UI** (`components/PublishModal.tsx`, cliente): modal de 4 pasos por pieza —
+(1) descargar vídeo, (2) copiar copy (`navigator.clipboard`, editable), (3) abrir la red
+(`window.open(uploadUrl, "_blank", "noopener,noreferrer")`), (4) marcar publicado. Selector de
+red. Se abre desde el botón **«Publicar ↗»** del `PieceCard` (`ContentTray`) en piezas
+`listo`/`publicado`.
+
+**API (sin endpoints nuevos):**
+- `GET …/:pieceId/asset?path=…&download=1` → añade `Content-Disposition: attachment` para forzar
+  descarga (mismo guardado de prefijo `media/<pieceId>/`).
+- `PUT …/:pieceId` con `{ status:"publicado", publishedTo }` → persiste `publishedTo` +
+  `publishedAt` (ISO) dentro del blob `assets` (sin cambio de esquema Prisma).
+
+**Datos:** `PieceAssets` gana `publishedTo` y `publishedAt` (string, "" por defecto), normalizados
+en `coerceAssets`. La subida 100% automática por API oficial queda fuera de alcance (§6 requisitos).
+
+> Verificado con `tsc --noEmit` + `next build` (EXIT=0). Sin dependencias nuevas.
+
+---
+
 ## 9. Arquitectura concreta de REQ-001 (primer requisito)
 
 **Nodos del pipeline** (Diseño §5):
@@ -459,6 +489,7 @@ y ofrece subida/reemplazo manual de vídeo.
 | REQ-007 | skills (catálogo/instalación) |
 | REQ-008 | secrets, connectors (test), Ajustes UI |
 | REQ-009 | UI (React Flow, carrusel 360, tema) |
+| REQ-010 | content/publish, PublishModal, asset route (download) |
 
 ---
 

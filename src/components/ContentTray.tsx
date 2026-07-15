@@ -5,6 +5,7 @@ import { PipelineGraph, type GraphNode, type NodeState } from "@/components/Pipe
 import { GenerateContentModal } from "@/components/GenerateContentModal";
 import { DemoContentModal } from "@/components/DemoContentModal";
 import { PieceCarousel } from "@/components/PieceCarousel";
+import { PublishModal } from "@/components/PublishModal";
 import type { ContentPiece, DemoConfig, MediaConfig } from "@/core/content/types";
 
 type RunEvent =
@@ -193,15 +194,6 @@ export function ContentTray({
     if (r.ok) load();
   }
 
-  async function updatePiece(pieceId: string, patch: { status?: string }) {
-    await fetch(`/api/content/${projectId}/${pieceId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
-    });
-    load();
-  }
-
   async function removePiece(pieceId: string) {
     if (!confirm("¿Eliminar esta pieza de contenido?")) return;
     await fetch(`/api/content/${projectId}/${pieceId}`, { method: "DELETE" });
@@ -215,7 +207,7 @@ export function ContentTray({
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-bold">Contenido generado (REQ-005 / REQ-006)</h2>
         <div className="flex items-center gap-2">
-          {pieces.length > 1 && (
+          {pieces.length > 0 && (
             <div className="mr-1 flex rounded-lg border border-white/10 p-0.5 text-xs">
               {(["lista", "carrusel"] as const).map((v) => (
                 <button
@@ -282,7 +274,7 @@ export function ContentTray({
         </div>
       )}
 
-      {view === "carrusel" && pieces.length > 1 ? (
+      {view === "carrusel" && pieces.length > 0 ? (
         <div className="flex flex-col gap-4">
           <PieceCarousel
             projectId={projectId}
@@ -299,10 +291,10 @@ export function ContentTray({
                 nodes={focus.runId ? runNodes[focus.runId] : undefined}
                 expanded={!!expanded[focus.id]}
                 onToggle={() => setExpanded((e) => ({ ...e, [focus.id]: !e[focus.id] }))}
-                onPublish={() => updatePiece(focus.id, { status: "publicado" })}
                 onRegenerate={() => (focus.origin === "own" ? setShowDemoModal(true) : setShowModal(true))}
                 onDelete={() => removePiece(focus.id)}
                 onUpload={(file) => uploadScreencast(focus.id, file)}
+                onReload={load}
               />
             );
           })()}
@@ -317,10 +309,10 @@ export function ContentTray({
                 nodes={p.runId ? runNodes[p.runId] : undefined}
                 expanded={!!expanded[p.id]}
                 onToggle={() => setExpanded((e) => ({ ...e, [p.id]: !e[p.id] }))}
-                onPublish={() => updatePiece(p.id, { status: "publicado" })}
                 onRegenerate={() => (p.origin === "own" ? setShowDemoModal(true) : setShowModal(true))}
                 onDelete={() => removePiece(p.id)}
                 onUpload={(file) => uploadScreencast(p.id, file)}
+                onReload={load}
               />
             </div>
           ))}
@@ -354,21 +346,22 @@ function PieceCard({
   nodes,
   expanded,
   onToggle,
-  onPublish,
   onRegenerate,
   onDelete,
   onUpload,
+  onReload,
 }: {
   projectId: string;
   piece: ContentPiece;
   nodes?: GraphNode[];
   expanded: boolean;
   onToggle: () => void;
-  onPublish: () => void;
   onRegenerate: () => void;
   onDelete: () => void;
   onUpload: (file: File) => void;
+  onReload: () => void;
 }) {
+  const [showPublish, setShowPublish] = useState(false);
   const meta = STATUS_META[piece.status] ?? STATUS_META.borrador;
   const asset = (rel: string) =>
     `/api/content/${projectId}/${piece.id}/asset?path=${encodeURIComponent(rel)}`;
@@ -414,12 +407,12 @@ function PieceCard({
           )}
         </div>
         <div className="flex shrink-0 gap-1">
-          {piece.status === "listo" && (
+          {(piece.status === "listo" || piece.status === "publicado") && (
             <button
-              onClick={onPublish}
-              className="rounded-lg border border-white/15 px-2 py-1 text-xs hover:bg-white/5"
+              onClick={() => setShowPublish(true)}
+              className="rounded-lg bg-[var(--color-accent)] px-2 py-1 text-xs font-medium"
             >
-              Marcar publicado
+              Publicar ↗
             </button>
           )}
           <button
@@ -529,6 +522,15 @@ function PieceCard({
           )}
           <div className="text-[10px] text-white/30">{piece.content.notaLegal}</div>
         </div>
+      )}
+
+      {showPublish && (
+        <PublishModal
+          projectId={projectId}
+          piece={piece}
+          onClose={() => setShowPublish(false)}
+          onPublished={onReload}
+        />
       )}
     </div>
   );

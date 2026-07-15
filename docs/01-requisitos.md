@@ -242,6 +242,29 @@ dejándolo para revisión y publicación con 1 clic.
 
 ---
 
+### REQ-010 — Publicación asistida en redes
+
+**Objetivo:** llevar una pieza `listo` a la red destino con el mínimo esfuerzo, **sin APIs
+oficiales ni tokens** (materializa **D-06**, opción manual asistida).
+
+**Flujo (modal de 4 pasos por pieza):**
+1. **Descargar** el vídeo final (montaje REQ-005 o grabación REQ-006) vía la ruta protegida
+   `…/asset?path=…&download=1` (`Content-Disposition: attachment`).
+2. **Copiar** el copy sugerido (título + CTA + hashtags) al portapapeles; editable antes de copiar.
+3. **Abrir** la red destino (YouTube Studio / TikTok upload / Instagram web) en otra pestaña.
+4. **Marcar como publicado**: `PUT` de la pieza a `status: "publicado"` + registro de
+   `publishedTo`/`publishedAt` en el blob `assets`.
+
+**UI/Gestión:** botón **«Publicar ↗»** en cada pieza `listo`/`publicado` del `ContentTray`
+(lista y carrusel). Selector de red (YouTube/TikTok/Instagram) con su URL de subida.
+
+> ✅ **Implementado (2026-07-15):** `PublishModal` (cliente) + `core/content/publish.ts`
+> (targets + `composeCaption`); descarga por `?download=1`; persistencia de `publishedTo`/
+> `publishedAt` en `assets`. La subida 100% automática por API oficial (OAuth + apps aprobadas
+> por cada plataforma) sigue **fuera de alcance** (§6).
+
+---
+
 ## 5. Requisitos no funcionales
 
 - **RNF-01 — Local-first:** funciona en el PC del usuario; los datos y las keys no salen del equipo salvo llamadas explícitas a proveedores.

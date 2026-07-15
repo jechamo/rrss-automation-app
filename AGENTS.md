@@ -9,7 +9,7 @@
 
 App **web local** (corre en `localhost`) = cadena de automatización para crear
 contenido de redes sociales (RRSS) a partir de una appweb. Se construye por
-requisitos **REQ-001 … REQ-009**, uno a uno, con validación del usuario entre cada uno.
+requisitos **REQ-001 … REQ-010**, uno a uno, con validación del usuario entre cada uno.
 
 - **Metodología:** SDD (Spec-Driven Development). Orden: Requisitos → Diseño → Arquitectura → Código.
 
@@ -172,5 +172,10 @@ prisma/schema.prisma          Modelo de datos multiproyecto
   con **hero de aurora**, tarjetas con **elevación 3D** + entrada escalonada, **carrusel 360°
   cover-flow** de piezas (`PieceCarousel`, toggle Lista/Carrusel en `ContentTray`), **skeletons** y
   transiciones de estado. Respeta `prefers-reduced-motion`. Primitivas en `globals.css`.
-- **Siguiente:** roadmap **REQ-001→009 implementado**. Queda el **visto bueno end-to-end del usuario**
+- **REQ-010** (publicación asistida): **implementado** (materializa **D-06**, sin APIs/tokens).
+  Modal `PublishModal` de 4 pasos (descargar vídeo · copiar copy · abrir red · marcar publicado),
+  `core/content/publish.ts` (targets + `composeCaption`), descarga por `?download=1`, y persistencia
+  de `publishedTo`/`publishedAt` en `assets`. Botón **«Publicar ↗»** en `PieceCard`. Subida automática
+  por API oficial (OAuth por plataforma) queda **fuera de alcance**.
+- **Siguiente:** roadmap **REQ-001→010 implementado**. Queda el **visto bueno end-to-end del usuario**
   (pruebas reales con red+keys+`npx playwright install chromium` en su máquina) para cerrar v1.
