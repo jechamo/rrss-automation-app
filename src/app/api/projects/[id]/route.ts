@@ -9,7 +9,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     where: { id },
     include: {
       dossier: true,
-      runs: { orderBy: { createdAt: "desc" }, take: 1 },
+      // Solo el ultimo run de REQ-001: la Competencia (REQ-002) gestiona su
+      // propio lastRun via /api/competencia/[projectId].
+      runs: { where: { requisito: "REQ-001" }, orderBy: { createdAt: "desc" }, take: 1 },
     },
   });
   if (!project) {

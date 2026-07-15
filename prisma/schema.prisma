@@ -16,11 +16,12 @@ model Project {
   url       String
   codeType  String? // local | github_public | github_private | none
   codePath  String? // ruta local o URL de repo
-  niche     String?
-  createdAt DateTime       @default(now())
-  dossier   Dossier?
-  runs      Run[]
-  pieces    ContentPiece[]
+  niche       String?
+  createdAt   DateTime       @default(now())
+  dossier     Dossier?
+  competencia Competencia?
+  runs        Run[]
+  pieces      ContentPiece[]
 }
 
 model Dossier {
@@ -28,6 +29,16 @@ model Dossier {
   projectId String   @unique
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   content   String // JSON string con las secciones del dossier
+  status    String   @default("draft") // draft | approved
+  version   Int      @default(1)
+  updatedAt DateTime @updatedAt
+}
+
+model Competencia {
+  id        String   @id @default(cuid())
+  projectId String   @unique
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  content   String // JSON string con la ficha comparativa de competencia
   status    String   @default("draft") // draft | approved
   version   Int      @default(1)
   updatedAt DateTime @updatedAt
