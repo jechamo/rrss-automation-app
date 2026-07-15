@@ -91,10 +91,11 @@ src/app/                      Rutas (App Router)
 src/components/               PipelineGraph, DossierEditor, RecentProjects,
                               CompetenciaPanel, CompetenciaEditor
 src/core/
-  pipeline/                   req001.ts / req002.ts (definen nodos), bus.ts (eventos), engine
+  pipeline/                   req001.ts / req002.ts / req003.ts (definen nodos), bus.ts (eventos), engine
   ai/claude-cli.ts            Motor Claude CLI (resolución de binario, exec con timeout)
   dossier/                    Tipos + generación del dossier (REQ-001)
   competencia/                Tipos + discover.ts (propone competidores) + generate.ts (REQ-002)
+  leads/                      Tipos + research.ts (perfil) + discover.ts (IA+WebSearch) + strategy.ts (REQ-003)
   crawler/                    Crawl de la web (reutilizado por REQ-001 y REQ-002)
 src/lib/                      prisma, vault (cifrado)
 prisma/schema.prisma          Modelo de datos multiproyecto
@@ -126,7 +127,10 @@ prisma/schema.prisma          Modelo de datos multiproyecto
 - **REQ-001** (análisis appweb → dossier): **implementado** y verificado.
 - **REQ-002** (análisis de competencia): **implementado** (DA-01 resuelta: descubrimiento híbrido IA+manual),
   en fase de pruebas del usuario.
+- **REQ-003** (clientes potenciales + estrategia): **implementado** (DA-02 resuelta: negocios locales
+  reales vía **IA+WebSearch**, solo datos públicos; estrategia IA editable). Pipeline `req003.ts`
+  (`input → research → discover(web) → strategy`), motor con `--allowedTools WebSearch`. En pruebas del usuario.
 - **REQ-007** (skills): **pase de curación hecho** (DA-06 resuelta). 3 skills de proyecto en
   `.claude/skills/` + catálogo en `docs/05-skills.md`. Feature de UI aplazada.
-- **Siguiente:** REQ-003 (scraping de clientes potenciales + estrategia) — resolver antes DA-02 (fuente
-  de leads). Apoyarse en el skill `rrss-lead-research` (+ plugin `apollo` cuando el usuario lo instale).
+- **Siguiente:** REQ-004 (scraping de virales del nicho YT/TikTok/IG) — resolver antes DA-03 (APIs vs
+  scraping, definición de "viral", ventana). Apoyarse en el skill `rrss-viral-analysis`.

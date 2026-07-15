@@ -129,7 +129,10 @@ analizarlos (web/posicionamiento) y compararlos con el proyecto.
 - Estrategia recomendada por cliente: **envío de correo**, **visita al local con guión**, u otras.
 - Posibilidad de **generar** esa estrategia (redactar el correo, el guión de visita, etc.).
 
-> ⚠️ Dudas abiertas: fuente de los leads (Google Maps, directorios, LinkedIn…), legalidad y volumen. Ver §7.
+**Decisión (DA-02 resuelta, ver §7):** leads = **negocios locales reales**; fuente = **IA + WebSearch**
+(solo datos públicos de empresa); estrategia = **IA genera y el usuario edita/aprueba**. Implementado
+como pipeline REQ-003 (`input → research → discover(web) → strategy`), espejo de REQ-002. Apoyo de
+conocimiento: skill `rrss-lead-research`.
 
 ---
 
@@ -249,7 +252,13 @@ Estas no bloquean REQ-001; se resolverán al llegar a cada requisito.
 - **DA-01 (REQ-002):** ✅ RESUELTA. Descubrimiento **híbrido**: la IA propone competidores directos a
   partir del dossier (nicho + propuesta de valor) y el usuario puede **añadir/quitar/editar** competidores
   manualmente; los añadidos a mano se **conservan al regenerar**.
-- **DA-02 (REQ-003):** ¿Fuente de clientes potenciales? (Google Maps, directorios, LinkedIn) y encuadre legal del scraping.
+- **DA-02 (REQ-003):** ✅ RESUELTA (2026-07-15, con el usuario). **Leads = negocios locales reales**
+  (para encajar con «envío de correo» y «visita al local»). **Fuente:** el motor `claude -p` con
+  **WebSearch** localiza los negocios y extrae **solo datos públicos de empresa** (nombre, dirección,
+  web, teléfono/email públicos) — sin clave API extra (usa la sesión Pro). **Legal:** solo datos
+  públicos de empresa, **sin PII de personas físicas**, respetando los ToS de la fuente. **Estrategia:**
+  la IA genera canal + estrategia + borrador (correo/guión de visita) por lead y el usuario edita/aprueba
+  (patrón Guardar/Aprobar/Regenerar, espejo de dossier/competencia).
 - **DA-03 (REQ-004):** ¿APIs oficiales o scraping para YouTube/TikTok/Instagram? ¿Qué define "viral" y en qué ventana temporal?
 - **DA-04 (REQ-005):** Criterio para "clonar" sin infringir copyright (reinterpretar el concepto, no copiar literal).
 - **DA-05 (REQ-006):** Almacenamiento seguro de credenciales de login de la appweb objetivo.

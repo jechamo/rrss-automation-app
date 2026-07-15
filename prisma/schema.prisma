@@ -20,6 +20,7 @@ model Project {
   createdAt   DateTime       @default(now())
   dossier     Dossier?
   competencia Competencia?
+  leads       Leads?
   runs        Run[]
   pieces      ContentPiece[]
 }
@@ -39,6 +40,16 @@ model Competencia {
   projectId String   @unique
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   content   String // JSON string con la ficha comparativa de competencia
+  status    String   @default("draft") // draft | approved
+  version   Int      @default(1)
+  updatedAt DateTime @updatedAt
+}
+
+model Leads {
+  id        String   @id @default(cuid())
+  projectId String   @unique
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  content   String // JSON string con leads + estrategia (REQ-003)
   status    String   @default("draft") // draft | approved
   version   Int      @default(1)
   updatedAt DateTime @updatedAt

@@ -177,7 +177,11 @@ Entidades principales (atributos se afinan en Arquitectura):
 - **Proyecto**: `id`, `nombre`, `url`, `fuenteCodigo` (tipo + ruta/repo), `nicho`, `createdAt`.
 - **Dossier**: `id`, `proyectoId`, `contenido` (secciones §7.3), `estado`, `version`, `updatedAt`.
 - **Competidor**: `id`, `proyectoId`, datos y comparativa (REQ-002).
-- **Lead**: `id`, `proyectoId`, datos + `estrategia` (REQ-003).
+- **Leads** (REQ-003): contenedor 1-a-1 con `Proyecto` (espejo de `Competencia`): `content` JSON con
+  `{ resumen, zona, personas[], leads[], estrategiaGlobal[] }` + `status`/`version`. Cada `lead` = negocio
+  local real con datos **públicos** (nombre, tipo, dirección, web, teléfono, email) + `temperatura`
+  (caliente/templado/frío), `canalRecomendado` (correo/visita/otro), `estrategia`, `borrador`
+  (asunto+cuerpo = correo o guión de visita), `fitScore`/`intentScore`, `origen` (ia/manual).
 - **Viral**: `id`, `proyectoId`, `red`, `url`, `metricas`, `ranking` (REQ-004).
 - **PiezaContenido**: `id`, `proyectoId`, `origen` (viral/propio), `guion`, `videoPath`, `redDestino`, `estado` (pendiente/publicado/…), `createdAt`.
 - **Run** (ejecución): `id`, `proyectoId`, `requisito`, `nodos[]` (estado por etapa), `logs`, `estado`, `timestamps`.

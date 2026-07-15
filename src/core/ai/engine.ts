@@ -12,6 +12,13 @@ export interface AiTask {
   json?: boolean;
   /** Alias de modelo (sonnet/opus/haiku). Si se omite, el motor usa su default. */
   model?: string;
+  /**
+   * Tools que el modelo puede auto-invocar en modo headless (ademas de "Skill",
+   * que siempre se permite). P. ej. ["WebSearch", "WebFetch"] para REQ-003.
+   */
+  allowedTools?: string[];
+  /** Timeout en ms para esta tarea (por defecto el del motor). Web search es lento. */
+  timeoutMs?: number;
 }
 
 export interface AiResult {

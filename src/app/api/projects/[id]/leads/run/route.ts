@@ -1,0 +1,49 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { buildReq003Pipeline } from "@/core/pipeline/req003";
+import { executeRun, initialNodeStatus } from "@/core/pipeline/engine";
+
+export const dynamic = "force-dynamic";
+
+export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const { id } = await ctx.params;
+  const body = await req.json().catch(() => null);
+  const zona = typeof (body as { zona?: unknown })?.zona === "string" ? (body as { zona: string }).zona.trim() : "";
+
+  const project = await prisma.project.findUnique({
+    where: { id },
+    include: { dossier: true },
+  });
+  if (!project) {
+    return NextResponse.json({ error: "Proyecto no encontrado." }, { status: 404 });
+  }
+  if (!project.dossier) {
+    return NextResponse.json(
+      { error: "Genera primero el dossier (REQ-001) antes de buscar clientes potenciales." },
+      { status: 409 },
+    );
+  }
+
+  const def = buildReq003Pipeline(zona);
+  const run = await prisma.run.create({
+    data: {
+      projectId: project.id,
+      requisito: "REQ-003",
+      status: "pending",
+      nodes: JSON.stringify(initialNodeStatus(def)),
+    },
+  });
+
+  // Fire-and-forget: se ejecuta en el servidor local y emite eventos por SSE.
+  void executeRun(run.id, def, {
+    id: project.id,
+    name: project.name,
+    url: project.url,
+    codeType: project.codeType,
+    codePath: project.codePath,
+  }).catch(() => {
+    /* el estado de error ya se persiste dentro de executeRun */
+  });
+
+  return NextResponse.json({ runId: run.id });
+}

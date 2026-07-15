@@ -11,7 +11,7 @@
 |-----|--------|--------|
 | REQ-001 | Análisis de la appweb → dossier de negocio | 🟢 Verificado end-to-end (run status "ok") — pendiente visto bueno final del usuario |
 | REQ-002 | Análisis de competencia | 🟡 Implementado — pendiente pruebas del usuario |
-| REQ-003 | Scraping de clientes potenciales + estrategia | ⚪ Pendiente |
+| REQ-003 | Scraping de clientes potenciales + estrategia | 🟡 Implementado (DA-02 resuelta: negocios locales reales vía IA+WebSearch) — pendiente pruebas del usuario |
 | REQ-004 | Scraping de virales del nicho (YT/TikTok/IG) | ⚪ Pendiente |
 | REQ-005 | Generación de vídeo (clonado de viral) | ⚪ Pendiente |
 | REQ-006 | Generación de contenido propio de la app | ⚪ Pendiente |
@@ -24,6 +24,40 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 ---
 
 ## Historial
+
+### 2026-07-15 — REQ-003: Clientes potenciales (negocios locales reales) + estrategia
+
+**Decisión DA-02 (con el usuario):** leads = **negocios locales reales** (encaja con «correo» y
+«visita al local»). **Fuente:** el motor `claude -p` con **WebSearch** localiza los negocios y extrae
+**solo datos públicos de empresa** (nombre, dirección, web, teléfono/email públicos) — sin clave API
+extra (usa la sesión Pro). **Legal:** solo datos públicos de empresa, **sin PII de personas físicas**,
+respetando ToS. **Estrategia:** la IA genera canal + estrategia + borrador (correo/guión) por lead y el
+usuario edita/aprueba.
+
+**Hecho (mismo patrón que REQ-002 → máximo reuso):**
+- Modelo `Leads` en Prisma (espejo de `Competencia`: content JSON + status/version) + relación en `Project`.
+- Tipos `Leads`/`Lead`/`Persona`/`Borrador` con `coerce*` defensivo (los datos de WebSearch vienen poco
+  estructurados) en `src/core/leads/types.ts`.
+- Lógica IA en 3 pasos: `research.ts` (perfil de cliente: personas + zona + tipo de negocio, desde
+  dossier+competencia, sin web), `discover.ts` (IA + **WebSearch/WebFetch** localiza negocios reales,
+  solo datos públicos, dedupe, conserva semillas manuales) y `strategy.ts` (por lead: temperatura, canal,
+  estrategia y borrador en tono de marca + scores). Todos respetan `settings.aiModel`.
+- **Motor:** `AiTask` gana `allowedTools?: string[]` (se une a `"Skill"`) y `timeoutMs?`; `claude-cli.ts`
+  los cablea (`--allowedTools Skill,WebSearch,WebFetch` y timeout 300s para `discover`).
+- Pipeline `req003.ts`: nodos `input → research → discover → strategy`. `input` exige dossier, carga
+  competencia si existe (laxo) y conserva leads manuales; `strategy` hace `upsert` de `Leads`.
+- API: `POST /api/projects/[id]/leads/run` (body opcional `{ zona }`) y `GET/PUT /api/leads/[projectId]`
+  (GET incluye su `lastRun` de REQ-003 para restaurar el grafo).
+- UI: `LeadsPanel` (autocontenido, SSE propio, reusa `PipelineGraph`, input opcional de **zona**) +
+  `LeadsEditor` (resumen/zona, tarjeta por lead con datos + temperatura/canal/scores + estrategia +
+  borrador correo/guión, añadir/quitar lead manual, Guardar/Aprobar/Regenerar). Montado en `/proyecto/[id]`
+  bajo la competencia. Apoyo de conocimiento: skill `rrss-lead-research`.
+- Verificado: `tsc --noEmit` EXIT=0; `prisma db push` en sync.
+
+**Riesgo conocido:** la calidad de WebSearch para negocios locales concretos es variable; mitigado con
+prompt estricto + `coerce` defensivo + edición manual. **Pendiente:** pruebas del usuario end-to-end
+(dossier → «Buscar clientes potenciales» → editar/aprobar); verificar que el motor auto-invoca WebSearch
+en `-p` (necesita red, la shell del agente no la tiene). Al validar → REQ-004.
 
 ### 2026-07-15 — REQ-007: Pase de curación de skills
 

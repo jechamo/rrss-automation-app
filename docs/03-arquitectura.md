@@ -229,7 +229,36 @@ model ConnectorState {
 }
 ```
 
-> Competidores (REQ-002), Leads (REQ-003) y Virales (REQ-004) se añadirán al esquema al abordar cada requisito.
+> Competidores (REQ-002) y Leads (REQ-003) ya están en el esquema. Virales (REQ-004) se añadirá al abordarlo.
+
+---
+
+## 8.1. Arquitectura concreta de REQ-003 (leads + estrategia)
+
+**Modelo:** `Leads` (1-a-1 con `Project`, espejo de `Competencia`): `content` JSON
+`{ resumen, zona, personas[], leads[], estrategiaGlobal[] }` + `status`/`version`.
+
+**Nodos del pipeline** (`src/core/pipeline/req003.ts`):
+`[Entrada] → [Perfil de cliente] → [Buscar negocios (web)] → [Estrategia IA]`
+
+- **Entrada** (`input`): exige dossier (REQ-001); carga competencia (REQ-002) si existe (dependencia
+  laxa); conserva los leads `origen:"manual"` previos para no perderlos al regenerar.
+- **Perfil de cliente** (`research.ts`): la IA deriva del dossier+competencia las buyer personas, la
+  **zona** objetivo y el **tipo de negocio local** a buscar. Sin web. Apoyo: skill `rrss-lead-research`.
+- **Buscar negocios (web)** (`discover.ts`): la IA con **WebSearch/WebFetch** localiza negocios locales
+  reales y extrae **solo datos públicos de empresa** (nombre, dirección, web, teléfono/email públicos).
+  Prompt acotado: nada de PII personal; respetar ToS. Dedupe por web/nombre; conserva semillas manuales.
+- **Estrategia IA** (`strategy.ts`): por lead → `temperatura`, `canalRecomendado` (correo/visita/otro),
+  `estrategia` y `borrador` (correo con asunto o guión de visita) en el tono de marca del dossier;
+  `fitScore`/`intentScore`. `upsert` de `Leads`.
+
+**Motor (`AiEngine`):** `AiTask` gana `allowedTools?: string[]` (se une a `"Skill"`, siempre presente)
+y `timeoutMs?`. El nodo `discover` pide `["WebSearch","WebFetch"]` y timeout 300s (la búsqueda web es
+lenta). Cableado en `claude-cli.ts` (`--allowedTools Skill,WebSearch,WebFetch`).
+
+**Endpoints:** `POST /api/projects/:id/leads/run` (409 si no hay dossier; body opcional `{ zona }`),
+`GET/PUT /api/leads/:projectId` (GET incluye su `lastRun` de REQ-003; PUT guarda/aprueba y conserva
+manuales). **UI:** `LeadsPanel` + `LeadsEditor` en `/proyecto/[id]`, bajo la competencia.
 
 ---
 

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, use } from "react";
 import { PipelineGraph, type GraphNode, type NodeState } from "@/components/PipelineGraph";
 import { DossierEditor, type Dossier } from "@/components/DossierEditor";
 import { CompetenciaPanel } from "@/components/CompetenciaPanel";
+import { LeadsPanel } from "@/components/LeadsPanel";
 
 type RunEvent =
   | { type: "node"; nodeId: string; state: NodeState; detail?: string }
@@ -203,6 +204,12 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
       {dossier && (
         <section className="mt-8 border-t border-white/10 pt-8">
           <CompetenciaPanel projectId={id} dossierReady={!!dossier} />
+        </section>
+      )}
+
+      {dossier && (
+        <section className="mt-8 border-t border-white/10 pt-8">
+          <LeadsPanel projectId={id} dossierReady={!!dossier} />
         </section>
       )}
     </div>
