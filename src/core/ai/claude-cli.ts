@@ -123,6 +123,10 @@ export class ClaudeCliEngine implements AiEngine {
 
   async run(task: AiTask): Promise<AiResult> {
     const args = ["-p", "--output-format", "json"];
+    // Permite que el modelo auto-invoque los Skills de proyecto (.claude/skills, REQ-007) en
+    // modo headless sin colgarse en el prompt de permisos. Se restringe a la tool "Skill"
+    // (no FS/Bash/otras): el cwd del spawn es la raiz del proyecto, asi que se descubren solos.
+    args.push("--allowedTools", "Skill");
     if (task.system) args.push("--append-system-prompt", task.system);
     // Modelo opcional. "default" (o vacio) => no pasar --model, deja que el CLI elija.
     if (task.model && task.model !== "default") args.push("--model", task.model);

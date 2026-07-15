@@ -53,5 +53,6 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Datos locales del agente (memoria/sesiones)
-.claude/
+# Datos locales del agente (memoria/sesiones), salvo los skills de proyecto (REQ-007)
+.claude/*
+!.claude/skills/

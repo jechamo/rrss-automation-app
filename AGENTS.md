@@ -12,8 +12,19 @@ contenido de redes sociales (RRSS) a partir de una appweb. Se construye por
 requisitos **REQ-001 … REQ-009**, uno a uno, con validación del usuario entre cada uno.
 
 - **Metodología:** SDD (Spec-Driven Development). Orden: Requisitos → Diseño → Arquitectura → Código.
-- **Documentos fuente de verdad:** `docs/01-requisitos.md`, `docs/02-diseno.md`, `docs/03-arquitectura.md`.
-- **Estado y progreso:** `docs/04-bitacora.md` (actualízala al cerrar cada tarea relevante).
+
+**Documentos del repo (léelos según necesites):**
+
+| Doc | Contenido | Cuándo leerlo |
+|-----|-----------|---------------|
+| `docs/01-requisitos.md` | Qué se construye (REQ-001…009) + dudas abiertas (DA-xx) | Antes de empezar/planear un REQ |
+| `docs/02-diseno.md` | Diseño de UI/UX y pantallas | Al tocar interfaz |
+| `docs/03-arquitectura.md` | Stack, módulos, pipeline, datos, seguridad | Al tocar arquitectura/módulos |
+| `docs/04-bitacora.md` | Estado y progreso vivo (actualízala al cerrar cada tarea) | Al empezar y al cerrar tarea |
+| `docs/05-skills.md` | Catálogo de skills (REQ-007): skill→REQ, plugins a instalar | Al empezar un REQ que use skills |
+
+- **Skills de proyecto:** en `.claude/skills/` (los carga tu sesión y el motor headless de la
+  app). Detalle y política en `docs/05-skills.md`. Ver §5 (mapa) y §7 (estado).
 
 ---
 
@@ -69,20 +80,34 @@ requisitos **REQ-001 … REQ-009**, uno a uno, con validación del usuario entre
 src/app/                      Rutas (App Router)
   page.tsx                    Dashboard (server) + <RecentProjects/>
   proyecto/nuevo/page.tsx     Formulario de nuevo análisis
-  proyecto/[id]/page.tsx      Vista de proyecto: pipeline + logs + dossier (client, SSE)
+  proyecto/[id]/page.tsx      Vista de proyecto: pipeline + logs + dossier + competencia (client, SSE)
   ajustes/                    Pantalla de conectores/API keys (REQ-008)
   api/
     projects/                 CRUD proyectos (POST crea+lanza run, DELETE, [id] GET/rerun)
+                              [id]/competencia/run  POST lanza run REQ-002
     runs/[id]/stream/         Endpoint SSE del run
     dossier/[projectId]/      GET/PUT del dossier
-src/components/               PipelineGraph, DossierEditor, RecentProjects
+    competencia/[projectId]/  GET/PUT de la competencia (REQ-002); GET incluye su lastRun
+src/components/               PipelineGraph, DossierEditor, RecentProjects,
+                              CompetenciaPanel, CompetenciaEditor
 src/core/
-  pipeline/                   req001.ts (define nodos), bus.ts (eventos), runner
+  pipeline/                   req001.ts / req002.ts (definen nodos), bus.ts (eventos), engine
   ai/claude-cli.ts            Motor Claude CLI (resolución de binario, exec con timeout)
-  crawler/                    Crawl de la web
+  dossier/                    Tipos + generación del dossier (REQ-001)
+  competencia/                Tipos + discover.ts (propone competidores) + generate.ts (REQ-002)
+  crawler/                    Crawl de la web (reutilizado por REQ-001 y REQ-002)
 src/lib/                      prisma, vault (cifrado)
 prisma/schema.prisma          Modelo de datos multiproyecto
+.claude/skills/               Skills de PROYECTO (REQ-007): rrss-lead-research (REQ-003),
+                              rrss-viral-analysis (REQ-004), rrss-content-generation (REQ-005/006).
+                              Los carga tu sesión Y el motor headless de la app (claude -p corre
+                              con cwd = raíz del proyecto). Catálogo: docs/05-skills.md.
 ```
+
+> **Skills (REQ-007):** ver `docs/05-skills.md` (catálogo skill→REQ + plugins que instala el
+> usuario, que requieren red). Para que el MOTOR auto-invoque un skill en `-p` haría falta
+> `--allowedTools "Skill"` en `src/core/ai/claude-cli.ts` (aún no puesto); si no, referencia el
+> conocimiento del skill en el prompt del pipeline de cada REQ.
 
 ---
 
@@ -98,5 +123,10 @@ prisma/schema.prisma          Modelo de datos multiproyecto
 
 ## 7. Estado actual (resumen — detalle en bitácora)
 
-- **REQ-001** (análisis appweb → dossier): **implementado**, en fase de pruebas del usuario.
-- **Siguiente:** REQ-002 (análisis de competencia) — empezar por docs de diseño/arquitectura del REQ.
+- **REQ-001** (análisis appweb → dossier): **implementado** y verificado.
+- **REQ-002** (análisis de competencia): **implementado** (DA-01 resuelta: descubrimiento híbrido IA+manual),
+  en fase de pruebas del usuario.
+- **REQ-007** (skills): **pase de curación hecho** (DA-06 resuelta). 3 skills de proyecto en
+  `.claude/skills/` + catálogo en `docs/05-skills.md`. Feature de UI aplazada.
+- **Siguiente:** REQ-003 (scraping de clientes potenciales + estrategia) — resolver antes DA-02 (fuente
+  de leads). Apoyarse en el skill `rrss-lead-research` (+ plugin `apollo` cuando el usuario lo instale).

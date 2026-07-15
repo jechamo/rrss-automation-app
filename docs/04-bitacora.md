@@ -10,12 +10,12 @@
 | REQ | Nombre | Estado |
 |-----|--------|--------|
 | REQ-001 | Análisis de la appweb → dossier de negocio | 🟢 Verificado end-to-end (run status "ok") — pendiente visto bueno final del usuario |
-| REQ-002 | Análisis de competencia | ⚪ Pendiente (siguiente) |
+| REQ-002 | Análisis de competencia | 🟡 Implementado — pendiente pruebas del usuario |
 | REQ-003 | Scraping de clientes potenciales + estrategia | ⚪ Pendiente |
 | REQ-004 | Scraping de virales del nicho (YT/TikTok/IG) | ⚪ Pendiente |
 | REQ-005 | Generación de vídeo (clonado de viral) | ⚪ Pendiente |
 | REQ-006 | Generación de contenido propio de la app | ⚪ Pendiente |
-| REQ-007 | Skills | ⚪ Pendiente |
+| REQ-007 | Skills | 🟡 Pase de curación hecho (skills de proyecto + catálogo, DA-06 resuelta); feature UI aplazada |
 | REQ-008 | Configuración de herramientas/APIs (Ajustes) | 🟡 Base construida (shell de Ajustes) |
 | REQ-009 | Experiencia visual | 🟡 Transversal — grafo de nodos ya animado |
 
@@ -24,6 +24,61 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 ---
 
 ## Historial
+
+### 2026-07-15 — REQ-007: Pase de curación de skills
+
+**Decisión DA-06 (con el usuario):** un "skill" = **capacidad del entorno de Claude Code**
+(skills de proyecto + plugins del marketplace) como **toolkit del agente y del motor headless
+de la app**, NO una feature de UI. Instalación **curada**. Alcance: pase ligero ahora → seguir
+con REQ-003. La pantalla de Skills dentro de la app queda aplazada.
+
+**Hallazgo de entorno (clave):** el marketplace oficial `anthropics/claude-plugins-official`
+está instalado (254 plugins en catálogo, ~52 clonados localmente). Los plugins de
+marketing/vídeo/leads (apollo, runway-api, postiz, canva, brightdata, exa…) **no están locales**
+→ requieren red, que la shell del agente no tiene (los instala el usuario en su máquina). El
+mecanismo **offline** que carga tanto mi sesión como el motor headless de la app (`claude -p`
+con `cwd`=raíz del proyecto) son los **skills de proyecto** en `.claude/skills/`.
+
+**Hecho:**
+- 3 skills de proyecto en `.claude/skills/`: `rrss-lead-research` (REQ-003),
+  `rrss-viral-analysis` (REQ-004), `rrss-content-generation` (REQ-005/006).
+- `docs/05-skills.md`: catálogo curado (skill→REQ→estado→aporta) + comandos `/plugin install`
+  para los plugins que requieren red + lista de plugins dev locales opcionales.
+- DA-06 marcada resuelta en `docs/01-requisitos.md` (§REQ-007 y §7).
+- **Verificado (vía agente experto en Claude Code):** los skills de proyecto SÍ se descubren en
+  modo `-p` headless. **Matiz:** para que el motor los **auto-invoque** sin colgarse en permisos,
+  `claude -p` necesitaría `--allowedTools "Skill"` (hoy `claude-cli.ts` no lo pasa). Documentado
+  como mejora (Plan A) + Plan B (referenciar el conocimiento del skill en el prompt de cada REQ).
+
+**Pendiente:** (usuario) instalar en su máquina los plugins de red que apliquen por REQ; (opcional)
+añadir `--allowedTools "Skill"` en `src/core/ai/claude-cli.ts` y verificar en la app. **Siguiente:**
+REQ-003 apoyándose en `rrss-lead-research` (+ apollo cuando esté instalado).
+
+### 2026-07-15 — REQ-002: Análisis de competencia
+
+**Decisión DA-01 (con el usuario):** descubrimiento **híbrido** — la IA propone competidores
+desde el dossier y el usuario puede añadir/quitar/editar; los manuales se conservan al regenerar.
+Dependencia laxa (basta con que el dossier exista, aunque sea borrador). UI integrada en
+`/proyecto/[id]`, bajo el dossier.
+
+**Hecho (mismo patrón que REQ-001 → máximo reuso):**
+- Modelo `Competencia` en Prisma (espejo de `Dossier`: content JSON + status/version) + relación en `Project`.
+- Tipos `Competencia`/`Competidor` con `coerceCompetencia` defensivo (`src/core/competencia/types.ts`).
+- Lógica IA en dos pasos: `discover.ts` (propone competidores desde nicho/propuesta de valor, dedupe por
+  dominio, tope 5, conserva semillas manuales) y `generate.ts` (ficha comparativa con crawl de cada
+  competidor). Ambos respetan `settings.aiModel`.
+- Pipeline `req002.ts`: nodos `input → discover → crawl → compare`. `input` exige dossier; `crawl` reusa
+  `crawlSite(url,3)` y es tolerante a fallos; `compare` hace `upsert` de la Competencia.
+- API: `POST /api/projects/[id]/competencia/run` (lanza run REQ-002) y `GET/PUT /api/competencia/[projectId]`
+  (el GET incluye su propio `lastRun` de REQ-002 para restaurar el grafo tras recargar).
+- **Fix**: `GET /api/projects/[id]` ahora filtra `lastRun` a REQ-001 (antes cogía el último run de cualquier
+  requisito → habría roto el grafo de REQ-001 al existir runs de REQ-002).
+- UI: `CompetenciaPanel` (autocontenido, SSE propio, reusa `PipelineGraph`) + `CompetenciaEditor` (espejo de
+  `DossierEditor`: resumen, tarjetas por competidor, ventajas/amenazas/oportunidades, Guardar/Aprobar/Regenerar).
+  Montado en `/proyecto/[id]` bajo el dossier.
+
+**Pendiente:** pruebas del usuario end-to-end (arrancar por `iniciar.bat`, generar dossier → «Analizar
+competencia» → editar/aprobar). Al validar → REQ-003.
 
 ### 2026-07-14 — Auto-refresh SSE + selección de modelo
 

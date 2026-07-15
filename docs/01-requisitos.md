@@ -115,7 +115,8 @@ analizarlos (web/posicionamiento) y compararlos con el proyecto.
 
 **Salida (borrador):** tabla/ficha comparativa (propuesta de valor, precios, pros/contras, diferenciadores).
 
-> ⚠️ Dudas abiertas: fuentes para descubrir competidores (búsqueda web, directorios, indicación manual). Ver §7.
+> ✅ DA-01 resuelta: descubrimiento **híbrido** (IA propone desde el dossier + edición manual del usuario;
+> los competidores manuales se conservan al regenerar). Ver §7.
 
 ---
 
@@ -190,7 +191,12 @@ dejándolo para revisión y publicación con 1 clic.
 1. Skills por **API/proveedor**: HeyGen, fal.ai, ElevenLabs, montaje de vídeo, etc.
 2. Skills por **funcionalidad**: marketing, generar campañas de publicidad, etc.
 
-> ⚠️ Dudas abiertas: qué es exactamente un "skill" aquí (¿Skills de Claude Code?, ¿plugins internos?), instalación automática vs curada. Ver §7.
+> ✅ **DA-06 RESUELTA (2026-07-15):** un "skill" aquí = **capacidad del entorno de Claude Code**
+> (skills de proyecto en `.claude/skills/` + plugins del marketplace oficial), como **toolkit
+> del agente y del motor headless de la app**, NO una feature de UI. **Instalación curada**
+> (revisada), no automática. Pase de curación v1 hecho; catálogo y mapeo skill→REQ en
+> **`docs/05-skills.md`**. La *pantalla* de Skills dentro de la app queda **aplazada** hasta
+> que existan los REQs que la consumen (003–006).
 
 ---
 
@@ -240,12 +246,16 @@ dejándolo para revisión y publicación con 1 clic.
 
 Estas no bloquean REQ-001; se resolverán al llegar a cada requisito.
 
-- **DA-01 (REQ-002):** ¿Cómo se descubren los competidores? (búsqueda web con IA / indicación manual / directorios).
+- **DA-01 (REQ-002):** ✅ RESUELTA. Descubrimiento **híbrido**: la IA propone competidores directos a
+  partir del dossier (nicho + propuesta de valor) y el usuario puede **añadir/quitar/editar** competidores
+  manualmente; los añadidos a mano se **conservan al regenerar**.
 - **DA-02 (REQ-003):** ¿Fuente de clientes potenciales? (Google Maps, directorios, LinkedIn) y encuadre legal del scraping.
 - **DA-03 (REQ-004):** ¿APIs oficiales o scraping para YouTube/TikTok/Instagram? ¿Qué define "viral" y en qué ventana temporal?
 - **DA-04 (REQ-005):** Criterio para "clonar" sin infringir copyright (reinterpretar el concepto, no copiar literal).
 - **DA-05 (REQ-006):** Almacenamiento seguro de credenciales de login de la appweb objetivo.
-- **DA-06 (REQ-007):** Definición exacta de "skill" y política de instalación (automática vs revisada).
+- **DA-06 (REQ-007):** ✅ RESUELTA (2026-07-15). "Skill" = capacidad del entorno de Claude Code
+  (skills de proyecto `.claude/skills/` + plugins del marketplace) como toolkit del agente/motor;
+  instalación **curada**. Catálogo en `docs/05-skills.md`; UI aplazada.
 - **DA-07 (General):** ✅ RESUELTA (D-14). Modelo de datos multiproyecto desde el inicio; UI empieza con un solo proyecto.
 
 ---
