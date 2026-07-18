@@ -13,8 +13,8 @@
 | REQ-002 | Análisis de competencia | 🟡 Implementado — pendiente pruebas del usuario |
 | REQ-003 | Scraping de clientes potenciales + estrategia | 🟡 Implementado (DA-02 resuelta: negocios locales reales vía IA+WebSearch) — pendiente pruebas del usuario |
 | REQ-004 | Scraping de virales del nicho (YT/TikTok/IG) | 🟡 Implementado (DA-03 resuelta: IA+WebSearch, viral relativo al autor, ventana 30d, Top 20) — pendiente pruebas del usuario |
-| REQ-005 | Generación de vídeo (clonado de viral) | 🟡 Implementado (DA-04 resuelta: reinterpretación conceptual + proveedores reales + montaje FFmpeg a `final.mp4`) — pendiente prueba real con red+keys |
-| REQ-006 | Generación de contenido propio de la app | 🟡 Implementado (login cifrado, recorder v2 con nav_log/storageState/dry-run, repo-scan y montaje FFmpeg) — pendiente prueba real con red+keys+navegador Playwright |
+| REQ-005 | Generación de vídeo (clonado de viral) | 🟡 Implementado (fal.ai por contrato + HeyGen v3 Photo Avatar/voz/audio + montaje FFmpeg) — pendiente prueba real con red+keys |
+| REQ-006 | Generación de contenido propio de la app | 🟡 Implementado (fal/HeyGen elegible, recorder v2 y montaje presentador+screencast) — pendiente prueba real con red+keys+navegador Playwright |
 | REQ-007 | Skills | 🟡 Pase de curación hecho (skills de proyecto + catálogo, DA-06 resuelta); feature UI aplazada |
 | REQ-008 | Configuración de herramientas/APIs (Ajustes) | 🟡 Base construida (shell de Ajustes) |
 | REQ-009 | Experiencia visual | 🟡 Implementado (dashboard por vistas con carruseles 360, arte IA, tarjetas 3D, loaders, sidebar fija y transiciones de estado) — pendiente visto bueno del usuario |
@@ -25,6 +25,33 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 ---
 
 ## Historial
+
+### 2026-07-18 — Integración robusta HeyGen v3 + fal.ai
+
+**HeyGen:**
+- Migración completa desde endpoints v1/v2 a API v3: voces y avatar looks paginados con previews,
+  subida de assets, creación/espera de Photo Avatar, generación 9:16/1080p y polling de vídeo.
+- Mutaciones idempotentes; reintentos 429/5xx con `Retry-After`; errores del proveedor sin exponer
+  la API key. Ruta multipart server-side para foto PNG/JPEG y audio MP3/WAV (máx. 32 MB).
+- Configurador compartido en ambos modales: avatar existente/foto propia y exactamente una
+  narración (voz obligatoria con preescucha o audio propio).
+
+**Pipelines y montaje:**
+- REQ-006 deja de forzar fal.ai. La rama HeyGen genera `presenter.mp4`, muestra el presentador al
+  inicio/final y el screencast en el centro conservando el audio continuo. El original queda en
+  `presenterPath`; el montaje en `final.mp4`. Con audio propio no quema subtítulos del guion.
+- Degradación conservada: sin grabación o si falla FFmpeg queda el avatar completo. Validación de
+  proveedor también en servidor. Corregidas matrices de assets compartidas entre runs.
+
+**fal.ai y verificación:**
+- Catálogo sustituido por Seedance Pro Fast (predeterminado), Kling v3 Standard y Luma Ray 2.
+  Bodies 9:16/duración específicos; eliminado el fallback que podía generar horizontal.
+- Contratos externos revisados contra documentación oficial el 2026-07-18.
+- Pruebas sin coste para bodies, narración exclusiva, parsing HTTP, reintentos, polling y errores
+  de cola (`npm run test:contracts`).
+- Verificación final: 5/5 contratos, `tsc --noEmit`, `next build` (incluye lint/typecheck) y
+  `git diff --check` correctos. `npm run lint` aislado sigue abriendo el configurador legado de
+  Next porque el repo no tiene una configuración ESLint independiente.
 
 ### 2026-07-18 — Dashboard por vistas + navegación persistente
 

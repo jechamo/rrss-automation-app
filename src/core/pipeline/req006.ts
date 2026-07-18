@@ -11,8 +11,8 @@ import {
 import { generateDemoGuion, type AppFuncion } from "@/core/content/demo";
 import { recordDemo } from "@/core/media/recorder";
 import { getLogin } from "@/core/secrets/login";
-import { fal, elevenlabs } from "@/core/media";
-import { assemble } from "@/core/media/assemble";
+import { fal, heygen, elevenlabs } from "@/core/media";
+import { assemble, assemblePresenterDemo } from "@/core/media/assemble";
 import { hasFfmpeg } from "@/core/media/ffmpeg";
 import type { PipelineDef, PipelineNode } from "./engine";
 
@@ -20,7 +20,7 @@ export const REQ006_NODES = [
   { id: "input", label: "Entrada" },
   { id: "grabacion", label: "Grabar app" },
   { id: "guion", label: "Guion (product-led)" },
-  { id: "media", label: "Cortes B-roll" },
+  { id: "media", label: "Generar video" },
   { id: "voz", label: "Locucion" },
   { id: "montaje", label: "Montaje / listo" },
 ] as const;
@@ -30,7 +30,8 @@ const MAX_CLIPS = 6; // tope de cortes fal (control de coste)
 /**
  * REQ-006: genera un video que muestra una FUNCIONALIDAD real de la propia app.
  * Graba la pantalla con Playwright (o el usuario sube el screencast) y la intercala
- * con cortes B-roll de fal.ai + locucion de ElevenLabs. Recibe el id de la ContentPiece.
+ * con video generativo + locucion, o con un avatar presentador de HeyGen.
+ * Recibe el id de la ContentPiece.
  */
 export function buildReq006Pipeline(pieceId: string): PipelineDef {
   const input: PipelineNode = {
@@ -48,7 +49,7 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
       if (!config.demo) throw new Error("Falta la configuracion de la demo (funcionalidad a mostrar).");
 
       // Si la pieza ya trae un screencast subido (modo manual), lo conservamos.
-      const assets: PieceAssets = { ...EMPTY_ASSETS };
+      const assets: PieceAssets = { ...EMPTY_ASSETS, clips: [], logs: [] };
       try {
         const prev = JSON.parse(piece.assets) as Partial<PieceAssets>;
         if (typeof prev.recordingPath === "string") assets.recordingPath = prev.recordingPath;
@@ -154,33 +155,56 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
 
   const media: PipelineNode = {
     id: "media",
-    label: "Cortes B-roll",
+    label: "Generar video",
     run: async (ctx) => {
       const config = ctx.artifacts.config as MediaConfig;
       const content = ctx.artifacts.content as PieceContent;
       const assets = ctx.artifacts.assets as PieceAssets;
 
-      // Solo los planos con prompt (b-roll) se generan; los de grabacion de pantalla no.
-      const shots = content.escaleta.filter((s) => s.prompt.trim()).slice(0, MAX_CLIPS);
-      if (shots.length === 0) {
-        ctx.log("El guion no tiene cortes b-roll; el video sera solo grabacion de pantalla.");
+      if (config.rama === "heygen") {
+        const heygenConfig = config.heygen;
+        if (!heygenConfig) throw new Error("Falta la configuracion del avatar.");
+        const useUploadedAudio = heygenConfig.narracion === "audio";
+        const presenter = await heygen.generateAvatarVideo({
+          pieceId,
+          avatarId: heygenConfig.avatarId,
+          outName: "presenter.mp4",
+          voiceId: useUploadedAudio ? undefined : heygenConfig.voiceId,
+          texto: useUploadedAudio
+            ? undefined
+            : content.guion.locucion || content.guion.desarrollo,
+          audioAssetId: useUploadedAudio ? heygenConfig.audioAssetId : undefined,
+        });
+        assets.presenterPath = presenter;
+        assets.videoPath = presenter;
+        ctx.log(
+          useUploadedAudio
+            ? "Presentador generado con el audio subido."
+            : "Presentador generado con la voz elegida.",
+        );
       } else {
-        const model = config.videoAuto ? fal.autoModel() : config.videoModelo;
-        for (const shot of shots) {
-          ctx.log(`fal.ai: generando corte ${shot.n}…`);
-          const clip = await fal.generateClip({
-            pieceId,
-            index: shot.n,
-            prompt: shot.prompt,
-            model,
-            seconds: shot.segundos,
-          });
-          assets.clips.push(clip);
+        // Solo los planos con prompt se generan; los de grabacion de pantalla no.
+        const shots = content.escaleta.filter((s) => s.prompt.trim()).slice(0, MAX_CLIPS);
+        if (shots.length === 0) {
+          ctx.log("El guion no tiene cortes de apoyo; el video sera solo grabacion de pantalla.");
+        } else {
+          const model = config.videoAuto ? fal.autoModel() : config.videoModelo;
+          for (const shot of shots) {
+            ctx.log(`Generando corte ${shot.n}…`);
+            const clip = await fal.generateClip({
+              pieceId,
+              index: shot.n,
+              prompt: shot.prompt,
+              model,
+              seconds: shot.segundos,
+            });
+            assets.clips.push(clip);
+          }
+          ctx.log(`${assets.clips.length} cortes de apoyo generados.`);
         }
-        ctx.log(`fal.ai: ${assets.clips.length} cortes b-roll generados.`);
+        // Preview: grabacion si existe, si no el primer corte.
+        assets.videoPath = assets.recordingPath || assets.clips[0] || "";
       }
-      // Preview del video: la grabacion de la app si existe, si no el primer corte.
-      assets.videoPath = assets.recordingPath || assets.clips[0] || "";
       ctx.artifacts.assets = assets;
     },
   };
@@ -193,6 +217,10 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
       const content = ctx.artifacts.content as PieceContent;
       const assets = ctx.artifacts.assets as PieceAssets;
 
+      if (config.rama === "heygen") {
+        ctx.log("La narracion ya esta incluida en el video del presentador.");
+        return;
+      }
       const texto = content.guion.locucion || content.guion.desarrollo;
       if (!texto.trim()) {
         ctx.log("Sin texto de locucion; se omite.");
@@ -209,32 +237,52 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
     id: "montaje",
     label: "Montaje / listo",
     run: async (ctx) => {
+      const config = ctx.artifacts.config as MediaConfig;
       const assets = ctx.artifacts.assets as PieceAssets;
       const content = ctx.artifacts.content as PieceContent;
 
       if (!assets.recordingPath) {
-        assets.logs.push("Falta la grabacion de la app: subela a mano para completar el montaje.");
-      }
-
-      if (!hasFfmpeg()) {
+        const message =
+          config.rama === "heygen"
+            ? "No hay grabacion de la app: se conserva el presentador completo."
+            : "Falta la grabacion de la app: subela a mano para completar el montaje.";
+        assets.logs.push(message);
+        ctx.log(message);
+      } else if (!hasFfmpeg()) {
         const warning =
-          "FFmpeg no encontrado: instala con 'winget install ffmpeg' y pulsa Regenerar. Se conserva el preview actual.";
+          "FFmpeg no encontrado: instala con 'winget install ffmpeg' y pulsa Regenerar. Se conserva el video actual.";
         assets.logs.push(warning);
         ctx.log(warning);
       } else {
         try {
-          const result = assemble({
-            pieceId,
-            assets,
-            locucionText: content.guion.locucion || content.guion.desarrollo,
-            shots: content.escaleta,
-          });
+          const result =
+            config.rama === "heygen"
+              ? assemblePresenterDemo({
+                  pieceId,
+                  presenterPath: assets.presenterPath || assets.videoPath,
+                  recordingPath: assets.recordingPath,
+                  locucionText: content.guion.locucion || content.guion.desarrollo,
+                  // El audio propio puede no coincidir con el guion generado.
+                  burnSubtitles: config.heygen?.narracion !== "audio",
+                })
+              : assemble({
+                  pieceId,
+                  assets,
+                  locucionText: content.guion.locucion || content.guion.desarrollo,
+                  shots: content.escaleta,
+                });
           if (result) {
             assets.videoPath = result.path;
             const duration = result.seconds ? ` (${result.seconds.toFixed(1)}s)` : "";
-            const message = `Montaje FFmpeg completado${duration}.`;
+            const message =
+              config.rama === "heygen"
+                ? `Presentador y grabacion montados${duration}.`
+                : `Montaje FFmpeg completado${duration}.`;
             assets.logs.push(message);
-            if (!result.subtitlesBurned) {
+            if (
+              config.heygen?.narracion !== "audio" &&
+              !result.subtitlesBurned
+            ) {
               assets.logs.push(
                 "FFmpeg no pudo quemar subtitulos (falta soporte libass); se genero el video sin ellos.",
               );
@@ -242,10 +290,10 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
             if (result.qcFrames) assets.logs.push("Frames de control de calidad generados.");
             ctx.log(message);
           } else {
-            assets.logs.push("Montaje omitido: no hay videos utilizables; se conserva el preview actual.");
+            assets.logs.push("Montaje omitido: se conserva el video actual.");
           }
         } catch (error) {
-          const warning = `Montaje FFmpeg no disponible: ${(error as Error).message}. Se conserva el preview actual.`;
+          const warning = `Montaje FFmpeg no disponible: ${(error as Error).message}. Se conserva el video actual.`;
           assets.logs.push(warning);
           ctx.log(warning);
         }

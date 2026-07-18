@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test:contracts": "tsc --target ES2022 --module NodeNext --moduleResolution NodeNext --types node --outDir .contract-tests src/core/media/contracts.ts src/core/media/contracts.test.ts && node --test .contract-tests/contracts.test.js && node -e \"require('fs').rmSync('.contract-tests',{recursive:true,force:true})\"",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",

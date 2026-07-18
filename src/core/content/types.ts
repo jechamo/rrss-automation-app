@@ -65,6 +65,23 @@ export interface DemoConfig {
   grabacionModo: GrabacionModo;
 }
 
+/** Como se narra un video de avatar HeyGen. */
+export type HeygenNarracion = "voice" | "audio"; // voz del catalogo | audio propio subido
+
+/**
+ * Config de la rama HeyGen (avatar hablando). El avatar puede ser uno del
+ * catalogo o un photo avatar creado a partir de una foto subida; la narracion
+ * puede ser una voz del catalogo o un audio propio (asset subido a HeyGen).
+ */
+export interface HeygenConfig {
+  avatarId: string; // look id de HeyGen (v3) a usar en el video
+  avatarLabel: string; // nombre visible del avatar (para la UI)
+  narracion: HeygenNarracion;
+  voiceId: string; // narracion="voice": id de la voz elegida
+  audioAssetId: string; // narracion="audio": asset_id del audio subido a HeyGen
+  audioLabel: string; // nombre del audio subido (para la UI)
+}
+
 /** El blob `config`: eleccion de proveedores/atributos por pieza. */
 export interface MediaConfig {
   rama: Rama; // fal (cortes generados) | heygen (avatar con foto+voz)
@@ -77,6 +94,8 @@ export interface MediaConfig {
   vozId: string; // id de voz ("" si auto)
   // comprension del viral fuente
   usarGemini: boolean; // true = analizar el video con Gemini; false = reusar datos REQ-004
+  // rama="heygen": avatar/narracion. Opcional para compat con piezas antiguas.
+  heygen?: HeygenConfig;
   // REQ-006 (solo piezas origin="own"): demo de la propia app
   demo?: DemoConfig;
 }
@@ -84,6 +103,7 @@ export interface MediaConfig {
 /** El blob `assets`: rutas/urls de lo generado. */
 export interface PieceAssets {
   videoPath: string; // ruta local en data/media/<id>/ (rama fal: montaje; heygen: avatar)
+  presenterPath: string; // original HeyGen antes del montaje con el screencast
   audioPath: string; // locucion (rama fal)
   clips: string[]; // cortes de fal por plano
   recordingPath: string; // screencast de la app (REQ-006: Playwright o subido a mano)
@@ -121,6 +141,15 @@ export const DEFAULT_CONFIG: MediaConfig = {
   usarGemini: false,
 };
 
+export const EMPTY_HEYGEN: HeygenConfig = {
+  avatarId: "",
+  avatarLabel: "",
+  narracion: "voice",
+  voiceId: "",
+  audioAssetId: "",
+  audioLabel: "",
+};
+
 export const EMPTY_GUION: Guion = {
   gancho: "",
   desarrollo: "",
@@ -140,6 +169,7 @@ export const EMPTY_CONTENT: PieceContent = {
 
 export const EMPTY_ASSETS: PieceAssets = {
   videoPath: "",
+  presenterPath: "",
   audioPath: "",
   clips: [],
   recordingPath: "",
@@ -260,6 +290,22 @@ export function coerceDemo(raw: unknown): DemoConfig {
   return demo;
 }
 
+export function coerceHeygen(raw: unknown, legacy?: Record<string, unknown>): HeygenConfig {
+  const o = (raw ?? {}) as Record<string, unknown>;
+  const narracion: HeygenNarracion = str(o.narracion) === "audio" ? "audio" : "voice";
+  const heygen: HeygenConfig = {
+    // Compat: piezas antiguas guardaban el avatar en config.videoModelo.
+    avatarId: str(o.avatarId) || str(legacy?.videoModelo),
+    avatarLabel: str(o.avatarLabel),
+    narracion,
+    // Compat: la voz venia en config.vozId (vacio si vozAuto).
+    voiceId: str(o.voiceId) || (bool(legacy?.vozAuto, true) ? "" : str(legacy?.vozId)),
+    audioAssetId: str(o.audioAssetId),
+    audioLabel: str(o.audioLabel),
+  };
+  return heygen;
+}
+
 export function coerceConfig(raw: unknown): MediaConfig {
   const o = (raw ?? {}) as Record<string, unknown>;
   const rama: Rama = str(o.rama) === "heygen" ? "heygen" : "fal";
@@ -273,14 +319,39 @@ export function coerceConfig(raw: unknown): MediaConfig {
     vozId: str(o.vozId),
     usarGemini: bool(o.usarGemini, false),
   };
+  // Reconstruye la config HeyGen desde el objeto nuevo o desde los campos legacy.
+  if (rama === "heygen" || (o.heygen && typeof o.heygen === "object")) {
+    config.heygen = coerceHeygen(o.heygen, o);
+  }
   if (o.demo && typeof o.demo === "object") config.demo = coerceDemo(o.demo);
   return config;
+}
+
+/** Validacion compartida antes de crear una pieza o consumir un proveedor. */
+export function validateMediaConfig(config: MediaConfig): string {
+  if (config.rama === "fal") {
+    if (!config.videoAuto && !config.videoModelo) return "Elige un modelo de vídeo o activa Auto.";
+    if (!config.vozAuto && !config.vozId) return "Elige una voz o activa Auto.";
+    return "";
+  }
+
+  const heygen = config.heygen;
+  if (!heygen?.avatarId) return "Elige un avatar o sube una foto.";
+  if (heygen.narracion === "voice") {
+    if (!heygen.voiceId) return "Elige una voz para el avatar.";
+    if (heygen.audioAssetId) return "La narración debe usar una sola fuente de audio.";
+  } else {
+    if (!heygen.audioAssetId) return "Sube un audio para la narración.";
+    if (heygen.voiceId) return "La narración debe usar una sola fuente de audio.";
+  }
+  return "";
 }
 
 export function coerceAssets(raw: unknown): PieceAssets {
   const o = (raw ?? {}) as Record<string, unknown>;
   return {
     videoPath: str(o.videoPath),
+    presenterPath: str(o.presenterPath),
     audioPath: str(o.audioPath),
     clips: strArr(o.clips),
     recordingPath: str(o.recordingPath),

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buildReq005Pipeline } from "@/core/pipeline/req005";
 import { executeRun, initialNodeStatus } from "@/core/pipeline/engine";
-import { coerceConfig } from "@/core/content/types";
+import { coerceConfig, validateMediaConfig } from "@/core/content/types";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +16,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: "Falta la URL del viral a clonar." }, { status: 400 });
   }
   const config = coerceConfig((body as { config?: unknown })?.config ?? {});
+  const configError = validateMediaConfig(config);
+  if (configError) return NextResponse.json({ error: configError }, { status: 400 });
 
   const project = await prisma.project.findUnique({
     where: { id },

@@ -1,8 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import type { MediaConfig, Rama } from "@/core/content/types";
-import { SelectorAuto, loadOptions, type Option } from "@/components/SelectorAuto";
+import { useState } from "react";
+import { DEFAULT_CONFIG, EMPTY_HEYGEN, type MediaConfig } from "@/core/content/types";
+import {
+  MediaProviderConfigurator,
+  mediaProviderError,
+} from "@/components/MediaProviderConfigurator";
 
 type ViralPick = { url: string; titulo: string; plataforma: string };
 
@@ -20,58 +23,18 @@ export function GenerateContentModal({
   busy: boolean;
 }) {
   const [sourceUrl, setSourceUrl] = useState(initialUrl ?? virales[0]?.url ?? "");
-  const [rama, setRama] = useState<Rama>("fal");
-  const [videoAuto, setVideoAuto] = useState(true);
-  const [videoModelo, setVideoModelo] = useState("");
-  const [avatarId, setAvatarId] = useState("");
-  const [vozAuto, setVozAuto] = useState(true);
-  const [vozId, setVozId] = useState("");
+  const [mediaConfig, setMediaConfig] = useState<MediaConfig>({
+    ...DEFAULT_CONFIG,
+    heygen: { ...EMPTY_HEYGEN },
+  });
   const [usarGemini, setUsarGemini] = useState(false);
-
-  const [videoOpts, setVideoOpts] = useState<Option[]>([]);
-  const [avatarOpts, setAvatarOpts] = useState<Option[]>([]);
-  const [vozOpts, setVozOpts] = useState<Option[]>([]);
-  const [optErr, setOptErr] = useState<string>("");
-
-  const vozProvider = rama === "fal" ? "elevenlabs" : "heygen";
-
-  const refreshOptions = useCallback(async () => {
-    setOptErr("");
-    if (rama === "fal") {
-      const v = await loadOptions("fal", "video");
-      setVideoOpts(v.options);
-    } else {
-      const a = await loadOptions("heygen", "avatar");
-      setAvatarOpts(a.options);
-      if (a.error) setOptErr(`Avatares HeyGen: ${a.error}. Configura la key en Ajustes.`);
-    }
-    const voz = await loadOptions(vozProvider, "voice");
-    setVozOpts(voz.options);
-    if (voz.error && !optErr) {
-      setOptErr(`Voces ${vozProvider}: ${voz.error}. Configura la key en Ajustes.`);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rama, vozProvider]);
-
-  useEffect(() => {
-    refreshOptions();
-  }, [refreshOptions]);
 
   function submit() {
     if (!sourceUrl) return;
-    const config: MediaConfig = {
-      rama,
-      videoAuto: rama === "fal" ? videoAuto : false,
-      videoModelo: rama === "fal" ? (videoAuto ? "" : videoModelo) : avatarId,
-      vozProveedor: vozProvider,
-      vozAuto,
-      vozId: vozAuto ? "" : vozId,
-      usarGemini,
-    };
-    onGenerate(sourceUrl, config);
+    onGenerate(sourceUrl, { ...mediaConfig, usarGemini });
   }
 
-  const heygenSinAvatar = rama === "heygen" && !avatarId;
+  const providerError = mediaProviderError(mediaConfig);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -99,58 +62,10 @@ export function GenerateContentModal({
             </select>
           </label>
 
-          <div>
-            <span className="mb-1 block text-xs text-white/50">Modo de vídeo</span>
-            <div className="flex gap-2">
-              {(["fal", "heygen"] as Rama[]).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setRama(r)}
-                  className={[
-                    "flex-1 rounded-lg border px-3 py-2 text-sm",
-                    rama === r
-                      ? "border-[var(--color-accent)] bg-[var(--color-accent)]/15"
-                      : "border-white/15 hover:bg-white/5",
-                  ].join(" ")}
-                >
-                  {r === "fal" ? "fal.ai — cortes generados" : "HeyGen — avatar (foto+voz)"}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {rama === "fal" ? (
-            <SelectorAuto
-              label="Modelo de vídeo (fal.ai)"
-              auto={videoAuto}
-              setAuto={setVideoAuto}
-              value={videoModelo}
-              setValue={setVideoModelo}
-              options={videoOpts}
-              autoHint="La IA usa el modelo por defecto (LTX Video)"
-            />
-          ) : (
-            <label className="block">
-              <span className="mb-1 block text-xs text-white/50">Avatar (HeyGen) — obligatorio</span>
-              <select className="input" value={avatarId} onChange={(e) => setAvatarId(e.target.value)}>
-                <option value="">— elige un avatar —</option>
-                {avatarOpts.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-
-          <SelectorAuto
-            label={`Voz (${vozProvider})`}
-            auto={vozAuto}
-            setAuto={setVozAuto}
-            value={vozId}
-            setValue={setVozId}
-            options={vozOpts}
-            autoHint="Voz por defecto del proveedor"
+          <MediaProviderConfigurator
+            value={mediaConfig}
+            onChange={setMediaConfig}
+            disabled={busy}
           />
 
           <label className="flex items-center gap-2">
@@ -160,7 +75,9 @@ export function GenerateContentModal({
             </span>
           </label>
 
-          {optErr && <div className="text-xs text-[var(--color-state-pending)]">{optErr}</div>}
+          {providerError && (
+            <div className="text-xs text-[var(--color-state-pending)]">{providerError}</div>
+          )}
 
           <div className="mt-1 rounded-lg bg-white/5 p-3 text-xs text-white/50">
             Se genera un guion <b>original</b> reinterpretando el concepto del viral (no copia). El
@@ -176,7 +93,7 @@ export function GenerateContentModal({
             </button>
             <button
               onClick={submit}
-              disabled={busy || !sourceUrl || heygenSinAvatar}
+              disabled={busy || !sourceUrl || Boolean(providerError)}
               className="rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium disabled:opacity-40"
             >
               {busy ? "Lanzando…" : "Generar"}

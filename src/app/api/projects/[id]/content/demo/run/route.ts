@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buildReq006Pipeline } from "@/core/pipeline/req006";
 import { executeRun, initialNodeStatus } from "@/core/pipeline/engine";
-import { coerceConfig, coerceDemo } from "@/core/content/types";
+import { coerceConfig, coerceDemo, validateMediaConfig } from "@/core/content/types";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: "Elige la funcionalidad a mostrar." }, { status: 400 });
   }
   const config = coerceConfig((body?.config as unknown) ?? {});
-  config.rama = "fal"; // el contenido propio usa cortes fal + grabacion (no avatar)
+  const configError = validateMediaConfig(config);
+  if (configError) return NextResponse.json({ error: configError }, { status: 400 });
   config.demo = demo;
 
   const project = await prisma.project.findUnique({ where: { id }, include: { dossier: true } });

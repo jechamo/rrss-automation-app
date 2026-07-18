@@ -29,35 +29,35 @@ export const PROVIDERS: ProviderMeta[] = [
   {
     id: "gemini",
     name: "Gemini",
-    description: "Comprension de video (REQ-004/005). Pago por uso.",
+    description: "Comprension de video. Pago por uso.",
     needsKey: true,
     docsUrl: "https://aistudio.google.com/apikey",
   },
   {
     id: "elevenlabs",
     name: "ElevenLabs",
-    description: "Voz por ID (REQ-005/006).",
+    description: "Voz por ID para la locucion.",
     needsKey: true,
     docsUrl: "https://elevenlabs.io/app/settings/api-keys",
   },
   {
     id: "heygen",
     name: "HeyGen",
-    description: "Avatares con foto + voz (REQ-005 opcion b).",
+    description: "Avatares con foto + voz.",
     needsKey: true,
     docsUrl: "https://app.heygen.com/settings",
   },
   {
     id: "fal",
     name: "fal.ai",
-    description: "Generacion de videos/cortes por API (REQ-005/006).",
+    description: "Generacion de videos/cortes por API.",
     needsKey: true,
     docsUrl: "https://fal.ai/dashboard/keys",
   },
   {
     id: "github",
     name: "GitHub Token",
-    description: "Clonar repos privados para analizar codigo (REQ-001).",
+    description: "Clonar repos privados para analizar codigo.",
     needsKey: true,
     docsUrl: "https://github.com/settings/tokens",
   },
@@ -105,7 +105,7 @@ export async function testProvider(id: ProviderId, engineId?: AiEngineId): Promi
           : { ok: false, detail: `ElevenLabs respondio ${r.status}.` };
       }
       case "heygen": {
-        const r = await fetchWithTimeout("https://api.heygen.com/v2/voices", {
+        const r = await fetchWithTimeout("https://api.heygen.com/v3/voices?limit=1", {
           headers: { "X-Api-Key": key },
         });
         return r.ok

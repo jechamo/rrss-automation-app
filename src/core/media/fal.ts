@@ -2,16 +2,35 @@ import { getSecret } from "@/core/secrets/vault";
 import { fetchJson, sleep } from "./http";
 import { downloadTo } from "./storage";
 import type { MediaOption } from "./types";
+import {
+  buildFalRequestBody,
+  classifyPollStatus,
+  FAL_MODEL_IDS,
+  queueFailureMessage,
+} from "./contracts";
+
+export { FAL_MODEL_IDS } from "./contracts";
+export const buildRequestBody = buildFalRequestBody;
 
 // Conector fal.ai: generacion de cortes de video (text-to-video) por prompt.
 // fal no expone un listado estable de modelos, asi que se ofrece un set curado.
 
 export const FAL_MODELS: MediaOption[] = [
-  { id: "fal-ai/ltx-video", label: "LTX Video", hint: "Rapido y economico" },
-  { id: "fal-ai/kling-video/v1/standard/text-to-video", label: "Kling 1.0", hint: "Buen movimiento" },
-  { id: "fal-ai/minimax-video", label: "MiniMax (Hailuo)", hint: "Realista" },
-  { id: "fal-ai/luma-dream-machine", label: "Luma Dream Machine", hint: "Cinematico" },
-  { id: "fal-ai/hunyuan-video", label: "Hunyuan Video", hint: "Alta calidad, lento" },
+  {
+    id: FAL_MODEL_IDS.seedance,
+    label: "Seedance Pro Fast",
+    hint: "Recomendado · rápido y eficiente",
+  },
+  {
+    id: FAL_MODEL_IDS.kling,
+    label: "Kling v3 Standard",
+    hint: "Movimiento y detalle",
+  },
+  {
+    id: FAL_MODEL_IDS.luma,
+    label: "Luma Ray 2",
+    hint: "Estilo cinematográfico",
+  },
 ];
 
 export function listModels(): MediaOption[] {
@@ -35,10 +54,10 @@ interface QueueSubmit {
   response_url?: string;
 }
 
-/** Cierta si el error es un HTTP 4xx (modelo que no acepta los parametros extra). */
-function isHttp4xx(err: unknown): boolean {
-  const msg = err instanceof Error ? err.message : String(err);
-  return /HTTP 4\d\d\b/.test(msg);
+interface QueueStatus {
+  status: string;
+  error?: string | { message?: string };
+  logs?: Array<{ message?: string }>;
 }
 
 /** Genera un corte de video a partir de un prompt y lo descarga. Devuelve ruta relativa. */
@@ -51,49 +70,35 @@ export async function generateClip(args: {
 }): Promise<string> {
   const model = args.model || autoModel();
   const auth = { Authorization: `Key ${key()}` };
-
-  // Cortes verticales acotados 5-10s (patron video-factory). Si el modelo rechaza
-  // estos extras con un 4xx, se reintenta con solo {prompt} (compat total).
-  const seconds =
-    typeof args.seconds === "number"
-      ? Math.min(10, Math.max(5, Math.round(args.seconds)))
-      : undefined;
-  const baseBody: Record<string, unknown> = { prompt: args.prompt };
-  const richBody: Record<string, unknown> = {
-    ...baseBody,
-    aspect_ratio: "9:16",
-    ...(seconds ? { duration: String(seconds) } : {}),
-  };
-
-  const post = (body: Record<string, unknown>) =>
-    fetchJson<QueueSubmit>(`https://queue.fal.run/${model}`, {
+  const body = buildFalRequestBody(model, args.prompt, args.seconds);
+  const submit = await fetchJson<QueueSubmit>(
+    `https://queue.fal.run/${model}`,
+    {
       method: "POST",
       headers: { ...auth, "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    });
-
-  let submit: QueueSubmit;
-  try {
-    submit = await post(richBody);
-  } catch (err) {
-    if (!isHttp4xx(err)) throw err;
-    submit = await post(baseBody);
-  }
+    },
+    120_000,
+  );
+  if (!submit.request_id) throw new Error("fal.ai no devolvio request_id.");
 
   const statusUrl =
     submit.status_url ?? `https://queue.fal.run/${model}/requests/${submit.request_id}/status`;
   const responseUrl =
     submit.response_url ?? `https://queue.fal.run/${model}/requests/${submit.request_id}`;
 
-  // Poll hasta COMPLETED (o timeout ~5 min).
-  for (let i = 0; i < 60; i++) {
+  // Poll hasta COMPLETED (o timeout ~10 min).
+  for (let i = 0; i < 120; i++) {
     await sleep(5000);
-    const st = await fetchJson<{ status: string }>(statusUrl, { headers: auth });
-    if (st.status === "COMPLETED") break;
-    if (st.status === "FAILED" || st.status === "ERROR") {
-      throw new Error("fal.ai fallo al generar el corte.");
+    const st = await fetchJson<QueueStatus>(statusUrl, { headers: auth });
+    const pollState = classifyPollStatus(st.status);
+    if (pollState === "completed") break;
+    if (pollState === "failed") {
+      throw new Error(
+        `fal.ai fallo al generar el corte: ${queueFailureMessage(st.error, st.logs)}.`,
+      );
     }
-    if (i === 59) throw new Error("fal.ai: timeout esperando el corte.");
+    if (i === 119) throw new Error("fal.ai: timeout esperando el corte.");
   }
 
   const out = await fetchJson<{ video?: { url: string }; url?: string }>(responseUrl, {
@@ -101,5 +106,5 @@ export async function generateClip(args: {
   });
   const url = out.video?.url ?? out.url;
   if (!url) throw new Error("fal.ai no devolvio URL de video.");
-  return downloadTo(args.pieceId, `clip-${args.index}.mp4`, url);
+  return downloadTo(args.pieceId, `clip-${args.index}.mp4`, url, 300_000);
 }

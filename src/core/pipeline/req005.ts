@@ -57,7 +57,7 @@ export function buildReq005Pipeline(pieceId: string): PipelineDef {
       ctx.artifacts.dossier = dossier;
       ctx.artifacts.viral = viral;
       ctx.artifacts.config = config;
-      ctx.artifacts.assets = { ...EMPTY_ASSETS };
+      ctx.artifacts.assets = { ...EMPTY_ASSETS, clips: [], logs: [] };
 
       await prisma.contentPiece.update({
         where: { id: pieceId },
@@ -115,14 +115,25 @@ export function buildReq005Pipeline(pieceId: string): PipelineDef {
       const assets = ctx.artifacts.assets as PieceAssets;
 
       if (config.rama === "heygen") {
+        const heygenConfig = config.heygen;
+        if (!heygenConfig) throw new Error("Falta la configuracion del avatar.");
+        const useUploadedAudio = heygenConfig.narracion === "audio";
         const path = await heygen.generateAvatarVideo({
           pieceId,
-          avatarId: config.videoModelo, // en rama heygen, videoModelo = avatar_id
-          voiceId: config.vozAuto ? "" : config.vozId,
-          texto: content.guion.locucion || content.guion.desarrollo,
+          avatarId: heygenConfig.avatarId,
+          voiceId: useUploadedAudio ? undefined : heygenConfig.voiceId,
+          texto: useUploadedAudio
+            ? undefined
+            : content.guion.locucion || content.guion.desarrollo,
+          audioAssetId: useUploadedAudio ? heygenConfig.audioAssetId : undefined,
         });
+        assets.presenterPath = path;
         assets.videoPath = path;
-        ctx.log("Video de avatar generado con HeyGen.");
+        ctx.log(
+          useUploadedAudio
+            ? "Video de avatar generado con el audio subido."
+            : "Video de avatar generado con la voz elegida.",
+        );
       } else {
         const model = config.videoAuto ? fal.autoModel() : config.videoModelo;
         const shots = content.escaleta.slice(0, MAX_CLIPS);

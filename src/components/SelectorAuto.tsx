@@ -5,7 +5,7 @@
 // proveedor decide (modelo/voz por defecto); si no, se elige de la lista que
 // devuelve `GET /api/providers/:provider/options?kind=…`.
 
-export type Option = { id: string; label: string; hint?: string };
+export type Option = { id: string; label: string; hint?: string; preview?: string };
 
 export async function loadOptions(
   provider: string,

@@ -301,17 +301,24 @@ en `/proyecto/[id]`, bajo los leads.
 (bandeja de estados). Campos: `origin(viral|own)`, `sourceUrl`, `titulo`, `plataforma`,
 `content` JSON (`{plataforma, guion{gancho,desarrollo,cta,locucion,hashtags[],duracionTotal},
 escaleta:Shot[], patronAplicado, notaLegal}`), `config` JSON (`MediaConfig{rama, videoAuto,
-videoModelo, vozProveedor, vozAuto, vozId, usarGemini}`), `assets` JSON (`{videoPath, audioPath,
-clips[], externalUrl, logs[]}`), `runId`, `status(borrador|generando|listo|publicado|error)`,
+videoModelo, vozProveedor, vozAuto, vozId, usarGemini, heygen?{avatarId,avatarLabel,
+narracion(voice|audio),voiceId,audioAssetId,audioLabel}}`), `assets` JSON (`{videoPath,
+presenterPath, audioPath, clips[], recordingPath, externalUrl, logs[]}`), `runId`,
+`status(borrador|generando|listo|publicado|error)`,
 `version`. `rowToPiece()` parsea los JSON a objetos tipados.
 
 **Módulos de media** (`src/core/media/`, cada uno tira su key del vault):
-- `fal.ts`: `FAL_MODELS` (curados: ltx-video, kling, minimax, luma, hunyuan), `listModels()`,
-  `autoModel()`, `generateClip({pieceId,index,prompt,model,seconds?})` (cola `queue.fal.run`,
-  vídeo 9:16, duración 5-10s, reintento compatible sin esos parámetros si el modelo devuelve 4xx,
-  polling y descarga `clip-N.mp4`).
-- `heygen.ts`: `listAvatars()`, `listVoices()` (v2), `generateAvatarVideo(...)` (v2/generate +
-  v1/video_status, vertical 720×1280, requiere `avatarId`).
+- `fal.ts`: catálogo curado **Seedance V1 Pro Fast** (predeterminado), **Kling v3 Standard** y
+  **Luma Ray 2**. `buildFalRequestBody()` aplica el esquema exacto por modelo: siempre 9:16;
+  Seedance `5..10`, Kling `5|10`, Luma `5s|9s`. Usa la cola `queue.fal.run`, polling de hasta
+  10 min y descarga `clip-N.mp4`. No existe fallback que descarte `aspect_ratio`: un modelo sin
+  contrato o un body rechazado produce error visible antes de generar un vídeo incorrecto.
+- `heygen.ts`: API v3 oficial. Pagina `GET /v3/avatars/looks` (50/página, públicos + propios) y
+  `GET /v3/voices` (100/página) con previews; `POST /v3/assets` sube PNG/JPEG/MP3/WAV (máx.
+  32 MB); `POST /v3/avatars` crea Photo Avatar; `POST /v3/videos` genera 9:16/1080p con
+  exactamente `script+voice_id` o `audio_asset_id`; `GET /v3/videos/:id` espera
+  `completed|failed`. Mutaciones con `Idempotency-Key`; 429/5xx reintentan respetando
+  `Retry-After`; los mensajes nunca incluyen la API key.
 - `elevenlabs.ts`: `listVoices()`, `tts(pieceId,text,voiceId)` (guarda `locucion.mp3`).
 - `gemini.ts`: `describeViral(...)` (enriquecimiento opcional; comprensión real de vídeo vía
   Files API queda a futuro).
@@ -321,8 +328,9 @@ clips[], externalUrl, logs[]}`), `runId`, `status(borrador|generando|listo|publi
 - `ffmpeg.ts`: detección cacheada de `ffmpeg`/`ffprobe`, duración y ejecución con
   `execFileSync(args[])` sin shell (quoting seguro en Windows).
 - `assemble.ts`: montaje determinista vertical 1080×1920, concat/recortes, audio, SRT,
-  subtítulos quemados y frames QC. Degrada por combinaciones de assets y permite conservar el
-  preview si el render falla.
+  subtítulos quemados y frames QC. `assemblePresenterDemo()` conserva el audio continuo de
+  HeyGen mientras muestra presentador al inicio/final y screencast en el centro. Degrada por
+  combinaciones de assets y permite conservar el original si el render falla.
 
 **Lógica IA** (`src/core/content/`): `extract.ts` reutiliza el `Viral` de REQ-004 (+ Gemini si
 `usarGemini`) → `ViralExtract`; `guion.ts` genera un `PieceContent` **original** (system prompt:
@@ -333,8 +341,9 @@ reinterpreta el concepto, no copies; español; JSON) tirando del dossier (marca,
 - **Entrada** (`input`): carga pieza/dossier/virales, casa el viral por URL normalizada, pone
   `status:generando` + `runId`.
 - **Extraer**/**Guion**: guion se **persiste pronto** (revisable aunque el render falle luego).
-- **Vídeo** (`media`): bifurca — `heygen` → `generateAvatarVideo` (usa `videoModelo` como avatar);
-  `fal` → recorre la escaleta (máx. `MAX_CLIPS=6`) `generateClip` → `clips[]`, `videoPath=clips[0]`.
+- **Vídeo** (`media`): bifurca — `heygen` → `generateAvatarVideo` con avatar + voz elegida o
+  audio subido (`presenterPath` conserva el original); `fal` → recorre la escaleta (máx.
+  `MAX_CLIPS=6`) `generateClip` → `clips[]`, `videoPath=clips[0]`.
 - **Locución** (`voz`): `fal` → ElevenLabs TTS; `heygen` → se omite (ya lleva voz).
 - **Montaje** (`montaje`): `assemble()` concatena clips, locución y subtítulos en `final.mp4`;
   `assets.videoPath` pasa a la salida final, genera frames QC cada 10s y pone `status:listo`,
@@ -345,8 +354,10 @@ dossier/virales, crea pieza + run, fire-and-forget `executeRun` con reconciliaci
 `GET /api/content/:projectId` (piezas + runs), `PUT/DELETE /api/content/:projectId/:pieceId`,
 `GET …/:pieceId/asset?path=` (sirve asset local, valida prefijo `media/<pieceId>/`),
 `GET /api/providers/:provider/options?kind=` (modelos/voces/avatares; devuelve `error` si falta
-key, sin romper el modal). **UI:** `ContentTray` (bandeja + SSE por pieza en generación) +
-`GenerateContentModal` (selector de viral + rama + auto/manual) en `/proyecto/[id]`, bajo virales.
+key, sin romper el modal), `POST /api/providers/heygen/upload` (multipart seguro: foto → avatar,
+audio → asset). **UI:** `ContentTray` (bandeja + SSE por pieza en generación) +
+`GenerateContentModal` + `MediaProviderConfigurator` (selector de viral, vídeo generativo/avatar,
+Photo Avatar, voz con preview o audio propio) en `/proyecto/[id]`, bajo virales.
 
 > El punto de entrada de generación vive en `ContentTray` (selector de viral dentro del propio
 > modal), no en un botón dentro de `ViralesEditor`.
@@ -362,7 +373,8 @@ del blob `config` JSON.
 **Tipos nuevos** (`src/core/content/types.ts`): `DemoConfig{funcion, funcionUrl, pasos[],
 navSteps?:NavStep[], usarLogin, grabacionModo(auto|manual), videosPrevios?}` como campo opcional
 `demo?` de `MediaConfig`; `NavStep` soporta `goto|tap|fill|wait|scroll`; `PieceAssets` gana
-`recordingPath` (screencast real de la app). `coerceDemo()` + `EMPTY_DEMO`.
+`recordingPath` (screencast real de la app) y `presenterPath` (HeyGen original).
+`coerceDemo()` + `EMPTY_DEMO`.
 
 **Credenciales (DA-05)** (`src/core/secrets/login.ts`): `setLogin/getLogin/hasLogin/deleteLogin` sobre
 el Vault existente (AES-256-GCM) con clave `login:<projectId>`. La contraseña **nunca** sale de la API.
@@ -381,35 +393,38 @@ del repo para devolver `navSteps` reales; sin evidencia omite los pasos tipados.
 repetir ángulo/hook.
 
 **Nodos del pipeline** (`src/core/pipeline/req006.ts`):
-`[Entrada] → [Grabar app] → [Guion] → [Cortes] → [Locución] → [Montaje]`
+`[Entrada] → [Grabar app] → [Guion] → [Generar vídeo] → [Locución] → [Montaje]`
 - **Entrada** (`input`): carga pieza/dossier, exige `config.demo`, preserva `recordingPath` previo,
   pone `status:generando` + `runId`.
 - **Grabar app** (`grabacion`): manual → usa el `recordingPath` subido; auto → `getLogin` si
   `usarLogin` y `recordDemo(...)`; si falla, **loguea y continúa** (no lanza) para permitir subida
   manual posterior.
 - **Guion** (`guion`): `generateDemoGuion` (plataforma `youtube` fija en esta pasada), persiste pronto.
-- **Cortes** (`media`): filtra planos con prompt no vacío (B-roll) → `fal.generateClip` (máx. 6);
-  `videoPath = recordingPath || clips[0]`.
-- **Locución** (`voz`): ElevenLabs TTS.
-- **Montaje** (`montaje`): `assemble()` aplica plantilla hook B-roll → demo recortada por
-  `nav_log` → cierre B-roll, locución y subtítulos; contempla solo clips, solo grabación,
-  `nav_log` vacío y ausencia de audio. Produce `final.mp4` o conserva el preview sin romper el run.
+- **Generar vídeo** (`media`): `fal` filtra planos con prompt → `generateClip` (máx. 6);
+  `heygen` crea `presenter.mp4` con voz elegida o audio propio.
+- **Locución** (`voz`): `fal` usa ElevenLabs TTS; `heygen` la omite porque ya está embebida.
+- **Montaje** (`montaje`): `fal` aplica hook → demo recortada por `nav_log` → cierre; `heygen`
+  aplica presentador → demo → presentador preservando su pista de audio continua. Con voz de
+  catálogo mantiene subtítulos; con audio propio los omite para no desincronizar. Produce
+  `final.mp4`; sin grabación conserva el avatar completo y ante fallo conserva el original.
 
 **Endpoints nuevos:** `POST /api/projects/:id/content/demo/run` (crea pieza `own` + run REQ-006,
-fuerza `config.rama=fal`, 409 sin dossier), `POST /api/projects/:id/functions` (analiza funciones con
-IA), `GET/PUT/DELETE /api/projects/:id/login` (credenciales cifradas; GET solo informa `configured`),
+acepta `rama=fal|heygen`, valida proveedor y devuelve 409 sin dossier),
+`POST /api/projects/:id/functions` (analiza funciones con IA), `GET/PUT/DELETE
+/api/projects/:id/login` (credenciales cifradas; GET solo informa `configured`),
 `POST /api/projects/:id/demo/dryrun` (valida URL/selectores sin vídeo),
 `POST /api/content/:projectId/:pieceId/upload` (multipart, sube screencast manual → `recordingPath`).
 El endpoint `asset` amplía content-type a `.webm`/`.mov`.
 
 **UI:** `DemoContentModal` (analizar funciones con IA + elegir/editar, modo grabación auto/manual,
-login cifrado, atributos vídeo/voz) lanzado desde el botón «+ Contenido propio» de `ContentTray`.
+login cifrado y configurador compartido fal/HeyGen con avatar/voz/audio) lanzado desde el botón
+«+ Contenido propio» de `ContentTray`.
 `PieceCard` distingue piezas propias (chip «Propio · app»), reproduce la grabación (`recordingPath`)
 y ofrece subida/reemplazo manual de vídeo.
 
-**Refinamientos UX (2026-07-18):** el modelo de vídeo (fal) y la voz (ElevenLabs) del modal usan el
-componente compartido `SelectorAuto` (`src/components/SelectorAuto.tsx`, extraído de REQ-005; carga
-listas vía `GET /api/providers/:provider/options`). El modal explica los modos de grabación; en modo
+**Refinamientos UX (2026-07-18):** ambos modales usan `MediaProviderConfigurator` y `SelectorAuto`;
+cargan opciones vía `GET /api/providers/:provider/options` y muestran previews de voz/avatar.
+El modal explica los modos de grabación; en modo
 manual la zona de subida de `PieceCard` se resalta (borde de acento) cuando la pieza propia aún no
 tiene grabación. La **fuente de código** del proyecto es editable tras crearlo vía
 `PUT /api/projects/:id` (valida `codeType`/`codePath`) + editor «Fuente de código» en `/proyecto/[id]`.
@@ -418,6 +433,17 @@ tiene grabación. La **fuente de código** del proyecto es editable tras crearlo
 dependencia opcional del sistema: su ausencia no impide generar/revisar una pieza, pero deja el
 preview y un aviso instalable (`winget install ffmpeg`). Las rutas del filtro `subtitles` son
 relativas con `cwd=pieceDir` para evitar escapes frágiles de `C:\...`.
+
+**Contratos externos revisados el 2026-07-18:** HeyGen
+[Photo Avatar](https://developers.heygen.com/photo-avatar.md),
+[Create Video](https://developers.heygen.com/reference/create-video.md),
+[List Voices](https://developers.heygen.com/reference/list-voices.md),
+[List Avatar Looks](https://developers.heygen.com/reference/list-avatar-looks.md) y
+[Upload Asset](https://developers.heygen.com/reference/upload-asset.md); fal.ai
+[Queue](https://docs.fal.ai/model-endpoints/queue),
+[Kling v3](https://fal.ai/models/fal-ai/kling-video/v3/standard/text-to-video/api),
+[Seedance](https://fal.ai/models/fal-ai/bytedance/seedance/v1/pro/fast/text-to-video/api) y
+[Luma Ray 2](https://fal.ai/models/fal-ai/luma-dream-machine/ray-2/api).
 
 > Playwright con navegador real y las llamadas a proveedores solo se validan en la máquina del
 > usuario (la shell del agente no tiene red; requiere `npx playwright install chromium` + keys).

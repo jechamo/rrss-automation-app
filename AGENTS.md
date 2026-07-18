@@ -99,9 +99,10 @@ src/app/                      Rutas (App Router)
     content/[projectId]/      GET piezas+runs; [pieceId] PUT/DELETE; [pieceId]/asset sirve asset local (REQ-005)
                               [pieceId]/upload      POST sube screencast manual → recordingPath (REQ-006)
     providers/[provider]/options  GET modelos/voces/avatares para el modal (REQ-005)
+    providers/heygen/upload       POST foto/audio seguro → asset/avatar HeyGen v3
 src/components/               PipelineGraph, DossierEditor, RecentProjects, CompetenciaPanel,
                               CompetenciaEditor, ContentTray, GenerateContentModal, DemoContentModal,
-                              PieceCarousel (carrusel 360 cover-flow, REQ-009)
+                              MediaProviderConfigurator, PieceCarousel (carrusel 360, REQ-009)
 src/core/
   pipeline/                   req001..req006.ts (definen nodos), bus.ts (eventos), engine
   ai/claude-cli.ts            Motor Claude CLI (resolución de binario, exec con timeout)
@@ -112,7 +113,8 @@ src/core/
   content/                    Tipos + extract.ts + guion.ts (REQ-005) + demo.ts (analyze/guion demo, REQ-006)
   media/                      Conectores fal/heygen/elevenlabs/gemini + storage/http/listOptions (REQ-005)
                               + recorder.ts (Playwright móvil, nav_log, storageState, dry-run)
-                              + ffmpeg.ts/assemble.ts (montaje final vertical + SRT + QC)
+                              + ffmpeg.ts/assemble.ts (montaje vertical, presentador+demo, SRT+QC)
+                              + contracts.ts (bodies/errores/polling puros y testeables)
   secrets/login.ts            Credenciales de login cifradas por proyecto sobre el vault (REQ-006/DA-05)
   crawler/                    Crawl de la web (reutilizado por REQ-001 y REQ-002)
 src/lib/                      prisma, vault (cifrado)
@@ -160,13 +162,18 @@ prisma/schema.prisma          Modelo de datos multiproyecto
   elegible**. `ContentPiece` **muchos por proyecto** (bandeja de estados). Pipeline `req005.ts`
   (`input → extract → guion → media → voz → montaje`; montaje FFmpeg real a `final.mp4`, con
   degradación a preview si falta el binario). UI `ContentTray` +
-  `GenerateContentModal`. Apoyo: skill `rrss-content-generation`. **Solo verificable con red+keys en
+  `GenerateContentModal`. **Proveedores revisados (2026-07-18):** HeyGen API v3 (Photo Avatar,
+  voz con preview o audio propio, 9:16/1080p, idempotencia/polling) y fal.ai por contrato
+  (Seedance Pro Fast predeterminado, Kling v3, Luma Ray 2; sin fallback horizontal).
+  Apoyo: skill `rrss-content-generation`. **Solo verificable con red+keys en
   la máquina del usuario** (la shell del agente no tiene red).
 - **REQ-006** (contenido propio — mostrar la app): **implementado** (DA-05 resuelta:
   **credenciales cifradas en el vault por proyecto**, `login:<projectId>`; la contraseña nunca la
   devuelve la API). **Grabación** = **Playwright** móvil (import dinámico, iPhone 13 + `recordVideo`
   + login scriptado) con **fallback a subida manual**. IA propone funciones del dossier; guion
-  **product-led** con **cortes B-roll** (fal.ai) intercalados + locución ElevenLabs. Reutiliza
+  **product-led** con **vídeo generativo o presentador HeyGen** intercalado con el screencast.
+  Con HeyGen conserva el audio continuo, guarda `presenterPath` y degrada al avatar completo.
+  Reutiliza
   `ContentPiece` (`origin="own"`) y `ContentTray`. Pipeline `req006.ts` (`input → grabacion → guion →
   media → voz → montaje`; montaje FFmpeg real). Recorder v2: pasos `goto|tap|fill|wait|scroll`,
   `nav_log` temporal, sesión persistente, captura de error, normalización MP4 y dry-run; análisis

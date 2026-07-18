@@ -1,8 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { coerceNavStep, type DemoConfig, type MediaConfig, type NavStep } from "@/core/content/types";
-import { SelectorAuto, loadOptions, type Option } from "@/components/SelectorAuto";
+import {
+  coerceNavStep,
+  DEFAULT_CONFIG,
+  EMPTY_HEYGEN,
+  type DemoConfig,
+  type MediaConfig,
+  type NavStep,
+} from "@/core/content/types";
+import {
+  MediaProviderConfigurator,
+  mediaProviderError,
+} from "@/components/MediaProviderConfigurator";
 
 type AppFuncion = {
   nombre: string;
@@ -43,33 +53,10 @@ export function DemoContentModal({
   const [loginConfigured, setLoginConfigured] = useState(false);
   const [savingLogin, setSavingLogin] = useState(false);
 
-  const [videoAuto, setVideoAuto] = useState(true);
-  const [videoModelo, setVideoModelo] = useState("");
-  const [vozAuto, setVozAuto] = useState(true);
-  const [vozId, setVozId] = useState("");
-
-  const [videoOpts, setVideoOpts] = useState<Option[]>([]);
-  const [vozOpts, setVozOpts] = useState<Option[]>([]);
-  const [optErr, setOptErr] = useState("");
-
-  // Cortes B-roll = fal.ai; locución = ElevenLabs (misma rama que REQ-006).
-  const refreshOptions = useCallback(async () => {
-    setOptErr("");
-    const v = await loadOptions("fal", "video");
-    setVideoOpts(v.options);
-    const voz = await loadOptions("elevenlabs", "voice");
-    setVozOpts(voz.options);
-    const err = v.error
-      ? `Modelos fal.ai: ${v.error}`
-      : voz.error
-        ? `Voces ElevenLabs: ${voz.error}`
-        : "";
-    if (err) setOptErr(`${err}. Configura la key en Ajustes (o deja "Auto").`);
-  }, []);
-
-  useEffect(() => {
-    refreshOptions();
-  }, [refreshOptions]);
+  const [mediaConfig, setMediaConfig] = useState<MediaConfig>({
+    ...DEFAULT_CONFIG,
+    heygen: { ...EMPTY_HEYGEN },
+  });
 
   const loadLogin = useCallback(async () => {
     const r = await fetch(`/api/projects/${projectId}/login`);
@@ -194,14 +181,10 @@ export function DemoContentModal({
   function submit() {
     if (!funcion.trim()) return;
     const demo = currentDemo();
-    const config: Partial<MediaConfig> = {
-      videoAuto,
-      videoModelo: videoAuto ? "" : videoModelo,
-      vozAuto,
-      vozId: vozAuto ? "" : vozId,
-    };
-    onGenerate(demo, config);
+    onGenerate(demo, mediaConfig);
   }
+
+  const providerError = mediaProviderError(mediaConfig);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -394,32 +377,21 @@ export function DemoContentModal({
             </div>
           )}
 
-          <SelectorAuto
-            label="Modelo de vídeo (fal.ai) — cortes B-roll"
-            auto={videoAuto}
-            setAuto={setVideoAuto}
-            value={videoModelo}
-            setValue={setVideoModelo}
-            options={videoOpts}
-            autoHint="La IA usa el modelo por defecto (LTX Video)"
-          />
-          <SelectorAuto
-            label="Voz (ElevenLabs)"
-            auto={vozAuto}
-            setAuto={setVozAuto}
-            value={vozId}
-            setValue={setVozId}
-            options={vozOpts}
-            autoHint="Voz por defecto del proveedor"
+          <MediaProviderConfigurator
+            value={mediaConfig}
+            onChange={setMediaConfig}
+            disabled={busy}
           />
 
-          {optErr && <div className="text-xs text-[var(--color-state-pending)]">{optErr}</div>}
+          {providerError && (
+            <div className="text-xs text-[var(--color-state-pending)]">{providerError}</div>
+          )}
           {funcsErr && <div className="text-xs text-[var(--color-state-pending)]">{funcsErr}</div>}
 
           <div className="rounded-lg bg-white/5 p-3 text-xs text-white/50">
-            Se genera un guion <b>product-led</b> y cortes B-roll (fal.ai) para intercalar con la grabación
-            real de la app. FFmpeg crea el montaje final; si no está disponible, se conserva el preview.
-            Las keys reales están en Ajustes.
+            Se genera un guion <b>product-led</b> y se combina el vídeo elegido con la grabación real
+            de la app. Si eliges un avatar, puedes narrarlo con una voz del catálogo o con tu propio
+            audio. Las claves se gestionan en Ajustes.
           </div>
 
           <div className="flex justify-end gap-2">
@@ -434,7 +406,8 @@ export function DemoContentModal({
               disabled={
                 busy ||
                 !funcion.trim() ||
-                (grabacionModo === "auto" && Boolean(navStepsError))
+                (grabacionModo === "auto" && Boolean(navStepsError)) ||
+                Boolean(providerError)
               }
               className="rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium disabled:opacity-40"
             >

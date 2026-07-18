@@ -22,6 +22,7 @@ interface VideoSource {
   start?: number;
   end?: number;
   duration?: number;
+  padAfter?: number;
 }
 
 export interface AssembleResult {
@@ -36,6 +37,14 @@ export interface AssembleArgs {
   assets: PieceAssets;
   locucionText: string;
   shots: Shot[];
+}
+
+export interface PresenterDemoArgs {
+  pieceId: string;
+  presenterPath: string;
+  recordingPath: string;
+  locucionText: string;
+  burnSubtitles: boolean;
 }
 
 function existingAsset(rel: string): string | null {
@@ -145,7 +154,11 @@ function filterGraph(sources: VideoSource[], withSubtitles: boolean): string {
     } else if (source.duration !== undefined) {
       trim = `trim=duration=${source.duration.toFixed(2)},`;
     }
-    return `[${source.input}:v]${trim}setpts=PTS-STARTPTS,${VIDEO_FILTER}[v${index}]`;
+    const pad =
+      source.padAfter && source.padAfter > 0
+        ? `,tpad=stop_mode=clone:stop_duration=${source.padAfter.toFixed(2)}`
+        : "";
+    return `[${source.input}:v]${trim}setpts=PTS-STARTPTS,${VIDEO_FILTER}${pad}[v${index}]`;
   });
 
   const labels = sources.map((_, index) => `[v${index}]`).join("");
@@ -277,6 +290,128 @@ export function assemble(args: AssembleArgs): AssembleResult | null {
     qcFrames = fs.readdirSync(dir).some((name) => /^qc_\d+\.jpg$/i.test(name));
   } catch {
     // QC es auxiliar: nunca invalida un montaje ya generado.
+  }
+
+  return {
+    path: path.relative(DATA_DIR, finalAbs).replace(/\\/g, "/"),
+    seconds: ffprobeDuration(finalAbs),
+    subtitlesBurned,
+    qcFrames,
+  };
+}
+
+/**
+ * Montaje para contenido propio con presentador HeyGen:
+ * presentador al inicio y al final, screencast en el centro y el audio continuo
+ * del video HeyGen como pista maestra. Si falta algun recurso o no se puede
+ * medir el presentador devuelve null para conservar el original sin degradarlo.
+ */
+export function assemblePresenterDemo(args: PresenterDemoArgs): AssembleResult | null {
+  if (!hasFfmpeg()) return null;
+
+  const dir = pieceDir(args.pieceId);
+  const presenter = existingAsset(args.presenterPath);
+  const recording = existingAsset(args.recordingPath);
+  if (!presenter || !recording) return null;
+
+  const presenterDuration = ffprobeDuration(presenter);
+  if (!presenterDuration || presenterDuration <= 6) return null;
+  const recordingDuration = ffprobeDuration(recording);
+  const hookSeconds = Math.min(HOOK_SECONDS, presenterDuration / 3);
+  const closingSeconds = Math.min(CLOSING_SECONDS, presenterDuration / 3);
+  const middleSeconds = presenterDuration - hookSeconds - closingSeconds;
+  if (middleSeconds <= 0) return null;
+
+  const inputs: string[] = [];
+  const addInput = (abs: string): number => {
+    const normalized = inputPath(abs, dir);
+    const existing = inputs.indexOf(normalized);
+    if (existing >= 0) return existing;
+    inputs.push(normalized);
+    return inputs.length - 1;
+  };
+  const presenterInput = addInput(presenter);
+  const recordingInput = addInput(recording);
+  const sources: VideoSource[] = [
+    { input: presenterInput, start: 0, end: hookSeconds },
+  ];
+
+  let segments = capSegments(readNavSegments(dir, recordingDuration), middleSeconds);
+  if (segments.length === 0) {
+    const available = recordingDuration ? Math.min(recordingDuration, middleSeconds) : middleSeconds;
+    sources.push({
+      input: recordingInput,
+      start: 0,
+      end: available,
+      padAfter: Math.max(0, middleSeconds - available),
+    });
+  } else {
+    const used = segments.reduce((sum, segment) => sum + segment.end - segment.start, 0);
+    const padding = Math.max(0, middleSeconds - used);
+    segments.forEach((segment, index) => {
+      sources.push({
+        input: recordingInput,
+        start: segment.start,
+        end: segment.end,
+        ...(index === segments.length - 1 && padding > 0 ? { padAfter: padding } : {}),
+      });
+    });
+  }
+
+  sources.push({
+    input: presenterInput,
+    start: presenterDuration - closingSeconds,
+    end: presenterDuration,
+  });
+
+  const wantsSubtitles =
+    args.burnSubtitles &&
+    Boolean(args.locucionText.trim()) &&
+    writeSrt(dir, args.locucionText, presenterDuration);
+  const baseArgs = inputs.flatMap((input) => ["-i", input]);
+  const outputArgs = [
+    "-map",
+    "[v]",
+    "-map",
+    `${presenterInput}:a:0`,
+    "-shortest",
+    "-c:v",
+    "libx264",
+    "-preset",
+    "medium",
+    "-crf",
+    "20",
+    "-c:a",
+    "aac",
+    "-movflags",
+    "+faststart",
+    "final.mp4",
+  ];
+
+  let subtitlesBurned = wantsSubtitles;
+  try {
+    runFfmpeg(
+      ["-y", ...baseArgs, "-filter_complex", filterGraph(sources, wantsSubtitles), ...outputArgs],
+      dir,
+    );
+  } catch (error) {
+    if (!wantsSubtitles) throw error;
+    subtitlesBurned = false;
+    runFfmpeg(
+      ["-y", ...baseArgs, "-filter_complex", filterGraph(sources, false), ...outputArgs],
+      dir,
+    );
+  }
+
+  const finalAbs = path.join(dir, "final.mp4");
+  if (!fs.existsSync(finalAbs)) throw new Error("FFmpeg no genero final.mp4.");
+
+  let qcFrames = false;
+  try {
+    runFfmpeg(["-y", "-i", "final.mp4", "-vf", "fps=1/10", "qc_%d.jpg"], dir);
+    qcFrames = fs.readdirSync(dir).some((name) => /^qc_\d+\.jpg$/i.test(name));
+  } catch {
+    // El control visual no invalida un montaje ya generado.
   }
 
   return {
