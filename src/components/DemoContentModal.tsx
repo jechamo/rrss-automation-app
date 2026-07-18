@@ -226,7 +226,7 @@ export function DemoContentModal({
               </button>
             </div>
             <p className="mb-2 text-[11px] text-white/40">
-              «Analizar con IA» propone funciones de tu app a partir del dossier (REQ-001) y
+              «Analizar con IA» propone funciones de tu app a partir del dossier y
               autorrellena la URL y los pasos. También puedes escribirlos a mano.
             </p>
             {funciones.length > 0 && (

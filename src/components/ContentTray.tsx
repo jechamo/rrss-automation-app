@@ -205,7 +205,7 @@ export function ContentTray({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-bold">Contenido generado (REQ-005 / REQ-006)</h2>
+        <h2 className="text-lg font-bold">Contenido generado</h2>
         <div className="flex items-center gap-2">
           {pieces.length > 0 && (
             <div className="mr-1 flex rounded-lg border border-white/10 p-0.5 text-xs">
@@ -227,7 +227,7 @@ export function ContentTray({
             onClick={() => setShowModal(true)}
             disabled={!canGenerate}
             className="rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium disabled:opacity-40"
-            title={canGenerate ? undefined : "Necesitas virales del nicho (REQ-004) para clonar."}
+            title={canGenerate ? undefined : "Necesitas virales del nicho para clonar."}
           >
             + Clonar viral
           </button>
@@ -235,7 +235,7 @@ export function ContentTray({
             onClick={() => setShowDemoModal(true)}
             disabled={!ready}
             className="rounded-lg border border-[var(--color-accent-2)]/50 px-3 py-2 text-sm font-medium text-[var(--color-accent-2)] hover:bg-[var(--color-accent-2)]/10 disabled:opacity-40"
-            title={ready ? undefined : "Genera primero el dossier (REQ-001)."}
+            title={ready ? undefined : "Genera primero el dossier."}
           >
             + Contenido propio
           </button>
@@ -244,12 +244,14 @@ export function ContentTray({
 
       {!ready && (
         <div className="glass p-4 text-sm text-white/50">
-          Genera el dossier (REQ-001) para crear contenido. Para clonar virales necesitas además REQ-004.
+          Genera el dossier para crear contenido. Para clonar virales necesitas además analizar
+          los virales del nicho.
         </div>
       )}
       {ready && virales.length === 0 && (
         <div className="glass p-4 text-sm text-white/50">
-          No hay virales en el Top (para «Clonar viral» ejecuta REQ-004). Puedes usar «Contenido propio» ya.
+          No hay virales en el Top. Analiza los virales del nicho para usar «Clonar viral»;
+          mientras tanto puedes crear «Contenido propio».
         </div>
       )}
 

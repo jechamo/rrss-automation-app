@@ -132,7 +132,7 @@ export function LeadsPanel({
     <div className="flex flex-col gap-4">
       <div className="relative flex items-center justify-between gap-3 overflow-hidden rounded-xl p-4">
         <CardArt name="bg-leads.webp" fallback="linear-gradient(120deg, rgba(34,211,238,0.28), rgba(124,58,237,0.22))" />
-        <h2 className="relative text-lg font-bold">Clientes potenciales (REQ-003)</h2>
+        <h2 className="relative text-lg font-bold">Clientes potenciales</h2>
         {!leads ? (
           <div className="relative flex items-center gap-2">
             <input
@@ -146,7 +146,7 @@ export function LeadsPanel({
               onClick={() => startRun()}
               disabled={!dossierReady || running || starting}
               className="rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium disabled:opacity-40"
-              title={dossierReady ? undefined : "Genera primero el dossier (REQ-001)."}
+              title={dossierReady ? undefined : "Genera primero el dossier."}
             >
               {running || starting ? "Buscando…" : "Buscar clientes potenciales"}
             </button>
@@ -165,7 +165,7 @@ export function LeadsPanel({
 
       {!dossierReady && (
         <div className="glass p-4 text-sm text-white/50">
-          Genera el dossier (REQ-001) para poder buscar clientes potenciales.
+          Genera el dossier para poder buscar clientes potenciales.
         </div>
       )}
 

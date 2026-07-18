@@ -4,20 +4,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 // Navegación global: SOLO rutas que existen de verdad.
-const NAV: { href: string; label: string; icon: string; hint?: string }[] = [
+const NAV: { href: string; label: string; icon: string }[] = [
   { href: "/", label: "Dashboard", icon: "◈" },
-  { href: "/proyecto/nuevo", label: "Nuevo análisis", icon: "❖", hint: "REQ-001" },
-  { href: "/ajustes", label: "Ajustes", icon: "⚙", hint: "REQ-008" },
+  { href: "/proyecto/nuevo", label: "Nuevo análisis", icon: "❖" },
+  { href: "/ajustes", label: "Ajustes", icon: "⚙" },
 ];
 
 // Secciones dentro de un proyecto (anclas de la página /proyecto/[id]).
-const PROJECT_SECTIONS: { anchor: string; label: string; hint: string }[] = [
-  { anchor: "pipeline", label: "Pipeline", hint: "REQ-001" },
-  { anchor: "dossier", label: "Dossier", hint: "REQ-001" },
-  { anchor: "competencia", label: "Competencia", hint: "REQ-002" },
-  { anchor: "leads", label: "Leads", hint: "REQ-003" },
-  { anchor: "virales", label: "Virales", hint: "REQ-004" },
-  { anchor: "contenido", label: "Contenido", hint: "REQ-005/006" },
+const PROJECT_SECTIONS: { anchor: string; label: string }[] = [
+  { anchor: "pipeline", label: "Pipeline" },
+  { anchor: "dossier", label: "Dossier" },
+  { anchor: "competencia", label: "Competencia" },
+  { anchor: "leads", label: "Leads" },
+  { anchor: "virales", label: "Virales" },
+  { anchor: "contenido", label: "Contenido" },
 ];
 
 export function Sidebar() {
@@ -28,7 +28,7 @@ export function Sidebar() {
   const projectId = inProject ? pathname.split("/")[2] : null;
 
   return (
-    <aside className="w-60 shrink-0 border-r border-white/10 p-4 flex flex-col gap-6 bg-black/20 backdrop-blur">
+    <aside className="flex h-full w-60 shrink-0 flex-col gap-6 overflow-y-auto border-r border-white/10 bg-black/20 p-4 backdrop-blur">
       <Link href="/" className="px-2 block">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/img/logo-lockup.png" alt="LeadView" className="w-full max-w-[180px]" />
@@ -52,11 +52,6 @@ export function Sidebar() {
             >
               <span className="text-base opacity-80">{item.icon}</span>
               <span className="flex-1">{item.label}</span>
-              {item.hint && (
-                <span className="text-[10px] text-white/30 group-hover:text-white/50">
-                  {item.hint}
-                </span>
-              )}
             </Link>
           );
         })}
@@ -76,9 +71,6 @@ export function Sidebar() {
               >
                 <span className="text-xs opacity-50">◦</span>
                 <span className="flex-1">{s.label}</span>
-                <span className="text-[10px] text-white/25 group-hover:text-white/45">
-                  {s.hint}
-                </span>
               </a>
             ))}
           </nav>

@@ -60,8 +60,8 @@ export default function NuevoProyectoPage() {
       <header className="mb-6">
         <h1 className="text-2xl font-bold">Nuevo proyecto</h1>
         <p className="mt-1 text-sm text-white/50">
-          REQ-001 · Analizamos la appweb (y opcionalmente su codigo) para generar el dossier de
-          negocio que alimenta al resto de funcionalidades.
+          Analizamos la appweb y, opcionalmente, su código para generar el dossier de negocio
+          que alimenta al resto de funcionalidades.
         </p>
       </header>
 

@@ -140,7 +140,7 @@ export function ViralesPanel({
     <div className="flex flex-col gap-4">
       <div className="relative flex items-center justify-between gap-3 overflow-hidden rounded-xl p-4">
         <CardArt name="bg-virales.webp" fallback="linear-gradient(120deg, rgba(244,114,182,0.28), rgba(34,211,238,0.22))" />
-        <h2 className="relative text-lg font-bold">Virales del nicho (REQ-004)</h2>
+        <h2 className="relative text-lg font-bold">Virales del nicho</h2>
         <div className="relative flex items-center gap-2">
           {!virales && (
             <>
@@ -173,7 +173,7 @@ export function ViralesPanel({
                 onClick={() => startRun()}
                 disabled={!dossierReady || running || starting}
                 className="rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium disabled:opacity-40"
-                title={dossierReady ? undefined : "Genera primero el dossier (REQ-001)."}
+                title={dossierReady ? undefined : "Genera primero el dossier."}
               >
                 {running || starting ? "Buscando…" : "Buscar virales"}
               </button>
@@ -194,7 +194,7 @@ export function ViralesPanel({
 
       {!dossierReady && (
         <div className="glass p-4 text-sm text-white/50">
-          Genera el dossier (REQ-001) para poder buscar virales del nicho.
+          Genera el dossier para poder buscar virales del nicho.
         </div>
       )}
 

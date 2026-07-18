@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Carousel3D } from "@/components/Carousel3D";
@@ -10,6 +11,7 @@ import type { RecentProject } from "@/components/RecentProjects";
 // Dashboard: carrusel 360 de proyectos. La card central navega al proyecto.
 export function ProjectsCarousel({ projects }: { projects: RecentProject[] }) {
   const router = useRouter();
+  const [navigatingId, setNavigatingId] = useState<string | null>(null);
 
   if (projects.length === 0) {
     return (
@@ -35,7 +37,10 @@ export function ProjectsCarousel({ projects }: { projects: RecentProject[] }) {
       <Carousel3D
         items={projects}
         getKey={(p) => p.id}
-        onSelectCenter={(p) => router.push(`/proyecto/${p.id}`)}
+        onSelectCenter={(p) => {
+          setNavigatingId(p.id);
+          router.push(`/proyecto/${p.id}`);
+        }}
         renderCard={(p, isCenter) => {
           const approved = p.dossierStatus === "approved";
           return (
@@ -68,7 +73,13 @@ export function ProjectsCarousel({ projects }: { projects: RecentProject[] }) {
               </div>
               {isCenter && (
                 <div className="shrink-0 bg-[var(--color-accent)]/90 py-1.5 text-center text-xs font-medium">
-                  Abrir proyecto →
+                  {navigatingId === p.id ? "Abriendo…" : "Abrir proyecto →"}
+                </div>
+              )}
+              {navigatingId === p.id && (
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/75 backdrop-blur-sm">
+                  <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/15 border-r-fuchsia-500 border-t-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.35)]" />
+                  <span className="mt-3 text-xs font-medium text-white/75">Cargando proyecto…</span>
                 </div>
               )}
             </>

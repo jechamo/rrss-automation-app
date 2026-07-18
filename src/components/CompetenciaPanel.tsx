@@ -130,13 +130,13 @@ export function CompetenciaPanel({
     <div className="flex flex-col gap-4">
       <div className="relative flex items-center justify-between overflow-hidden rounded-xl p-4">
         <CardArt name="bg-competencia.webp" fallback="linear-gradient(120deg, rgba(124,58,237,0.35), rgba(34,211,238,0.2))" />
-        <h2 className="relative text-lg font-bold">Competencia (REQ-002)</h2>
+        <h2 className="relative text-lg font-bold">Competencia</h2>
         {!competencia ? (
           <button
             onClick={() => startRun()}
             disabled={!dossierReady || running || starting}
             className="relative rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium disabled:opacity-40"
-            title={dossierReady ? undefined : "Genera primero el dossier (REQ-001)."}
+            title={dossierReady ? undefined : "Genera primero el dossier."}
           >
             {running || starting ? "Analizando…" : "Analizar competencia"}
           </button>
@@ -154,7 +154,7 @@ export function CompetenciaPanel({
 
       {!dossierReady && (
         <div className="glass p-4 text-sm text-white/50">
-          Genera el dossier (REQ-001) para poder analizar la competencia.
+          Genera el dossier para poder analizar la competencia.
         </div>
       )}
 

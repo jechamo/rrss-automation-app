@@ -8,6 +8,7 @@ import { LeadsPanel } from "@/components/LeadsPanel";
 import { ViralesPanel } from "@/components/ViralesPanel";
 import { ContentTray } from "@/components/ContentTray";
 import { EntityLogo } from "@/components/EntityLogo";
+import { ProjectLoading } from "@/components/ProjectLoading";
 
 type RunEvent =
   | { type: "node"; nodeId: string; state: NodeState; detail?: string }
@@ -131,7 +132,7 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
     setRegenerating(false);
   }
 
-  if (!project) return <div className="text-white/50">Cargando…</div>;
+  if (!project) return <ProjectLoading />;
 
   const running = runStatus === "running" || runStatus === "pending";
 
@@ -173,7 +174,7 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
       </header>
 
       <section id="pipeline" className="mb-6 scroll-mt-6">
-        <h2 className="mb-2 text-sm font-semibold text-white/60">Pipeline REQ-001</h2>
+        <h2 className="mb-2 text-sm font-semibold text-white/60">Pipeline de análisis</h2>
         <PipelineGraph nodes={nodes} />
       </section>
 
@@ -415,7 +416,7 @@ function SourceEditor({
   return (
     <div className="glass p-4">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-white/60">Fuente de código (REQ-001 / REQ-006)</h2>
+        <h2 className="text-sm font-semibold text-white/60">Fuente de código</h2>
         {saved && <span className="text-xs text-[var(--color-state-ok)]">Guardado ✓</span>}
       </div>
       <div className="mb-3 flex flex-wrap gap-2">
@@ -444,7 +445,7 @@ function SourceEditor({
       )}
       <p className="mt-2 text-[11px] text-white/40">
         Aquí va la <b>ruta del repo del PC</b> (tipo «Ruta local»). Afecta a las próximas
-        ejecuciones; vuelve a generar el dossier (REQ-001) para reanalizar con la nueva ruta.
+        ejecuciones; vuelve a generar el dossier para reanalizar con la nueva ruta.
       </p>
       {err && <div className="mt-2 text-xs text-[var(--color-state-error)]">{err}</div>}
       <div className="mt-3">

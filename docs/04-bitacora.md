@@ -17,7 +17,7 @@
 | REQ-006 | Generación de contenido propio de la app | 🟡 Implementado (login cifrado, recorder v2 con nav_log/storageState/dry-run, repo-scan y montaje FFmpeg) — pendiente prueba real con red+keys+navegador Playwright |
 | REQ-007 | Skills | 🟡 Pase de curación hecho (skills de proyecto + catálogo, DA-06 resuelta); feature UI aplazada |
 | REQ-008 | Configuración de herramientas/APIs (Ajustes) | 🟡 Base construida (shell de Ajustes) |
-| REQ-009 | Experiencia visual | 🟡 Implementado (hero con aurora, tarjetas con elevación 3D + entrada escalonada, carrusel 360 cover-flow de piezas, skeletons, transiciones de estado) — pendiente visto bueno del usuario |
+| REQ-009 | Experiencia visual | 🟡 Implementado (dashboard por vistas con carruseles 360, arte IA, tarjetas 3D, loaders, sidebar fija y transiciones de estado) — pendiente visto bueno del usuario |
 | REQ-010 | Publicación asistida en redes | 🟡 Implementado (D-06: descargar vídeo + copiar copy + abrir red; sin APIs/tokens; marca `publicado` con `publishedTo`/`publishedAt`) — pendiente pruebas del usuario |
 
 Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
@@ -25,6 +25,25 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 ---
 
 ## Historial
+
+### 2026-07-18 — Dashboard por vistas + navegación persistente
+
+**Dashboard:**
+- Cabecera reducida al logo de LeadView; eliminados el claim, «Fase actual» y las tarjetas CTA
+  grandes. «Nuevo análisis» y «Ajustes» pasan a botones compactos.
+- Nuevo `DashboardHub`: dos cards seleccionables (Proyectos / Piezas de contenido) con los contadores
+  integrados. Cada selección muestra sólo su carrusel 360; Proyectos es la vista inicial.
+- Nuevo `DashboardPiecesCarousel`: reúne piezas recientes de todos los proyectos, sirve su preview
+  por el endpoint de assets y abre el proyecto directamente en `#contenido`.
+- Dos ilustraciones generadas con IA (`dashboard-projects.webp` / `dashboard-pieces.webp`),
+  recortadas a 1280×720 y optimizadas (58/49 KB), con fallback CSS.
+
+**Navegación:**
+- Spinner desde el clic en una tarjeta de proyecto y loader compartido durante la transición/fetch
+  inicial (`ProjectLoading` + `proyecto/[id]/loading.tsx`).
+- Eliminados los códigos `REQ-00X` de los textos visibles (menú, títulos, ayudas y nuevo proyecto);
+  los identificadores internos de pipeline/BD/API y la documentación se conservan.
+- App shell de altura de viewport: sidebar fija con scroll propio y contenido principal desplazable.
 
 ### 2026-07-18 — Adopción de video-factory + refinamientos visuales y scoring
 
