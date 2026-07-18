@@ -15,6 +15,16 @@ type Provider = {
   lastChecked: string | null;
 };
 
+type SystemTool = {
+  name: string;
+  label: string;
+  found: boolean;
+  path: string;
+  version: string;
+  source: "env" | "path" | "winget" | "missing";
+  installHint: string;
+};
+
 export default function AjustesPage() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [aiEngine, setAiEngine] = useState<string>("claude-cli");
@@ -52,12 +62,78 @@ export default function AjustesPage() {
         <ModelSelector value={aiModel} onChange={setAiModel} />
       </div>
 
+      <div className="mt-4">
+        <SystemToolsCard />
+      </div>
+
       <div className="mt-6 flex flex-col gap-4">
         {providers.map((p) => (
           <ProviderCard key={p.id} p={p} onChanged={load} />
         ))}
       </div>
     </div>
+  );
+}
+
+function SystemToolsCard() {
+  const [tools, setTools] = useState<SystemTool[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async (refresh = false) => {
+    setLoading(true);
+    const response = await fetch(`/api/system/tools${refresh ? "?refresh=1" : ""}`, { cache: "no-store" });
+    const data = (await response.json()) as { tools?: SystemTool[] };
+    setTools(data.tools ?? []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return (
+    <section className="glass p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold">Herramientas del sistema</div>
+          <p className="mt-1 text-xs text-white/45">
+            Se comprueban desde el mismo proceso que ejecuta los montajes. La detección de Claude CLI no se modifica.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => load(true)}
+          disabled={loading}
+          className="rounded-lg border border-white/15 px-3 py-2 text-xs hover:bg-white/5 disabled:opacity-40"
+        >
+          {loading ? "Comprobando…" : "Volver a comprobar"}
+        </button>
+      </div>
+
+      <div className="mt-4 grid gap-2">
+        {tools.map((tool) => (
+          <div key={tool.name} className="rounded-xl border border-white/10 bg-black/20 p-3">
+            <div className="flex items-center gap-2 text-sm">
+              <span className={tool.found ? "text-[var(--color-state-ok)]" : "text-[var(--color-state-error)]"}>
+                {tool.found ? "✓" : "✕"}
+              </span>
+              <span className="font-medium">{tool.label}</span>
+              {tool.found && <span className="ml-auto text-[10px] uppercase text-white/35">{tool.source}</span>}
+            </div>
+            {tool.found ? (
+              <>
+                <div className="mt-1 truncate text-[11px] text-white/45" title={tool.path}>{tool.path}</div>
+                <div className="truncate text-[11px] text-white/30" title={tool.version}>{tool.version}</div>
+              </>
+            ) : (
+              <code className="mt-2 block rounded bg-black/30 px-2 py-1 text-[11px] text-white/65">
+                {tool.installHint}
+              </code>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

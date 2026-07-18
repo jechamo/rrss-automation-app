@@ -261,7 +261,7 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
 
       {dossier && (
         <section id="contenido" className="mt-8 scroll-mt-6 border-t border-white/10 pt-8">
-          <ContentTray projectId={id} ready={!!dossier} />
+          <ContentTray projectId={id} projectUrl={project?.url ?? ""} ready={!!dossier} />
         </section>
       )}
     </div>

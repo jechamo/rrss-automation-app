@@ -13,6 +13,7 @@ import {
   MediaProviderConfigurator,
   mediaProviderError,
 } from "@/components/MediaProviderConfigurator";
+import { SelfRecordModal, type SavedMediaAsset } from "@/components/SelfRecordModal";
 
 type AppFuncion = {
   nombre: string;
@@ -21,6 +22,8 @@ type AppFuncion = {
   pasos: string[];
   navSteps?: NavStep[];
 };
+
+type RecordingAsset = SavedMediaAsset & { kind: string; duration: number | null };
 
 export function DemoContentModal({
   projectId,
@@ -46,7 +49,10 @@ export function DemoContentModal({
   const [dryRunState, setDryRunState] = useState<"idle" | "testing" | "ok" | "error">("idle");
   const [dryRunMessage, setDryRunMessage] = useState("");
 
-  const [grabacionModo, setGrabacionModo] = useState<"auto" | "manual">("auto");
+  const [grabacionModo, setGrabacionModo] = useState<"auto" | "manual" | "library">("auto");
+  const [recordingAssetId, setRecordingAssetId] = useState("");
+  const [recordings, setRecordings] = useState<RecordingAsset[]>([]);
+  const [showRecorder, setShowRecorder] = useState(false);
   const [usarLogin, setUsarLogin] = useState(false);
   const [loginUser, setLoginUser] = useState("");
   const [loginPass, setLoginPass] = useState("");
@@ -69,6 +75,15 @@ export function DemoContentModal({
   useEffect(() => {
     loadLogin();
   }, [loadLogin]);
+
+  const loadRecordings = useCallback(async () => {
+    const response = await fetch(`/api/projects/${projectId}/media`, { cache: "no-store" });
+    if (!response.ok) return;
+    const data = (await response.json()) as { assets?: RecordingAsset[] };
+    setRecordings((data.assets ?? []).filter((asset) => ["recording", "video", "clip"].includes(asset.kind)));
+  }, [projectId]);
+
+  useEffect(() => { loadRecordings(); }, [loadRecordings]);
 
   async function analizar() {
     setLoadingFuncs(true);
@@ -144,6 +159,7 @@ export function DemoContentModal({
       ...(navSteps?.length ? { navSteps } : {}),
       usarLogin,
       grabacionModo,
+      ...(grabacionModo === "library" && recordingAssetId ? { recordingAssetId } : {}),
     };
   }
 
@@ -294,7 +310,7 @@ export function DemoContentModal({
           <div>
             <span className="mb-1 block text-xs text-white/50">Grabación de la app</span>
             <div className="flex gap-2">
-              {(["auto", "manual"] as const).map((m) => (
+              {(["auto", "manual", "library"] as const).map((m) => (
                 <button
                   key={m}
                   onClick={() => setGrabacionModo(m)}
@@ -305,16 +321,30 @@ export function DemoContentModal({
                       : "border-white/15 hover:bg-white/5",
                   ].join(" ")}
                 >
-                  {m === "auto" ? "Automática (Playwright móvil)" : "Manual (subir vídeo)"}
+                  {m === "auto" ? "Automática" : m === "manual" ? "Subir después" : "Mediateca / REC"}
                 </button>
               ))}
             </div>
             <p className="mt-1 text-[11px] text-white/40">
               {grabacionModo === "auto"
                 ? "Playwright abre tu app en tamaño móvil, navega los pasos y graba sola (requiere que la app sea accesible + login si lo marcas)."
-                : "Se crea la pieza sin grabar; luego sube tu vídeo en su tarjeta con el botón «Subir vídeo de la app»."}
+                : grabacionModo === "manual"
+                  ? "Se crea la pieza sin grabar; luego sube tu vídeo en su tarjeta."
+                  : "Elige una grabación reutilizable o graba ahora con REC/STOP."}
             </p>
           </div>
+
+          {grabacionModo === "library" && (
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+              <label className="text-xs text-white/55">Grabación de la mediateca
+                <select className="input mt-1" value={recordingAssetId} onChange={(event) => setRecordingAssetId(event.target.value)}>
+                  <option value="">Selecciona una grabación…</option>
+                  {recordings.map((asset) => <option key={asset.id} value={asset.id}>{asset.name}{asset.duration ? ` · ${asset.duration.toFixed(1)}s` : ""}</option>)}
+                </select>
+              </label>
+              <button type="button" onClick={() => setShowRecorder(true)} className="mt-2 rounded-lg bg-red-500 px-3 py-2 text-xs font-semibold text-white">● Grabar ahora</button>
+            </div>
+          )}
 
           {grabacionModo === "auto" && (
             <div className="flex flex-col gap-2">
@@ -407,6 +437,7 @@ export function DemoContentModal({
                 busy ||
                 !funcion.trim() ||
                 (grabacionModo === "auto" && Boolean(navStepsError)) ||
+                (grabacionModo === "library" && !recordingAssetId) ||
                 Boolean(providerError)
               }
               className="rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium disabled:opacity-40"
@@ -416,6 +447,18 @@ export function DemoContentModal({
           </div>
         </div>
       </div>
+      {showRecorder && (
+        <SelfRecordModal
+          projectId={projectId}
+          initialUrl={funcionUrl}
+          onClose={() => setShowRecorder(false)}
+          onSaved={async (asset) => {
+            await loadRecordings();
+            setRecordingAssetId(asset.id);
+            setShowRecorder(false);
+          }}
+        />
+      )}
     </div>
   );
 }

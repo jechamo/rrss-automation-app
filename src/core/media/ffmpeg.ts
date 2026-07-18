@@ -1,4 +1,5 @@
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
+import { systemToolPath } from "./bintools";
 
 // Utilidades FFmpeg/ffprobe para el montaje real (D-12).
 // Degradacion obligatoria: si el binario no esta instalado, hasFfmpeg()/hasFfprobe()
@@ -6,28 +7,14 @@ import { execFileSync, spawnSync } from "node:child_process";
 // En Windows se usa execFileSync con array de args (NO string de shell) para evitar
 // el infierno de quoting de cmd; el filtro `subtitles` se resuelve con cwd + rutas relativas.
 
-let _hasFfmpeg: boolean | null = null;
-let _hasFfprobe: boolean | null = null;
-
-function probeBinary(bin: string): boolean {
-  try {
-    const r = spawnSync(bin, ["-version"], { stdio: "ignore" });
-    return r.status === 0;
-  } catch {
-    return false;
-  }
-}
-
-/** ¿Esta ffmpeg disponible en el PATH? (cacheado) */
+/** ¿Esta ffmpeg disponible en PATH, override o WinGet? (cacheado en bintools) */
 export function hasFfmpeg(): boolean {
-  if (_hasFfmpeg === null) _hasFfmpeg = probeBinary("ffmpeg");
-  return _hasFfmpeg;
+  return Boolean(systemToolPath("ffmpeg"));
 }
 
-/** ¿Esta ffprobe disponible en el PATH? (cacheado) */
+/** ¿Esta ffprobe disponible en PATH, override o WinGet? */
 export function hasFfprobe(): boolean {
-  if (_hasFfprobe === null) _hasFfprobe = probeBinary("ffprobe");
-  return _hasFfprobe;
+  return Boolean(systemToolPath("ffprobe"));
 }
 
 /**
@@ -38,7 +25,7 @@ export function ffprobeDuration(absPath: string): number | null {
   if (!hasFfprobe()) return null;
   try {
     const out = execFileSync(
-      "ffprobe",
+      systemToolPath("ffprobe")!,
       ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", absPath],
       { encoding: "utf8" },
     );
@@ -55,5 +42,7 @@ export function ffprobeDuration(absPath: string): number | null {
  * Lanza si ffmpeg devuelve un codigo != 0.
  */
 export function runFfmpeg(args: string[], cwd?: string): void {
-  execFileSync("ffmpeg", args, { cwd, stdio: "inherit" });
+  const binary = systemToolPath("ffmpeg");
+  if (!binary) throw new Error("FFmpeg no esta instalado o no se puede ejecutar.");
+  execFileSync(binary, args, { cwd, stdio: "inherit" });
 }

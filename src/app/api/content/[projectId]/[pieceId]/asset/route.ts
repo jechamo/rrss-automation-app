@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { NextRequest, NextResponse } from "next/server";
 import { assetAbsPath } from "@/core/media/storage";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -9,13 +10,14 @@ export async function GET(
   req: NextRequest,
   ctx: { params: Promise<{ projectId: string; pieceId: string }> },
 ) {
-  const { pieceId } = await ctx.params;
+  const { projectId, pieceId } = await ctx.params;
   const params = new URL(req.url).searchParams;
   const rel = params.get("path") ?? "";
   const download = params.get("download") === "1";
   // Solo se sirven assets dentro del directorio de la propia pieza.
   if (!rel.startsWith(`media/${pieceId}/`)) {
-    return NextResponse.json({ error: "Ruta invalida." }, { status: 400 });
+    const libraryAsset = await prisma.mediaAsset.findFirst({ where: { projectId, path: rel }, select: { id: true } });
+    if (!libraryAsset) return NextResponse.json({ error: "Ruta invalida." }, { status: 400 });
   }
 
   let abs: string;

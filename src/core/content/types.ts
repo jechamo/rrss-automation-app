@@ -37,7 +37,7 @@ export interface PieceContent {
 }
 
 /** Modo de grabacion de la demo (REQ-006). */
-export type GrabacionModo = "auto" | "manual"; // auto = Playwright movil | manual = subir screencast
+export type GrabacionModo = "auto" | "manual" | "library";
 
 /** Accion de navegacion ejecutable por Playwright (REQ-006 recorder v2). */
 export type NavAction = "goto" | "tap" | "fill" | "wait" | "scroll";
@@ -64,6 +64,7 @@ export interface DemoConfig {
   videosPrevios?: number; // anti-repeticion: piezas anteriores de esta funcion
   usarLogin: boolean; // requiere login (credenciales cifradas por proyecto en el vault)
   grabacionModo: GrabacionModo;
+  recordingAssetId?: string; // REQ-011: grabación reutilizable elegida de la mediateca
 }
 
 /** Como se narra un video de avatar HeyGen. */
@@ -284,13 +285,16 @@ export function coerceContent(raw: unknown): PieceContent {
 
 export function coerceDemo(raw: unknown): DemoConfig {
   const o = (raw ?? {}) as Record<string, unknown>;
+  const rawMode = str(o.grabacionModo);
   const demo: DemoConfig = {
     funcion: str(o.funcion),
     funcionUrl: str(o.funcionUrl),
     pasos: strArr(o.pasos),
     usarLogin: bool(o.usarLogin, false),
-    grabacionModo: str(o.grabacionModo) === "manual" ? "manual" : "auto",
+    grabacionModo: rawMode === "manual" || rawMode === "library" ? rawMode : "auto",
   };
+  const recordingAssetId = str(o.recordingAssetId);
+  if (recordingAssetId) demo.recordingAssetId = recordingAssetId;
   const navSteps = arr(o.navSteps ?? o.nav_steps)
     .map(coerceNavStep)
     .filter((step): step is NavStep => step !== null);

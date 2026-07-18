@@ -553,6 +553,37 @@ en `coerceAssets`. La subida 100% automática por API oficial queda fuera de alc
 
 ---
 
+## 8.9. Arquitectura concreta de REQ-011 (mediateca, REC y MIX)
+
+**Compatibilidad:** implementación aditiva. `ContentPiece.assets`, `assemble()` y
+`assemblePresenterDemo()` permanecen. La mediateca indexa recursos existentes idempotentemente y
+los nuevos pipelines registran el mismo fichero sin duplicar bytes.
+
+**Datos Prisma:**
+- `MediaAsset`: proyecto, pieza opcional, tipo, origen, nombre, ruta, MIME, tamaño, duración,
+  dimensiones, metadata JSON y fechas; ruta única por proyecto.
+- `MixComposition`: proyecto, pieza opcional, nombre, estado, receta JSON, salida/error y fechas.
+
+**Módulos:** `bintools.ts` resuelve yt-dlp/FFmpeg/ffprobe sin importar ni modificar
+`claude-cli.ts`; `library.ts` registra e indexa assets; `subtitles.ts` genera ASS 1080×1920;
+`mix.ts` valida la receta y ejecuta `assembleMix()`.
+
+**API:** `GET /api/system/tools`; CRUD bajo `/api/projects/:id/media`; servicio protegido de
+ficheros; y CRUD/render/usar-final bajo `/api/projects/:id/mixes`.
+
+**Grabador:** `SelfRecordModal` usa `getDisplayMedia` + `MediaRecorder`. La captura permanece local
+hasta Guardar; se sube como WebM y se normaliza de forma best-effort sin perder el original.
+
+**Subtítulos:** ASS con `PlayResX=1080`, `PlayResY=1920`, alineación inferior, margen de zona segura,
+máximo dos líneas y alto contraste. El audio propio exige texto. El final falla cerrado si no puede
+quemar subtítulos.
+
+**MIX:** receta determinista por bloques. `assembleMix()` concatena vídeo normalizado, usa la
+locución como pista maestra, mezcla música opcional, quema ASS y crea `mix-<id>.mp4`. No cambia
+`PieceAssets.videoPath` hasta la acción explícita `useAsFinal`.
+
+---
+
 ## 9. Arquitectura concreta de REQ-001 (primer requisito)
 
 **Nodos del pipeline** (Diseño §5):

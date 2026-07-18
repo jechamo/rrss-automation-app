@@ -12,7 +12,7 @@ import { generateDemoGuion, type AppFuncion } from "@/core/content/demo";
 import { recordDemo } from "@/core/media/recorder";
 import { getLogin } from "@/core/secrets/login";
 import { fal, heygen, elevenlabs } from "@/core/media";
-import { assemble, assemblePresenterDemo } from "@/core/media/assemble";
+import { assemble, assemblePresenterDemo, captionVideo } from "@/core/media/assemble";
 import { hasFfmpeg } from "@/core/media/ffmpeg";
 import type { PipelineDef, PipelineNode } from "./engine";
 
@@ -56,6 +56,17 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
       } catch {
         /* assets vacios */
       }
+      if (config.demo.recordingAssetId) {
+        const media = await prisma.mediaAsset.findFirst({
+          where: {
+            id: config.demo.recordingAssetId,
+            projectId: ctx.project.id,
+            kind: { in: ["recording", "video", "clip"] },
+          },
+        });
+        if (!media) throw new Error("La grabacion elegida ya no existe en la mediateca.");
+        assets.recordingPath = media.path;
+      }
 
       ctx.artifacts.dossier = dossier;
       ctx.artifacts.config = config;
@@ -77,9 +88,9 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
       const demo = ctx.artifacts.demo as DemoConfig;
       const assets = ctx.artifacts.assets as PieceAssets;
 
-      if (demo.grabacionModo === "manual") {
+      if (demo.grabacionModo === "manual" || demo.grabacionModo === "library") {
         if (assets.recordingPath) {
-          ctx.log("Screencast subido a mano: se usa como grabacion de la app.");
+          ctx.log("Grabacion manual/mediateca: se usa como video real de la app.");
         } else {
           ctx.log("Modo manual: sube el screencast en la pieza cuando la tengas (se intercalara luego).");
         }
@@ -241,6 +252,8 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
       const config = ctx.artifacts.config as MediaConfig;
       const assets = ctx.artifacts.assets as PieceAssets;
       const content = ctx.artifacts.content as PieceContent;
+      const subtitleText = content.guion.locucion || content.guion.desarrollo;
+      let finalReady = !subtitleText.trim();
 
       if (!assets.recordingPath) {
         const message =
@@ -249,45 +262,46 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
             : "Falta la grabacion de la app: subela a mano para completar el montaje.";
         assets.logs.push(message);
         ctx.log(message);
-      } else if (!hasFfmpeg()) {
+      }
+      if (!hasFfmpeg()) {
         const warning =
-          "FFmpeg no encontrado: instala con 'winget install ffmpeg' y pulsa Regenerar. Se conserva el video actual.";
+          "FFmpeg no encontrado: se conserva el preview, pero no se marca como final porque faltan subtitulos.";
         assets.logs.push(warning);
         ctx.log(warning);
       } else {
         try {
           const result =
-            config.rama === "heygen"
+            config.rama === "heygen" && assets.recordingPath
               ? assemblePresenterDemo({
                   pieceId,
                   presenterPath: assets.presenterPath || assets.videoPath,
                   recordingPath: assets.recordingPath,
                   locucionText: content.guion.locucion || content.guion.desarrollo,
-                  // El audio propio puede no coincidir con el guion generado.
-                  burnSubtitles: config.heygen?.narracion !== "audio",
+                  // REQ-011: cualquier salida con voz lleva subtitulos. Para audio
+                  // propio el texto del guion actua como transcripcion editable.
+                  burnSubtitles: true,
                 })
-              : assemble({
+              : config.rama === "heygen"
+                ? captionVideo({
+                    pieceId,
+                    videoPath: assets.presenterPath || assets.videoPath,
+                    locucionText: subtitleText,
+                  })
+                : assemble({
                   pieceId,
                   assets,
-                  locucionText: content.guion.locucion || content.guion.desarrollo,
+                  locucionText: subtitleText,
                   shots: content.escaleta,
                 });
           if (result) {
             assets.videoPath = result.path;
+            finalReady = !subtitleText.trim() || result.subtitlesBurned;
             const duration = result.seconds ? ` (${result.seconds.toFixed(1)}s)` : "";
             const message =
               config.rama === "heygen"
                 ? `Presentador y grabacion montados${duration}.`
                 : `Montaje FFmpeg completado${duration}.`;
             assets.logs.push(message);
-            if (
-              config.heygen?.narracion !== "audio" &&
-              !result.subtitlesBurned
-            ) {
-              assets.logs.push(
-                "FFmpeg no pudo quemar subtitulos (falta soporte libass); se genero el video sin ellos.",
-              );
-            }
             if (result.qcFrames) assets.logs.push("Frames de control de calidad generados.");
             ctx.log(message);
           } else {
@@ -304,11 +318,11 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
         where: { id: pieceId },
         data: {
           assets: JSON.stringify(assets),
-          status: "listo",
+          status: finalReady ? "listo" : "error",
           version: { increment: 1 },
         },
       });
-      ctx.log("Pieza lista para revision.");
+      ctx.log(finalReady ? "Pieza lista para revision." : "Pieza conservada, pendiente de montaje con subtitulos.");
     },
   };
 

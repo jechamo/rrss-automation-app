@@ -9,7 +9,7 @@
 
 App **web local** (corre en `localhost`) = cadena de automatización para crear
 contenido de redes sociales (RRSS) a partir de una appweb. Se construye por
-requisitos **REQ-001 … REQ-010**, uno a uno, con validación del usuario entre cada uno.
+requisitos **REQ-001 … REQ-011**, uno a uno, con validación del usuario entre cada uno.
 
 - **Metodología:** SDD (Spec-Driven Development). Orden: Requisitos → Diseño → Arquitectura → Código.
 
@@ -50,9 +50,11 @@ requisitos **REQ-001 … REQ-010**, uno a uno, con validación del usuario entre
 - **SSE** (ReadableStream) para progreso en vivo; bus EventEmitter en memoria (`src/core/pipeline/bus.ts`).
 - **FFmpeg/ffprobe del sistema** para montaje final (opcional: si falta, la pieza conserva el preview
   y muestra el comando `winget install ffmpeg`; no debe romper el run).
+  Resolución por PATH/override/WinGet en `src/core/media/bintools.ts`.
 - **yt-dlp del sistema** (opcional, como FFmpeg): para el análisis multimodal de Gemini de
   TikTok/Instagram (`ytdlp.ts` → `hasYtDlp()`). YouTube no lo necesita (URL nativa). Si falta,
   el análisis degrada a los datos de REQ-004 sin romper el run.
+  También se detecta dentro de WinGet aunque no esté en PATH.
 - **Motor IA:** Claude Code CLI en modo headless (`-p --output-format json`), plan Pro = sin coste de API.
   Resolución del binario en `src/core/ai/claude-cli.ts` (`resolveBinary`), en este orden:
   1. `CLAUDE_CLI_PATH` (env, override manual).
@@ -103,9 +105,13 @@ src/app/                      Rutas (App Router)
                               [pieceId]/upload      POST sube screencast manual → recordingPath (REQ-006)
     providers/[provider]/options  GET modelos/voces/avatares para el modal (REQ-005)
     providers/heygen/upload       POST foto/audio seguro → asset/avatar HeyGen v3
+    system/tools                  GET estado/ruta/versión yt-dlp/FFmpeg/ffprobe (REQ-011)
+    projects/[id]/media           Mediateca: listar/subir/renombrar/eliminar/servir
+    projects/[id]/mixes           MIX: renderizar, usar como final y eliminar
 src/components/               PipelineGraph, DossierEditor, RecentProjects, CompetenciaPanel,
                               CompetenciaEditor, ContentTray, GenerateContentModal, DemoContentModal,
                               MediaProviderConfigurator, PieceCarousel (carrusel 360, REQ-009)
+                              MediaStudio, SelfRecordModal, MixStudioPanel (REQ-011)
 src/core/
   pipeline/                   req001..req006.ts (definen nodos), bus.ts (eventos), engine
   ai/claude-cli.ts            Motor Claude CLI (resolución de binario, exec con timeout)
@@ -118,6 +124,7 @@ src/core/
                               + recorder.ts (Playwright móvil, nav_log, storageState, dry-run)
                               + ffmpeg.ts/assemble.ts (montaje vertical, presentador+demo, SRT+QC)
                               + contracts.ts (bodies/errores/polling puros y testeables)
+                              + bintools/library/subtitles/mix (REQ-011)
   secrets/login.ts            Credenciales de login cifradas por proyecto sobre el vault (REQ-006/DA-05)
   crawler/                    Crawl de la web (reutilizado por REQ-001 y REQ-002)
 src/lib/                      prisma, vault (cifrado)
@@ -199,6 +206,9 @@ prisma/schema.prisma          Modelo de datos multiproyecto
   `core/content/publish.ts` (targets + `composeCaption`), descarga por `?download=1`, y persistencia
   de `publishedTo`/`publishedAt` en `assets`. Botón **«Publicar ↗»** en `PieceCard`. Subida automática
   por API oficial (OAuth por plataforma) queda **fuera de alcance**.
+- **REQ-011** (estudio audiovisual): **implementado**. Detección WinGet de herramientas, subtítulos
+  ASS obligatorios abajo, mediateca, grabador REC/STOP, `assembleMix()` aditivo y Guía detallada.
+  Pendiente validación manual del selector de pantalla en el navegador del usuario.
 - **Rediseño visual (2026-07-18):** componentes reutilizables `Carousel3D`/`ExpandableCarousel`/
   `ScoreBar`/`EntityLogo`/`MiniMap`/`CardArt`/`ProjectsCarousel` (sin paquetes ni keys). Dashboard y
   secciones competencia/leads/virales con **carrusel 360 + detalle desplegable**, scoring, logos por

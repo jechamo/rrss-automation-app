@@ -6,6 +6,7 @@ import { GenerateContentModal } from "@/components/GenerateContentModal";
 import { DemoContentModal } from "@/components/DemoContentModal";
 import { PieceCarousel } from "@/components/PieceCarousel";
 import { PublishModal } from "@/components/PublishModal";
+import { SelfRecordModal } from "@/components/SelfRecordModal";
 import type { ContentPiece, DemoConfig, MediaConfig } from "@/core/content/types";
 
 type RunEvent =
@@ -50,9 +51,11 @@ const STATUS_META: Record<string, { text: string; color: string }> = {
 
 export function ContentTray({
   projectId,
+  projectUrl,
   ready,
 }: {
   projectId: string;
+  projectUrl: string;
   ready: boolean;
 }) {
   const [pieces, setPieces] = useState<ContentPiece[]>([]);
@@ -60,6 +63,7 @@ export function ContentTray({
   const [virales, setVirales] = useState<ViralPick[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showDemoModal, setShowDemoModal] = useState(false);
+  const [recordingPieceId, setRecordingPieceId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [view, setView] = useState<"lista" | "carrusel">("lista");
   const [focusedPieceId, setFocusedPieceId] = useState<string | null>(null);
@@ -194,6 +198,28 @@ export function ContentTray({
     if (r.ok) load();
   }
 
+  async function attachRecording(pieceId: string, assetId: string) {
+    const response = await fetch(`/api/content/${projectId}/${pieceId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ recordingAssetId: assetId }),
+    });
+    if (!response.ok) {
+      const data = (await response.json()) as { error?: string };
+      window.alert(data.error || "No se pudo adjuntar la grabación.");
+      return;
+    }
+    await load();
+  }
+
+  async function clearRecording(pieceId: string) {
+    if (!window.confirm("¿Quitar esta grabación de la pieza? El original de la mediateca se conserva.")) return;
+    await fetch(`/api/content/${projectId}/${pieceId}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clearRecording: true }),
+    });
+    await load();
+  }
+
   async function removePiece(pieceId: string) {
     if (!confirm("¿Eliminar esta pieza de contenido?")) return;
     await fetch(`/api/content/${projectId}/${pieceId}`, { method: "DELETE" });
@@ -296,6 +322,8 @@ export function ContentTray({
                 onRegenerate={() => (focus.origin === "own" ? setShowDemoModal(true) : setShowModal(true))}
                 onDelete={() => removePiece(focus.id)}
                 onUpload={(file) => uploadScreencast(focus.id, file)}
+                onRecord={() => setRecordingPieceId(focus.id)}
+                onClearRecording={() => clearRecording(focus.id)}
                 onReload={load}
               />
             );
@@ -314,6 +342,8 @@ export function ContentTray({
                 onRegenerate={() => (p.origin === "own" ? setShowDemoModal(true) : setShowModal(true))}
                 onDelete={() => removePiece(p.id)}
                 onUpload={(file) => uploadScreencast(p.id, file)}
+                onRecord={() => setRecordingPieceId(p.id)}
+                onClearRecording={() => clearRecording(p.id)}
                 onReload={load}
               />
             </div>
@@ -338,6 +368,17 @@ export function ContentTray({
           busy={busy}
         />
       )}
+      {recordingPieceId && (
+        <SelfRecordModal
+          projectId={projectId}
+          initialUrl={projectUrl}
+          onClose={() => setRecordingPieceId(null)}
+          onSaved={async (asset) => {
+            await attachRecording(recordingPieceId, asset.id);
+            setRecordingPieceId(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -351,6 +392,8 @@ function PieceCard({
   onRegenerate,
   onDelete,
   onUpload,
+  onRecord,
+  onClearRecording,
   onReload,
 }: {
   projectId: string;
@@ -361,6 +404,8 @@ function PieceCard({
   onRegenerate: () => void;
   onDelete: () => void;
   onUpload: (file: File) => void;
+  onRecord: () => void;
+  onClearRecording: () => void;
   onReload: () => void;
 }) {
   const [showPublish, setShowPublish] = useState(false);
@@ -495,8 +540,10 @@ function PieceCard({
               : "border border-dashed border-[var(--color-accent)]/50 bg-[var(--color-accent)]/5",
           ].join(" ")}
         >
-          <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs text-white/50">Grabación de la app</span>
+            <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={onRecord} className="rounded-lg bg-red-500 px-2 py-1 text-xs font-semibold text-white hover:bg-red-400">● REC</button>
             <label
               className={[
                 "cursor-pointer rounded-lg px-2 py-1 text-xs",
@@ -517,6 +564,8 @@ function PieceCard({
                 }}
               />
             </label>
+            {piece.assets.recordingPath && <button type="button" onClick={onClearRecording} className="rounded-lg border border-red-400/20 px-2 py-1 text-xs text-red-300 hover:bg-red-500/10">Quitar</button>}
+            </div>
           </div>
           {piece.assets.recordingPath ? (
             <video

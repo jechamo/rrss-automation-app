@@ -25,6 +25,8 @@ model Project {
   virales     Virales?
   runs        Run[]
   pieces      ContentPiece[]
+  mediaAssets MediaAsset[]
+  mixes       MixComposition[]
 }
 
 model Dossier {
@@ -95,6 +97,50 @@ model ContentPiece {
   version    Int      @default(1)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  mediaAssets MediaAsset[]
+  mixes       MixComposition[]
+}
+
+model MediaAsset {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  pieceId   String?
+  piece     ContentPiece? @relation(fields: [pieceId], references: [id], onDelete: SetNull)
+  kind      String   // recording | video | audio | music | presenter | clip | final
+  origin    String   // recorder | upload | playwright | fal | heygen | elevenlabs | indexed | mix
+  name      String
+  path      String
+  mimeType  String   @default("application/octet-stream")
+  size      Int      @default(0)
+  duration  Float?
+  width     Int?
+  height    Int?
+  metadata  String   @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, path])
+  @@index([projectId, kind])
+  @@index([pieceId])
+}
+
+model MixComposition {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  pieceId    String?
+  piece      ContentPiece? @relation(fields: [pieceId], references: [id], onDelete: SetNull)
+  name       String
+  status     String   @default("draft") // draft | rendering | ready | error
+  recipe     String   @default("{}")
+  outputPath String?
+  error      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([projectId, status])
+  @@index([pieceId])
 }
 
 model ConnectorState {

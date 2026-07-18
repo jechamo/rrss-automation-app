@@ -20,6 +20,20 @@ export function saveBytes(pieceId: string, name: string, bytes: Buffer): string 
   return path.relative(DATA_DIR, full).replace(/\\/g, "/");
 }
 
+export function projectLibraryDir(projectId: string): string {
+  const safeId = projectId.replace(/[^a-zA-Z0-9_-]/g, "");
+  const dir = path.join(MEDIA_DIR, `project-${safeId}`, "library");
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+export function saveProjectBytes(projectId: string, name: string, bytes: Buffer): string {
+  const safeName = name.replace(/[^a-zA-Z0-9._-]/g, "-");
+  const full = path.join(projectLibraryDir(projectId), safeName);
+  fs.writeFileSync(full, bytes);
+  return path.relative(DATA_DIR, full).replace(/\\/g, "/");
+}
+
 /** Descarga una URL al directorio de la pieza; devuelve la ruta relativa a data/. */
 export async function downloadTo(
   pieceId: string,

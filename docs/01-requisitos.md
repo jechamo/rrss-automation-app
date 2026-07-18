@@ -265,6 +265,55 @@ oficiales ni tokens** (materializa **D-06**, opción manual asistida).
 
 ---
 
+### REQ-011 — Estudio multimedia, grabación propia y MIX
+
+**Objetivo:** reunir en una mediateca reutilizable todos los recursos audiovisuales del proyecto y
+permitir crear un vídeo final combinándolos sin romper los montajes automáticos de REQ-005/006.
+
+**Mediateca del proyecto:**
+- Inventaría grabaciones del usuario, screencasts Playwright, clips fal.ai, presentadores HeyGen,
+  locuciones, música y salidas finales.
+- Cada recurso conserva nombre, tipo, origen, ruta, duración y relación opcional con una pieza.
+- Permite previsualizar, renombrar, reutilizar, descargar y eliminar con confirmación. Un recurso
+  utilizado por una composición no se borra de forma silenciosa.
+- Los assets ya existentes en `ContentPiece.assets` siguen siendo válidos y se indexan sin mover
+  ni eliminar sus ficheros.
+
+**Modo «Graba tú mismo»:**
+1. El usuario abre la URL de su app en una ventana de tamaño móvil.
+2. Se identifica directamente en su app; RRSS Studio no captura esas credenciales.
+3. Pulsa **REC**, elige la ventana en el selector seguro del navegador y navega.
+4. Pulsa **STOP**, previsualiza, nombra y guarda la grabación en la mediateca.
+5. Puede usarla inmediatamente en una pieza o conservarla para futuros vídeos.
+
+El selector de `getDisplayMedia` siempre requiere una acción explícita: la aplicación no puede
+elegir una ventana ni ocultar el diálogo de seguridad del navegador.
+
+**Estudio MIX inteligente (v1, sin línea de tiempo):**
+- Panel visual de recursos + receta por bloques: hook, presentación, demo, B-roll y cierre.
+- Pistas de locución y música con mezcla/ducking; subtítulos obligatorios cuando hay voz.
+- Botón **MIX** que normaliza a 1080×1920, ordena segmentos, mezcla audio y quema subtítulos.
+- La salida es una nueva versión. Solo **Usar como final** actualiza la pieza.
+- `assembleMix()` es aditivo; `assemble()` y `assemblePresenterDemo()` permanecen disponibles.
+
+**Subtítulos — regla transversal:** todo vídeo final con voz incluye subtítulos quemados, inferiores,
+centrados y dentro de la zona segura de Shorts/Reels/TikTok. Un audio propio necesita texto antes
+de producir un final publicable. Si FFmpeg no puede renderizarlos se conserva el preview, pero nunca
+se degrada silenciosamente a un final sin subtítulos.
+
+**Guía integrada:** enlace global **Guía** con explicación detallada de cada sección y de los flujos
+viral+fal, viral+HeyGen, Playwright, subida, REC/STOP, MIX y publicación asistida.
+
+**Criterios de aceptación:**
+- Las piezas anteriores a REQ-011 abren, se reproducen y se publican como antes.
+- Una grabación REC/STOP aparece en la mediateca y se puede reutilizar.
+- MIX combina vídeo, locución y música opcional sin sobrescribir el final anterior.
+- Toda salida final con voz muestra subtítulos legibles en la zona inferior segura.
+- Ajustes informa ruta y versión reales de yt-dlp/FFmpeg/ffprobe desde el proceso Next.
+- La guía recorre paso a paso todas las combinaciones soportadas.
+
+---
+
 ## 5. Requisitos no funcionales
 
 - **RNF-01 — Local-first:** funciona en el PC del usuario; los datos y las keys no salen del equipo salvo llamadas explícitas a proveedores.

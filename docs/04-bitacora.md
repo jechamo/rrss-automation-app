@@ -19,12 +19,40 @@
 | REQ-008 | Configuración de herramientas/APIs (Ajustes) | 🟡 Base construida (shell de Ajustes) |
 | REQ-009 | Experiencia visual | 🟡 Implementado (dashboard por vistas con carruseles 360, arte IA, tarjetas 3D, loaders, sidebar fija y transiciones de estado) — pendiente visto bueno del usuario |
 | REQ-010 | Publicación asistida en redes | 🟡 Implementado (D-06: descargar vídeo + copiar copy + abrir red; sin APIs/tokens; marca `publicado` con `publishedTo`/`publishedAt`) — pendiente pruebas del usuario |
+| REQ-011 | Estudio multimedia + REC/STOP + MIX + Guía | 🟡 Implementado — herramientas y subtítulos verificados; pendiente prueba manual del selector de captura |
 
 Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ---
 
 ## Historial
+
+### 2026-07-18 — REQ-011: herramientas, mediateca, REC/STOP, MIX y Guía
+
+**Herramientas sin tocar Claude CLI:**
+- `bintools.ts` resuelve yt-dlp/FFmpeg/ffprobe por override, PATH y WinGet. Ajustes muestra ruta,
+  versión y permite revalidar mediante `GET /api/system/tools`.
+- Verificado desde Next: yt-dlp `2026.07.04` y FFmpeg/ffprobe `8.1.2`, todos encontrados en WinGet.
+- `claude-cli.ts` no se modificó; conserva el binario gestionado con la sesión Pro.
+
+**Subtítulos obligatorios:**
+- ASS 1080×1920, zona inferior segura (`MarginV=230`), alto contraste y bloques cortos.
+- `captionVideo()` cubre HeyGen. REQ-005/006 conservan el preview pero no marcan listo un vídeo con
+  locución si FFmpeg/libass no puede quemar texto.
+- Prueba real local genera un vídeo y quema ASS con el FFmpeg detectado: OK.
+
+**Mediateca, grabador y MIX:**
+- Tablas aditivas `MediaAsset`/`MixComposition`; assets legacy indexados sin mover ni duplicar bytes.
+- `/proyecto/:id/estudio`: filtros, previews, subida, renombrado, descarga y borrado protegido.
+- `SelfRecordModal`: ventana móvil, REC/STOP, temporizador, preview y guardado WebM; disponible también
+  desde piezas propias y `DemoContentModal`.
+- `assembleMix()` nuevo: orden de vídeos, locución, música/volumen, normalización vertical, ASS y
+  salida versionada. «Usar como final» es explícito; los montadores existentes permanecen.
+- `/guia` enlazada en el menú con secciones y siete flujos paso a paso.
+
+**Verificación:** contratos ampliados 9/9 (incluye libass real), TypeScript, rutas HTTP de
+herramientas/mediateca/MIX/Estudio/Guía y `git diff --check` correctos. El selector REC requiere el
+permiso interactivo del navegador y queda para la prueba manual del usuario.
 
 ### 2026-07-18 — Duración de corte fal.ai (5/10/15) + Gemini multimodal real
 

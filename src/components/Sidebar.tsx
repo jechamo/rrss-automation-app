@@ -8,6 +8,7 @@ const NAV: { href: string; label: string; icon: string }[] = [
   { href: "/", label: "Dashboard", icon: "◈" },
   { href: "/proyecto/nuevo", label: "Nuevo análisis", icon: "❖" },
   { href: "/ajustes", label: "Ajustes", icon: "⚙" },
+  { href: "/guia", label: "Guía", icon: "?" },
 ];
 
 // Secciones dentro de un proyecto (anclas de la página /proyecto/[id]).
@@ -63,6 +64,17 @@ export function Sidebar() {
             Secciones del proyecto
           </div>
           <nav className="flex flex-col gap-1">
+            <Link
+              href={`/proyecto/${projectId}/estudio`}
+              className={[
+                "group mb-1 flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition",
+                pathname === `/proyecto/${projectId}/estudio`
+                  ? "bg-[var(--color-accent)]/15 text-white glow-border"
+                  : "text-[var(--color-accent-2)] hover:bg-white/5",
+              ].join(" ")}
+            >
+              <span className="text-xs">◉</span><span className="flex-1">Estudio multimedia</span>
+            </Link>
             {PROJECT_SECTIONS.map((s) => (
               <a
                 key={s.anchor}

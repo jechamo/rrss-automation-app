@@ -3,6 +3,7 @@ import path from "node:path";
 import type { PieceAssets, Shot } from "@/core/content/types";
 import { assetAbsPath, pieceDir } from "./storage";
 import { ffprobeDuration, hasFfmpeg, runFfmpeg } from "./ffmpeg";
+import { writeAssSubtitles } from "./subtitles";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const VIDEO_FILTER =
@@ -45,6 +46,12 @@ export interface PresenterDemoArgs {
   recordingPath: string;
   locucionText: string;
   burnSubtitles: boolean;
+}
+
+export interface CaptionVideoArgs {
+  pieceId: string;
+  videoPath: string;
+  locucionText: string;
 }
 
 function existingAsset(rel: string): string | null {
@@ -115,37 +122,6 @@ function capSegments(segments: Segment[], targetSeconds: number): Segment[] {
   return capped;
 }
 
-function srtTime(seconds: number): string {
-  const totalMs = Math.max(0, Math.round(seconds * 1000));
-  const ms = totalMs % 1000;
-  const totalSeconds = Math.floor(totalMs / 1000);
-  const secs = totalSeconds % 60;
-  const totalMinutes = Math.floor(totalSeconds / 60);
-  const mins = totalMinutes % 60;
-  const hours = Math.floor(totalMinutes / 60);
-  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")},${String(ms).padStart(3, "0")}`;
-}
-
-function writeSrt(dir: string, text: string, duration: number): boolean {
-  const phrases =
-    text
-      .match(/[^.!?¿¡]+[.!?]*/g)
-      ?.map((phrase) => phrase.trim().replace(/\s+/g, " "))
-      .filter(Boolean) ?? [];
-  if (phrases.length === 0 || duration <= 0) return false;
-
-  const totalChars = phrases.reduce((sum, phrase) => sum + phrase.length, 0);
-  let cursor = 0;
-  const blocks = phrases.map((phrase, index) => {
-    const phraseDuration = (phrase.length / totalChars) * duration;
-    const start = cursor;
-    cursor += phraseDuration;
-    return `${index + 1}\n${srtTime(start)} --> ${srtTime(cursor)}\n${phrase}`;
-  });
-  fs.writeFileSync(path.join(dir, "subs.srt"), `${blocks.join("\n\n")}\n`, "utf8");
-  return true;
-}
-
 function filterGraph(sources: VideoSource[], withSubtitles: boolean): string {
   const filters = sources.map((source, index) => {
     let trim = "";
@@ -168,9 +144,7 @@ function filterGraph(sources: VideoSource[], withSubtitles: boolean): string {
   }
 
   if (withSubtitles) {
-    filters.push(
-      `[${baseLabel}]subtitles=subs.srt:force_style='FontSize=16,Bold=1,Alignment=2,MarginV=60,OutlineColour=&H80000000,Outline=2'[v]`,
-    );
+    filters.push(`[${baseLabel}]ass=subs.ass[v]`);
   } else {
     filters.push(`[${baseLabel}]null[v]`);
   }
@@ -248,7 +222,7 @@ export function assemble(args: AssembleArgs): AssembleResult | null {
 
   if (sources.length === 0) return null;
   const audioInput = audio ? addInput(audio) : null;
-  const hasSubtitles = writeSrt(dir, args.locucionText, targetDuration);
+  const hasSubtitles = writeAssSubtitles(dir, args.locucionText, targetDuration);
 
   const baseArgs = inputs.flatMap((input) => ["-i", input]);
   const outputArgs = [
@@ -267,18 +241,16 @@ export function assemble(args: AssembleArgs): AssembleResult | null {
     "final.mp4",
   ];
 
-  let subtitlesBurned = hasSubtitles;
   try {
     runFfmpeg(
       ["-y", ...baseArgs, "-filter_complex", filterGraph(sources, hasSubtitles), ...outputArgs],
       dir,
     );
   } catch (error) {
-    if (!hasSubtitles) throw error;
-    // Algunas instalaciones de FFmpeg no incluyen libass/subtitles. El video
-    // sigue siendo util: se reintenta sin quemar subtitulos.
-    subtitlesBurned = false;
-    runFfmpeg(["-y", ...baseArgs, "-filter_complex", filterGraph(sources, false), ...outputArgs], dir);
+    if (hasSubtitles) {
+      throw new Error(`No se pudieron quemar los subtitulos obligatorios: ${(error as Error).message}`);
+    }
+    throw error;
   }
 
   const finalAbs = path.join(dir, "final.mp4");
@@ -295,7 +267,7 @@ export function assemble(args: AssembleArgs): AssembleResult | null {
   return {
     path: path.relative(DATA_DIR, finalAbs).replace(/\\/g, "/"),
     seconds: ffprobeDuration(finalAbs),
-    subtitlesBurned,
+    subtitlesBurned: hasSubtitles,
     qcFrames,
   };
 }
@@ -367,7 +339,7 @@ export function assemblePresenterDemo(args: PresenterDemoArgs): AssembleResult |
   const wantsSubtitles =
     args.burnSubtitles &&
     Boolean(args.locucionText.trim()) &&
-    writeSrt(dir, args.locucionText, presenterDuration);
+    writeAssSubtitles(dir, args.locucionText, presenterDuration);
   const baseArgs = inputs.flatMap((input) => ["-i", input]);
   const outputArgs = [
     "-map",
@@ -388,19 +360,16 @@ export function assemblePresenterDemo(args: PresenterDemoArgs): AssembleResult |
     "final.mp4",
   ];
 
-  let subtitlesBurned = wantsSubtitles;
   try {
     runFfmpeg(
       ["-y", ...baseArgs, "-filter_complex", filterGraph(sources, wantsSubtitles), ...outputArgs],
       dir,
     );
   } catch (error) {
-    if (!wantsSubtitles) throw error;
-    subtitlesBurned = false;
-    runFfmpeg(
-      ["-y", ...baseArgs, "-filter_complex", filterGraph(sources, false), ...outputArgs],
-      dir,
-    );
+    if (wantsSubtitles) {
+      throw new Error(`No se pudieron quemar los subtitulos obligatorios: ${(error as Error).message}`);
+    }
+    throw error;
   }
 
   const finalAbs = path.join(dir, "final.mp4");
@@ -417,7 +386,55 @@ export function assemblePresenterDemo(args: PresenterDemoArgs): AssembleResult |
   return {
     path: path.relative(DATA_DIR, finalAbs).replace(/\\/g, "/"),
     seconds: ffprobeDuration(finalAbs),
-    subtitlesBurned,
+    subtitlesBurned: wantsSubtitles,
     qcFrames,
+  };
+}
+
+/** Quema los subtitulos obligatorios sobre un video que ya trae su propia pista de audio. */
+export function captionVideo(args: CaptionVideoArgs): AssembleResult | null {
+  if (!hasFfmpeg()) return null;
+  const dir = pieceDir(args.pieceId);
+  const video = existingAsset(args.videoPath);
+  if (!video) return null;
+  const duration = ffprobeDuration(video);
+  if (!duration || duration <= 0) return null;
+  if (!writeAssSubtitles(dir, args.locucionText, duration)) {
+    throw new Error("La pieza tiene voz pero no dispone de texto para subtitulos.");
+  }
+
+  try {
+    runFfmpeg(
+      [
+        "-y",
+        "-i",
+        inputPath(video, dir),
+        "-vf",
+        "ass=subs.ass",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "medium",
+        "-crf",
+        "20",
+        "-c:a",
+        "aac",
+        "-movflags",
+        "+faststart",
+        "final.mp4",
+      ],
+      dir,
+    );
+  } catch (error) {
+    throw new Error(`No se pudieron quemar los subtitulos obligatorios: ${(error as Error).message}`);
+  }
+
+  const finalAbs = path.join(dir, "final.mp4");
+  if (!fs.existsSync(finalAbs)) throw new Error("FFmpeg no genero final.mp4.");
+  return {
+    path: path.relative(DATA_DIR, finalAbs).replace(/\\/g, "/"),
+    seconds: ffprobeDuration(finalAbs),
+    subtitlesBurned: true,
+    qcFrames: false,
   };
 }

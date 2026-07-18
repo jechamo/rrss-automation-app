@@ -220,3 +220,44 @@ Relación raíz: **todo cuelga de `Proyecto`** (permite escalar a multiproyecto 
 1. **OK del usuario** a este documento de Diseño.
 2. Redactar **Documento de Arquitectura** (stack, módulos, ejecución del pipeline, almacenamiento, conectores, seguridad de keys).
 3. Implementar **REQ-001**.
+
+---
+
+## 15. Estudio multimedia y MIX (REQ-011)
+
+### 15.1 Acceso y estructura
+
+- La barra lateral incorpora **Estudio** dentro de un proyecto y **Guía** como entrada global.
+- `/proyecto/[id]/estudio` mantiene el tema oscuro, cristal, aurora y elevación 3D.
+- Dos vistas: **Mediateca** y **MIX**; apiladas en móvil y en dos columnas en escritorio.
+
+### 15.2 Mediateca
+
+Tarjetas con preview, nombre, tipo, duración, origen y fecha. Filtros: todos, vídeos, grabaciones,
+audio y resultados. Acciones: ver, escuchar, renombrar, descargar, usar y eliminar. Los recursos
+referenciados muestran dónde se utilizan antes de permitir su eliminación.
+
+### 15.3 Grabador propio
+
+Modal profesional en cuatro pasos: **Preparar → Compartir → Grabar → Revisar**. Incluye URL y
+«Abrir app en móvil», instrucciones para elegir la ventana, REC/STOP grandes, temporizador, punto
+rojo, estado accesible y preview vertical. Al detener permite nombrar, repetir, descartar o guardar.
+
+### 15.4 MIX inteligente
+
+La mediateca aparece a la izquierda y la receta a la derecha. La receta ordena bloques de vídeo,
+locución, música y subtítulos. «Preparar MIX» propone una combinación; el usuario puede reordenar
+o quitar bloques antes de renderizar. Estados: `borrador → renderizando → listo | error`.
+**Usar como final** es una acción separada. El timeline cuadro a cuadro queda como evolución futura.
+
+### 15.5 Subtítulos y zona segura
+
+En 1080×1920 el texto permanece centrado en la franja inferior segura, por encima de controles de
+RRSS. Máximo dos líneas, frases cortas, blanco/negrita y fondo/contorno contrastados. No existe
+interruptor para desactivarlos cuando hay locución.
+
+### 15.6 Centro de ayuda
+
+`/guia` presenta índice, tarjetas numeradas, flujos, requisitos previos, pasos, resultados y solución
+de problemas para Dashboard, proyecto, dossier, competencia, leads, virales, contenido, estudio,
+ajustes y publicación.

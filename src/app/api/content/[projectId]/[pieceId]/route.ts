@@ -40,6 +40,24 @@ export async function PUT(
     data.assets = JSON.stringify(assets);
   }
 
+  // REQ-011: reutiliza una grabación libre de la mediateca sin copiar ni borrar el original.
+  const recordingAssetId = (body as { recordingAssetId?: unknown }).recordingAssetId;
+  if (typeof recordingAssetId === "string" && recordingAssetId) {
+    const media = await prisma.mediaAsset.findFirst({
+      where: { id: recordingAssetId, projectId, kind: { in: ["recording", "video", "clip"] } },
+    });
+    if (!media) return NextResponse.json({ error: "Grabación de mediateca no encontrada." }, { status: 404 });
+    const assets = coerceAssets(JSON.parse(existing.assets || "{}"));
+    assets.recordingPath = media.path;
+    data.assets = JSON.stringify(assets);
+  }
+  if ((body as { clearRecording?: unknown }).clearRecording === true) {
+    const assets = coerceAssets(JSON.parse(existing.assets || "{}"));
+    if (assets.videoPath === assets.recordingPath) assets.videoPath = "";
+    assets.recordingPath = "";
+    data.assets = JSON.stringify(assets);
+  }
+
   const updated = await prisma.contentPiece.update({ where: { id: pieceId }, data });
   return NextResponse.json({ piece: rowToPiece(updated) });
 }

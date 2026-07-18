@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
+import { systemToolPath } from "./bintools";
 
 // yt-dlp: binario del sistema OPCIONAL (como ffmpeg) para descargar videos de
 // TikTok/Instagram/etc. y analizarlos con Gemini (Files API). Degradacion:
@@ -8,18 +9,9 @@ import { execFileSync, spawnSync } from "node:child_process";
 
 const TMP_DIR = path.join(process.cwd(), "data", "tmp");
 
-let _hasYtDlp: boolean | null = null;
-
-/** ¿Esta yt-dlp disponible en el PATH? (cacheado) */
+/** ¿Esta yt-dlp disponible en PATH, override o WinGet? */
 export function hasYtDlp(): boolean {
-  if (_hasYtDlp === null) {
-    try {
-      _hasYtDlp = spawnSync("yt-dlp", ["--version"], { stdio: "ignore" }).status === 0;
-    } catch {
-      _hasYtDlp = false;
-    }
-  }
-  return _hasYtDlp;
+  return Boolean(systemToolPath("yt-dlp"));
 }
 
 /**
@@ -34,7 +26,7 @@ export function downloadVideo(url: string, maxFilesizeMb = 200): string {
   const base = path.join(TMP_DIR, `viral_${Date.now()}`);
   // Plantilla de salida fija (base + extension real que decida yt-dlp).
   execFileSync(
-    "yt-dlp",
+    systemToolPath("yt-dlp")!,
     [
       "--no-playlist",
       "--max-filesize",

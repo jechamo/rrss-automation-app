@@ -11,7 +11,7 @@ import {
 import { extractViral, type ViralExtract } from "@/core/content/extract";
 import { generateGuion } from "@/core/content/guion";
 import { fal, heygen, elevenlabs } from "@/core/media";
-import { assemble } from "@/core/media/assemble";
+import { assemble, captionVideo } from "@/core/media/assemble";
 import { hasFfmpeg } from "@/core/media/ffmpeg";
 import type { PipelineDef, PipelineNode } from "./engine";
 
@@ -190,41 +190,37 @@ export function buildReq005Pipeline(pieceId: string): PipelineDef {
       const config = ctx.artifacts.config as MediaConfig;
       const assets = ctx.artifacts.assets as PieceAssets;
       const content = ctx.artifacts.content as PieceContent;
+      const subtitleText = content.guion.locucion || content.guion.desarrollo;
+      let finalReady = !subtitleText.trim();
 
-      if (config.rama === "fal") {
-        if (!hasFfmpeg()) {
+      if (!hasFfmpeg()) {
+        if (subtitleText.trim()) {
           const warning =
-            "FFmpeg no encontrado: instala con 'winget install ffmpeg' y pulsa Regenerar. Se conserva el preview actual.";
+            "FFmpeg no encontrado: se conserva el preview, pero no se marca como final porque faltan subtitulos.";
           assets.logs.push(warning);
           ctx.log(warning);
-        } else {
-          try {
-            const result = assemble({
-              pieceId,
-              assets,
-              locucionText: content.guion.locucion || content.guion.desarrollo,
-              shots: content.escaleta,
-            });
-            if (result) {
-              assets.videoPath = result.path;
-              const duration = result.seconds ? ` (${result.seconds.toFixed(1)}s)` : "";
-              const message = `Montaje FFmpeg completado${duration}.`;
-              assets.logs.push(message);
-              if (!result.subtitlesBurned) {
-                assets.logs.push(
-                  "FFmpeg no pudo quemar subtitulos (falta soporte libass); se genero el video sin ellos.",
-                );
-              }
-              if (result.qcFrames) assets.logs.push("Frames de control de calidad generados.");
-              ctx.log(message);
-            } else {
-              assets.logs.push("Montaje omitido: no hay clips de video utilizables.");
-            }
-          } catch (error) {
-            const warning = `Montaje FFmpeg no disponible: ${(error as Error).message}. Se conserva el preview actual.`;
-            assets.logs.push(warning);
-            ctx.log(warning);
+        }
+      } else {
+        try {
+          const result =
+            config.rama === "heygen"
+              ? captionVideo({ pieceId, videoPath: assets.videoPath, locucionText: subtitleText })
+              : assemble({ pieceId, assets, locucionText: subtitleText, shots: content.escaleta });
+          if (result) {
+            assets.videoPath = result.path;
+            finalReady = !subtitleText.trim() || result.subtitlesBurned;
+            const duration = result.seconds ? ` (${result.seconds.toFixed(1)}s)` : "";
+            const message = `Montaje FFmpeg completado con subtitulos${duration}.`;
+            assets.logs.push(message);
+            if (result.qcFrames) assets.logs.push("Frames de control de calidad generados.");
+            ctx.log(message);
+          } else {
+            assets.logs.push("Montaje omitido: no hay video util o no se pudo medir su duracion.");
           }
+        } catch (error) {
+          const warning = `Montaje FFmpeg no disponible: ${(error as Error).message}. Se conserva el preview actual.`;
+          assets.logs.push(warning);
+          ctx.log(warning);
         }
       }
 
@@ -232,11 +228,11 @@ export function buildReq005Pipeline(pieceId: string): PipelineDef {
         where: { id: pieceId },
         data: {
           assets: JSON.stringify(assets),
-          status: "listo",
+          status: finalReady ? "listo" : "error",
           version: { increment: 1 },
         },
       });
-      ctx.log("Pieza lista para revision.");
+      ctx.log(finalReady ? "Pieza lista para revision." : "Pieza conservada, pendiente de montaje con subtitulos.");
     },
   };
 

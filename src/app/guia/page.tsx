@@ -1,0 +1,93 @@
+import Link from "next/link";
+
+const SECTIONS = [
+  ["dashboard", "Dashboard", "El punto de entrada. Alterna entre proyectos y piezas recientes; abre una tarjeta para continuar exactamente donde lo dejaste."],
+  ["proyecto", "Proyecto y Pipeline", "La página de un proyecto reúne el análisis y muestra nodos, estados y logs. Espera a que cada ejecución termine antes de regenerarla."],
+  ["dossier", "Dossier", "La verdad de negocio que alimenta competencia, leads, virales y guiones. Revisa, edita y aprueba marca, público, dolores, funciones y CTA."],
+  ["competencia", "Competencia", "Descubre competidores, compara producto/RRSS/amenaza y conserva los añadidos manuales al usar Buscar más."],
+  ["leads", "Leads", "Localiza negocios públicos, consulta su score y adapta la estrategia propuesta antes de contactar."],
+  ["virales", "Virales", "Elige ventana y número de resultados. La app ordena por viralidad relativa y descompone hook, estructura y patrón transferible."],
+  ["contenido", "Contenido", "Genera piezas inspiradas en virales o demostraciones propias. Aquí revisas guion, assets, logs, grabación y publicación."],
+  ["estudio", "Estudio multimedia", "Mediateca reutilizable, REC/STOP y MIX. Se abre desde el menú del proyecto."],
+  ["ajustes", "Ajustes", "Configura Claude y proveedores; prueba las keys y comprueba yt-dlp, FFmpeg y ffprobe desde el proceso real de la app."],
+  ["publicacion", "Publicación", "Descarga el final, copia el texto, abre la red y marca publicado. Nada se publica automáticamente."],
+] as const;
+
+type Flow = { id: string; title: string; summary: string; needs: string[]; steps: string[]; output: string; errors: string[] };
+const FLOWS: Flow[] = [
+  {
+    id: "viral-fal", title: "Viral → fal.ai → ElevenLabs", summary: "Reinterpreta un patrón viral con clips generativos y locución propia.",
+    needs: ["Dossier generado", "Virales encontrados", "Keys de fal.ai y ElevenLabs", "FFmpeg operativo para un final con subtítulos"],
+    steps: ["Entra en Contenido y pulsa Generar desde viral.", "Selecciona un viral: se usa su patrón, no se copia su contenido.", "Elige fal.ai y el modelo. Auto es la opción segura; en manual puedes fijar Seedance, Kling o Luma.", "Elige 5/10/15 segundos por corte; la app adapta el valor al contrato real del modelo.", "Elige voz de ElevenLabs y decide si Gemini debe analizar el vídeo fuente.", "Revisa el coste estimado y pulsa Generar.", "Observa Extraer → Guion → Vídeo → Locución → Montaje.", "Abre la pieza, reproduce final.mp4 y revisa texto, cortes y CTA."],
+    output: "Clips fal.ai + audio ElevenLabs + montaje vertical + subtítulos quemados abajo.",
+    errors: ["Sin yt-dlp: TikTok/Instagram usan el análisis previo del viral; YouTube puede analizar URL nativa.", "Sin FFmpeg: se conserva preview, pero la pieza no queda final lista sin subtítulos.", "Duración rechazada: fal.ai reintenta automáticamente con una duración compatible."],
+  },
+  {
+    id: "viral-heygen", title: "Viral → HeyGen", summary: "Convierte el concepto en una presentación vertical con avatar.",
+    needs: ["Dossier y viral", "Key HeyGen", "Avatar existente o foto válida", "Voz HeyGen o audio propio con texto"],
+    steps: ["Pulsa Generar desde viral y selecciona el viral.", "Elige HeyGen.", "Selecciona avatar o sube una foto para crear uno.", "Elige exactamente una narración: voz del catálogo o audio propio.", "Si usas audio propio, conserva/edita el texto de locución para que los subtítulos coincidan.", "Genera y espera el polling del proveedor.", "FFmpeg crea una versión local subtitulada; el original HeyGen se conserva."],
+    output: "Presentador HeyGen original + copia final vertical con subtítulos obligatorios.",
+    errors: ["Un avatar sin look listo no puede generar vídeo.", "No mezcles voiceId y audioAssetId: la narración debe tener una sola fuente.", "Si el texto no corresponde al audio propio, corrígelo antes de publicar."],
+  },
+  {
+    id: "app-auto", title: "App → Playwright automático", summary: "La aplicación navega una función en móvil y graba el recorrido.",
+    needs: ["Dossier", "Fuente de código correcta para mejores selectores", "Chromium de Playwright", "Login cifrado si la función es privada"],
+    steps: ["Pulsa + Contenido propio.", "Analiza funciones con IA y elige una.", "Revisa URL, pasos humanos y JSON de pasos automáticos.", "Pulsa Probar pasos: valida navegación sin grabar ni gastar vídeo generativo.", "Selecciona Automática y configura login si hace falta.", "Elige fal.ai o HeyGen y genera.", "Playwright emula iPhone, navega y guarda screen.mp4/nav_log.", "El montaje intercala hook, demo y cierre; luego quema subtítulos."],
+    output: "Screencast Playwright + B-roll fal o presentador HeyGen + voz + subtítulos.",
+    errors: ["Selector roto: edita navSteps y vuelve a Probar pasos.", "Chromium ausente: la pieza continúa y permite subida/REC manual.", "Login fallido: actualiza las credenciales del proyecto; la contraseña nunca vuelve en la API."],
+  },
+  {
+    id: "app-upload", title: "App → subir vídeo manual", summary: "Usa una grabación realizada con cualquier programa.",
+    needs: ["MP4, WebM o MOV", "Una pieza de contenido propio"],
+    steps: ["Crea Contenido propio y elige Subir después.", "La app genera guion y recursos aunque aún no exista screencast.", "Abre la tarjeta de la pieza y pulsa Subir vídeo de la app.", "Selecciona el fichero y espera la confirmación.", "Pulsa Regenerar para repetir el montaje usando esa grabación.", "Comprueba que el final incluye la grabación y subtítulos."],
+    output: "Grabación subida dentro del montaje automático de la pieza.",
+    errors: ["Formatos diferentes deben convertirse antes.", "Un fichero enorme puede superar el límite local.", "Subir reemplaza la grabación asociada, no borra otros clips de la pieza."],
+  },
+  {
+    id: "app-rec", title: "App → Graba tú mismo (REC/STOP)", summary: "Captura tu navegación desde el navegador y guárdala para reutilizarla.",
+    needs: ["Chrome/Edge con permiso de compartir pantalla", "La URL de tu app", "Acceso de usuario a la función"],
+    steps: ["Abre Estudio multimedia o pulsa REC en una pieza propia.", "Pulsa Abrir app en formato móvil.", "Inicia sesión directamente en la ventana móvil.", "Vuelve a RRSS Studio y pulsa REC.", "En el diálogo del navegador elige la ventana móvil. La app no puede elegirla por ti.", "Navega mostrando solo los pasos que quieres conservar.", "Vuelve al grabador y pulsa STOP, o detén la compartición desde el navegador.", "Reproduce el preview, pon nombre y pulsa Guardar grabación.", "Si empezaste desde una pieza, queda adjuntada; si empezaste desde Estudio, queda libre en la mediateca."],
+    output: "WebM local en la mediateca, disponible para piezas futuras y MIX.",
+    errors: ["No aparece el selector: revisa permisos de pantalla del navegador.", "Popup bloqueado: permite ventanas emergentes para localhost.", "Se eligió la pantalla completa: repite y elige solo la ventana móvil para un resultado limpio."],
+  },
+  {
+    id: "mix", title: "Mediateca → MIX", summary: "Combina grabaciones, clips, locución, música y texto sin reemplazar montajes anteriores.",
+    needs: ["Al menos un vídeo en la mediateca", "Texto exacto para subtítulos", "FFmpeg/ffprobe detectados"],
+    steps: ["Abre Estudio multimedia desde el menú del proyecto.", "Sube o localiza los vídeos, grabaciones, clips y audios.", "En MIX selecciona los vídeos. El número de bloque indica el orden.", "Usa ↑/↓ para construir hook → demo/B-roll → cierre.", "Selecciona locución externa si existe; de lo contrario se usa el audio original como referencia visual.", "Añade música opcional y ajusta su volumen.", "Pega la locución exacta en Texto de subtítulos. No se puede renderizar vacío.", "Elige una pieza destino o Solo mediateca.", "Pulsa MIX y espera el render local.", "Reproduce el resultado. Solo entonces pulsa Usar como final."],
+    output: "Nueva versión mix-<id>.mp4, registrada en la mediateca y con receta guardada.",
+    errors: ["Un asset eliminado/referenciado bloquea el render con explicación.", "Sin libass no se crea un final sin subtítulos.", "Música demasiado alta: baja el deslizador; el original no se modifica."],
+  },
+  {
+    id: "publish", title: "Final → publicación asistida", summary: "Entrega el vídeo y el copy a la red manteniendo revisión humana.",
+    needs: ["Pieza lista con vídeo final", "Sesión iniciada en la red social"],
+    steps: ["Pulsa Publicar en la pieza.", "Elige YouTube, TikTok o Instagram.", "Descarga el vídeo final.", "Revisa y copia título, CTA y hashtags.", "Abre la pantalla de subida de la red.", "Sube manualmente el fichero y pega el copy.", "Comprueba portada, audio, zona segura y subtítulos.", "Vuelve y marca como publicado."],
+    output: "Pieza marcada como publicada con red y fecha; no se almacenan tokens sociales.",
+    errors: ["Si el botón descarga un preview, vuelve a la pieza y aplica el MIX/final correcto.", "La marca Publicado no confirma una subida externa: es un registro local asistido."],
+  },
+];
+
+export default function GuiaPage() {
+  return <div className="mx-auto max-w-7xl pb-16">
+    <header className="hero glass glow-border p-7"><div className="relative z-10 max-w-3xl"><div className="text-xs uppercase tracking-[0.28em] text-[var(--color-accent-2)]">Centro de ayuda</div><h1 className="mt-2 text-4xl font-bold">Guía completa de RRSS Studio</h1><p className="mt-3 text-sm leading-relaxed text-white/55">Empieza por la ruta rápida y abre después el flujo exacto que quieres ejecutar. Cada bloque indica qué necesitas, qué pulsar, qué obtienes y cómo resolver fallos.</p></div></header>
+
+    <div className="mt-6 grid gap-6 lg:grid-cols-[250px_1fr]">
+      <aside className="glass h-fit p-4 lg:sticky lg:top-4"><div className="text-xs font-semibold uppercase tracking-wider text-white/40">Índice</div><nav className="mt-3 flex flex-col gap-1 text-sm"><a href="#inicio" className="rounded-lg px-2 py-1.5 text-white/65 hover:bg-white/5">Primeros 10 minutos</a><a href="#secciones" className="rounded-lg px-2 py-1.5 text-white/65 hover:bg-white/5">Todas las secciones</a><a href="#flujos" className="rounded-lg px-2 py-1.5 text-white/65 hover:bg-white/5">Flujos de vídeo</a>{FLOWS.map((flow) => <a key={flow.id} href={`#${flow.id}`} className="rounded-lg px-2 py-1.5 text-xs text-white/45 hover:bg-white/5">{flow.title}</a>)}<a href="#reglas" className="rounded-lg px-2 py-1.5 text-white/65 hover:bg-white/5">Reglas y seguridad</a></nav></aside>
+
+      <main className="space-y-7">
+        <section id="inicio" className="glass scroll-mt-4 p-6"><h2 className="text-2xl font-bold">Primeros 10 minutos</h2><ol className="mt-4 grid gap-3 md:grid-cols-2">{["Ve a Ajustes y prueba Claude, proveedores y herramientas del sistema.", "Crea un proyecto con URL y, si puedes, código local/GitHub.", "Espera el dossier, corrígelo y apruébalo: condiciona todo lo posterior.", "Genera competencia, leads y virales; usa Buscar más sin perder lo manual.", "Elige Contenido desde viral o Contenido propio para mostrar tu app.", "Revisa cada pieza; usa Estudio para REC/STOP, reutilización y MIX.", "Publica solo tras reproducir el final y revisar subtítulos abajo."].map((step, index) => <li key={step} className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-white/65"><span className="mr-2 text-lg font-bold text-[var(--color-accent-2)]">{index + 1}</span>{step}</li>)}</ol></section>
+
+        <section id="secciones" className="scroll-mt-4"><h2 className="text-2xl font-bold">Guía de cada sección</h2><div className="mt-4 grid gap-3 md:grid-cols-2">{SECTIONS.map(([id, title, text]) => <article key={id} className="glass card-lift p-5"><div className="text-xs uppercase tracking-wider text-[var(--color-accent-3)]">{id}</div><h3 className="mt-1 font-semibold">{title}</h3><p className="mt-2 text-sm leading-relaxed text-white/50">{text}</p></article>)}</div></section>
+
+        <section id="flujos" className="scroll-mt-4"><div className="glass p-6"><h2 className="text-2xl font-bold">¿Qué flujo elijo?</h2><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[650px] text-left text-xs"><thead className="text-white/40"><tr><th className="p-2">Tengo…</th><th className="p-2">Elijo…</th><th className="p-2">Resultado</th></tr></thead><tbody className="divide-y divide-white/5 text-white/60"><tr><td className="p-2">Un viral de referencia</td><td className="p-2">fal.ai o HeyGen</td><td className="p-2">Contenido original con su patrón transferible</td></tr><tr><td className="p-2">Pasos/selectores de mi app</td><td className="p-2">Playwright automático</td><td className="p-2">Demo móvil repetible</td></tr><tr><td className="p-2">Quiero navegar yo</td><td className="p-2">REC/STOP</td><td className="p-2">Grabación reusable</td></tr><tr><td className="p-2">Ya tengo un vídeo</td><td className="p-2">Subir / Mediateca</td><td className="p-2">Asset para piezas y MIX</td></tr><tr><td className="p-2">Varios clips, voz y música</td><td className="p-2">MIX</td><td className="p-2">Versión final sin sobrescribir</td></tr></tbody></table></div></div></section>
+
+        {FLOWS.map((flow, flowIndex) => <section key={flow.id} id={flow.id} className="glass scroll-mt-4 overflow-hidden"><header className="border-b border-white/10 bg-white/[.025] p-5"><div className="text-xs uppercase tracking-[0.2em] text-[var(--color-accent-2)]">Flujo {flowIndex + 1}</div><h2 className="mt-1 text-xl font-bold">{flow.title}</h2><p className="mt-1 text-sm text-white/45">{flow.summary}</p></header><div className="grid gap-6 p-5 xl:grid-cols-[.7fr_1.3fr]"><div><GuideList title="Antes de empezar" items={flow.needs} /><div className="mt-5 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-4"><div className="text-xs font-semibold text-emerald-300">Resultado</div><p className="mt-1 text-sm text-white/60">{flow.output}</p></div></div><div><h3 className="text-sm font-semibold">Pasito a pasito</h3><ol className="mt-3 space-y-2">{flow.steps.map((step, index) => <li key={step} className="flex gap-3 rounded-xl border border-white/8 bg-black/15 p-3 text-sm text-white/65"><span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)]/20 text-xs font-bold text-[var(--color-accent-2)]">{index + 1}</span><span>{step}</span></li>)}</ol><div className="mt-5"><GuideList title="Si algo no va" items={flow.errors} /></div></div></div></section>)}
+
+        <section id="reglas" className="glass scroll-mt-4 p-6"><h2 className="text-2xl font-bold">Reglas que protegen tu trabajo</h2><ul className="mt-4 space-y-3 text-sm text-white/60"><li>• Claude CLI conserva su resolución gestionada y su sesión Pro; el detector audiovisual no la modifica.</li><li>• Los recursos existentes se indexan, no se mueven ni se duplican.</li><li>• MIX genera una versión nueva y exige confirmación para convertirla en final.</li><li>• Todo final con locución debe llevar subtítulos inferiores dentro de la zona segura.</li><li>• La grabación de pantalla requiere consentimiento explícito del navegador.</li><li>• Las keys y credenciales permanecen cifradas localmente.</li></ul><div className="mt-5 flex flex-wrap gap-2"><Link href="/ajustes" className="rounded-xl bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold">Abrir Ajustes</Link><Link href="/" className="rounded-xl border border-white/15 px-4 py-2 text-sm">Volver al Dashboard</Link></div></section>
+      </main>
+    </div>
+  </div>;
+}
+
+function GuideList({ title, items }: { title: string; items: string[] }) {
+  return <div><h3 className="text-sm font-semibold">{title}</h3><ul className="mt-2 space-y-2">{items.map((item) => <li key={item} className="flex gap-2 text-xs leading-relaxed text-white/50"><span className="text-[var(--color-accent-2)]">✓</span><span>{item}</span></li>)}</ul></div>;
+}
