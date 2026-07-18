@@ -13,7 +13,9 @@ import { recordDemo } from "@/core/media/recorder";
 import { getLogin } from "@/core/secrets/login";
 import { fal, heygen, elevenlabs } from "@/core/media";
 import { assemble, assemblePresenterDemo, captionVideo } from "@/core/media/assemble";
-import { hasFfmpeg } from "@/core/media/ffmpeg";
+import { ffprobeDuration, hasFfmpeg } from "@/core/media/ffmpeg";
+import { assetAbsPath } from "@/core/media/storage";
+import { friendlyProviderFailure } from "@/core/media/contracts";
 import type { PipelineDef, PipelineNode } from "./engine";
 
 export const REQ006_NODES = [
@@ -135,10 +137,12 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
       const demo = ctx.artifacts.demo as DemoConfig;
       const funcion: AppFuncion = {
         nombre: demo.funcion,
-        descripcion: demo.funcion,
+        descripcion: demo.funcionDescripcion || demo.funcion,
         url: demo.funcionUrl,
         pasos: demo.pasos,
         navSteps: demo.navSteps,
+        evidencias: demo.funcionEvidencias,
+        confianza: demo.funcionConfianza,
       };
       if (demo.videosPrevios) {
         ctx.log(
@@ -201,16 +205,60 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
         } else {
           const model = config.videoAuto ? fal.autoModel() : config.videoModelo;
           for (const shot of shots) {
-            ctx.log(`Generando corte ${shot.n}…`);
-            const clip = await fal.generateClip({
-              pieceId,
-              index: shot.n,
+            const manifestIndex = assets.clipManifest.length;
+            assets.clipManifest.push({
+              shot: shot.n,
+              description: shot.descripcion,
               prompt: shot.prompt,
               model,
-              seconds: config.falClipSeconds,
-              log: ctx.log,
+              requestedSeconds: config.falClipSeconds,
+              actualSeconds: null,
+              path: "",
+              status: "pending",
             });
-            assets.clips.push(clip);
+            await prisma.contentPiece.update({
+              where: { id: pieceId },
+              data: { assets: JSON.stringify(assets) },
+            });
+            ctx.log(`Generando corte ${shot.n}…`);
+            try {
+              const clip = await fal.generateClip({
+                pieceId,
+                index: shot.n,
+                prompt: shot.prompt,
+                model,
+                seconds: config.falClipSeconds,
+                log: ctx.log,
+              });
+              assets.clips.push(clip);
+              assets.videoPath ||= assets.recordingPath || clip;
+              assets.clipManifest[manifestIndex] = {
+                ...assets.clipManifest[manifestIndex],
+                path: clip,
+                status: "ok",
+                actualSeconds: ffprobeDuration(assetAbsPath(clip)),
+              };
+              await prisma.contentPiece.update({
+                where: { id: pieceId },
+                data: { assets: JSON.stringify(assets) },
+              });
+            } catch (error) {
+              const friendly = friendlyProviderFailure(
+                "fal.ai",
+                error instanceof Error ? error.message : String(error),
+              );
+              assets.clipManifest[manifestIndex] = {
+                ...assets.clipManifest[manifestIndex],
+                status: "error",
+                error: friendly,
+              };
+              assets.logs.push(friendly);
+              await prisma.contentPiece.update({
+                where: { id: pieceId },
+                data: { assets: JSON.stringify(assets) },
+              });
+              throw new Error(friendly);
+            }
           }
           ctx.log(`${assets.clips.length} cortes de apoyo generados.`);
         }

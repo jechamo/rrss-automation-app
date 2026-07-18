@@ -18,11 +18,25 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ projectId:
   const runs = runIds.length
     ? await prisma.run.findMany({
         where: { id: { in: runIds } },
-        select: { id: true, status: true, nodes: true },
+        select: { id: true, requisito: true, status: true, nodes: true, logs: true, updatedAt: true },
       })
     : [];
-  const runMap: Record<string, { status: string; nodes: string }> = {};
-  for (const r of runs) runMap[r.id] = { status: r.status, nodes: r.nodes };
+  const runMap: Record<string, {
+    requisito: string;
+    status: string;
+    nodes: string;
+    logs: string | null;
+    updatedAt: string;
+  }> = {};
+  for (const r of runs) {
+    runMap[r.id] = {
+      requisito: r.requisito,
+      status: r.status,
+      nodes: r.nodes,
+      logs: r.logs,
+      updatedAt: r.updatedAt.toISOString(),
+    };
+  }
 
   return NextResponse.json({ pieces, runs: runMap });
 }

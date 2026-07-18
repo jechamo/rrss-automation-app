@@ -95,7 +95,7 @@ export function buildReq004Pipeline(opts: Req004Opts = {}): PipelineDef {
 
   const rank: PipelineNode = {
     id: "rank",
-    label: "Ranking",
+    label: modo === "ampliar" ? `Ranking +${cantidad} nuevos` : `Ranking Top ${cantidad}`,
     run: async (ctx) => {
       const candidatos = (ctx.artifacts.candidatos as ViralCandidato[]) ?? [];
       const conservar = (ctx.artifacts.conservar as Viral[]) ?? [];

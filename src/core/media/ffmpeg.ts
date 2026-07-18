@@ -23,14 +23,36 @@ export function hasFfprobe(): boolean {
  */
 export function ffprobeDuration(absPath: string): number | null {
   if (!hasFfprobe()) return null;
+  const binary = systemToolPath("ffprobe")!;
   try {
     const out = execFileSync(
-      systemToolPath("ffprobe")!,
+      binary,
       ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", absPath],
       { encoding: "utf8" },
     );
     const n = parseFloat(out.trim());
-    return Number.isFinite(n) ? n : null;
+    if (Number.isFinite(n)) return n;
+  } catch {
+    // Algunos WebM de MediaRecorder no escriben format.duration.
+  }
+  try {
+    const packets = execFileSync(
+      binary,
+      [
+        "-v", "error",
+        "-select_streams", "v:0",
+        "-show_entries", "packet=pts_time",
+        "-of", "csv=p=0",
+        absPath,
+      ],
+      { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
+    );
+    const lastTimestamp = packets
+      .split(/\r?\n/)
+      .map((line) => parseFloat(line.trim()))
+      .filter(Number.isFinite)
+      .at(-1);
+    return lastTimestamp && lastTimestamp > 0 ? lastTimestamp : null;
   } catch {
     return null;
   }

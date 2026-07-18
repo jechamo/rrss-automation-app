@@ -47,8 +47,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       origin: "own",
       sourceUrl: demo.funcionUrl || project.url,
       titulo: demo.funcion,
+      plataforma: "youtube",
       config: JSON.stringify(config),
-      status: "borrador",
+      status: "generando",
     },
   });
 
@@ -61,7 +62,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       nodes: JSON.stringify(initialNodeStatus(def)),
     },
   });
-  await prisma.contentPiece.update({ where: { id: piece.id }, data: { runId: run.id } });
+  await prisma.contentPiece.update({
+    where: { id: piece.id },
+    data: { runId: run.id, status: "generando" },
+  });
 
   // Fire-and-forget: ejecuta y reconcilia el estado de la pieza si el run falla.
   void (async () => {
@@ -83,5 +87,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
   })();
 
-  return NextResponse.json({ runId: run.id, pieceId: piece.id });
+  return NextResponse.json({
+    runId: run.id,
+    pieceId: piece.id,
+    nodes: initialNodeStatus(def),
+    plataforma: "youtube",
+    titulo: demo.funcion,
+  });
 }

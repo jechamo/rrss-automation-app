@@ -116,6 +116,60 @@ export function providerHttpError(provider: string, status: number, body: string
   return `${provider} respondio ${status}.`;
 }
 
+export function sanitizeProviderMessage(rawMessage: string): string {
+  return rawMessage
+    .replace(/(authorization:\s*bearer\s+)[^\s]+/gi, "$1[oculto]")
+    .replace(/([?&](?:key|token|api_key)=)[^&\s]+/gi, "$1[oculto]")
+    .slice(0, 500);
+}
+
+export function friendlyProviderFailure(provider: string, rawMessage: string): string {
+  const message = sanitizeProviderMessage(rawMessage);
+  const normalized = message.toLowerCase();
+  if (/http 402|insufficient|credit|credits|balance|saldo|quota exceeded/.test(normalized)) {
+    return `${provider}: saldo o créditos insuficientes. Revisa la facturación del proveedor.`;
+  }
+  if (/http 401|http 403|unauthori[sz]ed|invalid.*(?:key|token)|forbidden/.test(normalized)) {
+    return `${provider}: autenticación rechazada. Revisa la API key en Ajustes.`;
+  }
+  if (/http 429|rate.?limit|too many requests/.test(normalized)) {
+    return `${provider}: límite temporal de solicitudes alcanzado. Espera unos minutos y reintenta.`;
+  }
+  return `${provider}: ${message || "error desconocido del proveedor."}`;
+}
+
+export interface TimelineSlot {
+  kind: "clip" | "recording";
+  shotIndex: number;
+  clipIndex?: number;
+}
+
+/**
+ * Traduce la escaleta product-led a fuentes de montaje. Cada plano con prompt
+ * consume exactamente un corte fal.ai; los planos sin prompt usan screencast.
+ * Cualquier corte legacy no referenciado se anexa para no perder un asset ya cobrado.
+ */
+export function planDemoTimeline(
+  shots: Array<{ prompt?: string }>,
+  clipCount: number,
+): TimelineSlot[] {
+  const slots: TimelineSlot[] = [];
+  let clipIndex = 0;
+  shots.forEach((shot, shotIndex) => {
+    if (shot.prompt?.trim() && clipIndex < clipCount) {
+      slots.push({ kind: "clip", shotIndex, clipIndex });
+      clipIndex += 1;
+    } else {
+      slots.push({ kind: "recording", shotIndex });
+    }
+  });
+  while (clipIndex < clipCount) {
+    slots.push({ kind: "clip", shotIndex: -1, clipIndex });
+    clipIndex += 1;
+  }
+  return slots;
+}
+
 export function isRetriableStatus(status: number): boolean {
   return status === 429 || status >= 500;
 }

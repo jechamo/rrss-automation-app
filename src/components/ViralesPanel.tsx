@@ -17,7 +17,7 @@ type RunEvent =
 const REQ004_STEPS: { id: string; label: string }[] = [
   { id: "input", label: "Entrada" },
   { id: "discover", label: "Buscar virales (web)" },
-  { id: "rank", label: "Ranking Top 20" },
+  { id: "rank", label: "Ranking" },
   { id: "analyze", label: "Análisis de patrones" },
 ];
 
@@ -28,8 +28,14 @@ const VENTANAS: { dias: number; label: string }[] = [
   { dias: 0, label: "Histórico" },
 ];
 
-const initialNodes = (): GraphNode[] =>
-  REQ004_STEPS.map((s) => ({ id: s.id, label: s.label, state: "pending" as NodeState }));
+const initialNodes = (cantidad = 20, modo: "reemplazar" | "ampliar" = "reemplazar"): GraphNode[] =>
+  REQ004_STEPS.map((s) => ({
+    id: s.id,
+    label: s.id === "rank"
+      ? modo === "ampliar" ? `Ranking +${cantidad} nuevos` : `Ranking Top ${cantidad}`
+      : s.label,
+    state: "pending" as NodeState,
+  }));
 
 export function ViralesPanel({
   projectId,
@@ -103,14 +109,15 @@ export function ViralesPanel({
   }, [runId, load]);
 
   async function startRun(modo: "reemplazar" | "ampliar" = "reemplazar") {
+    const effectiveQuantity = modo === "ampliar" ? 10 : cantidad;
     setStarting(true);
     setLogs([]);
-    setNodes(initialNodes());
+    setNodes(initialNodes(effectiveQuantity, modo));
     setRunStatus("running");
     const r = await fetch(`/api/projects/${projectId}/virales/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ventanaDias, modo, cantidad: modo === "ampliar" ? 10 : cantidad }),
+      body: JSON.stringify({ ventanaDias, modo, cantidad: effectiveQuantity }),
     });
     if (r.ok) {
       const d = await r.json();

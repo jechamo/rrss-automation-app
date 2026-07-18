@@ -12,7 +12,9 @@ import { extractViral, type ViralExtract } from "@/core/content/extract";
 import { generateGuion } from "@/core/content/guion";
 import { fal, heygen, elevenlabs } from "@/core/media";
 import { assemble, captionVideo } from "@/core/media/assemble";
-import { hasFfmpeg } from "@/core/media/ffmpeg";
+import { ffprobeDuration, hasFfmpeg } from "@/core/media/ffmpeg";
+import { assetAbsPath } from "@/core/media/storage";
+import { friendlyProviderFailure } from "@/core/media/contracts";
 import type { PipelineDef, PipelineNode } from "./engine";
 
 export const REQ005_NODES = [
@@ -57,7 +59,7 @@ export function buildReq005Pipeline(pieceId: string): PipelineDef {
       ctx.artifacts.dossier = dossier;
       ctx.artifacts.viral = viral;
       ctx.artifacts.config = config;
-      ctx.artifacts.assets = { ...EMPTY_ASSETS, clips: [], logs: [] };
+      ctx.artifacts.assets = { ...EMPTY_ASSETS, clips: [], clipManifest: [], logs: [] };
 
       await prisma.contentPiece.update({
         where: { id: pieceId },
@@ -139,16 +141,60 @@ export function buildReq005Pipeline(pieceId: string): PipelineDef {
         const shots = content.escaleta.slice(0, MAX_CLIPS);
         if (shots.length === 0) throw new Error("El guion no tiene planos para generar video.");
         for (const shot of shots) {
-          ctx.log(`fal.ai: generando plano ${shot.n}/${shots.length}…`);
-          const clip = await fal.generateClip({
-            pieceId,
-            index: shot.n,
+          const manifestIndex = assets.clipManifest.length;
+          assets.clipManifest.push({
+            shot: shot.n,
+            description: shot.descripcion,
             prompt: shot.prompt || shot.descripcion,
             model,
-            seconds: config.falClipSeconds,
-            log: ctx.log,
+            requestedSeconds: config.falClipSeconds,
+            actualSeconds: null,
+            path: "",
+            status: "pending",
           });
-          assets.clips.push(clip);
+          await prisma.contentPiece.update({
+            where: { id: pieceId },
+            data: { assets: JSON.stringify(assets) },
+          });
+          ctx.log(`fal.ai: generando plano ${shot.n}/${shots.length}…`);
+          try {
+            const clip = await fal.generateClip({
+              pieceId,
+              index: shot.n,
+              prompt: shot.prompt || shot.descripcion,
+              model,
+              seconds: config.falClipSeconds,
+              log: ctx.log,
+            });
+            assets.clips.push(clip);
+            assets.videoPath ||= clip;
+            assets.clipManifest[manifestIndex] = {
+              ...assets.clipManifest[manifestIndex],
+              path: clip,
+              status: "ok",
+              actualSeconds: ffprobeDuration(assetAbsPath(clip)),
+            };
+            await prisma.contentPiece.update({
+              where: { id: pieceId },
+              data: { assets: JSON.stringify(assets) },
+            });
+          } catch (error) {
+            const friendly = friendlyProviderFailure(
+              "fal.ai",
+              error instanceof Error ? error.message : String(error),
+            );
+            assets.clipManifest[manifestIndex] = {
+              ...assets.clipManifest[manifestIndex],
+              status: "error",
+              error: friendly,
+            };
+            assets.logs.push(friendly);
+            await prisma.contentPiece.update({
+              where: { id: pieceId },
+              data: { assets: JSON.stringify(assets) },
+            });
+            throw new Error(friendly);
+          }
         }
         // Sin montaje aun: el primer corte hace de preview del video.
         assets.videoPath = assets.clips[0] ?? "";

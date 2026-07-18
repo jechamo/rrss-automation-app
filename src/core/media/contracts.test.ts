@@ -7,6 +7,9 @@ import {
   FAL_MODEL_IDS,
   isRetriableStatus,
   providerHttpError,
+  friendlyProviderFailure,
+  sanitizeProviderMessage,
+  planDemoTimeline,
   queueFailureMessage,
   resolveFalDuration,
   retryDelayMs,
@@ -127,4 +130,42 @@ test("polling y errores de cola se interpretan de forma defensiva", () => {
     queueFailureMessage(undefined, [{ message: "iniciando" }, { message: "fallo final" }]),
     "fallo final",
   );
+});
+
+test("errores de proveedor muestran causas accionables y ocultan secretos", () => {
+  assert.equal(
+    friendlyProviderFailure("fal.ai", "HTTP 402: insufficient credits"),
+    "fal.ai: saldo o créditos insuficientes. Revisa la facturación del proveedor.",
+  );
+  assert.equal(
+    friendlyProviderFailure("fal.ai", "HTTP 429: too many requests"),
+    "fal.ai: límite temporal de solicitudes alcanzado. Espera unos minutos y reintenta.",
+  );
+  assert.doesNotMatch(
+    friendlyProviderFailure("fal.ai", "authorization: Bearer secreto123 fallo remoto"),
+    /secreto123/,
+  );
+  assert.equal(
+    sanitizeProviderMessage("https://example.test/run?key=secreto123&model=x"),
+    "https://example.test/run?key=[oculto]&model=x",
+  );
+});
+
+test("la timeline de demo incluye todos los cortes fal.ai en orden", () => {
+  const timeline = planDemoTimeline(
+    [
+      { prompt: "hook" },
+      { prompt: "" },
+      { prompt: "apoyo 2" },
+      { prompt: "" },
+      { prompt: "apoyo 3" },
+      { prompt: "cierre" },
+    ],
+    4,
+  );
+  assert.deepEqual(
+    timeline.filter((slot) => slot.kind === "clip").map((slot) => slot.clipIndex),
+    [0, 1, 2, 3],
+  );
+  assert.equal(timeline.filter((slot) => slot.kind === "recording").length, 2);
 });

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { publish, closeBus, type NodeState } from "./bus";
+import { sanitizeProviderMessage } from "@/core/media/contracts";
 
 export interface NodeCtx {
   runId: string;
@@ -49,8 +50,9 @@ export async function executeRun(runId: string, def: PipelineDef, project: NodeC
     project,
     artifacts,
     log: (m) => {
-      logs.push(`[${new Date().toISOString()}] ${m}`);
-      publish(runId, { type: "log", message: m });
+      const safeMessage = sanitizeProviderMessage(m);
+      logs.push(`[${new Date().toISOString()}] ${safeMessage}`);
+      publish(runId, { type: "log", message: safeMessage });
     },
   };
 
@@ -72,6 +74,7 @@ export async function executeRun(runId: string, def: PipelineDef, project: NodeC
       const detail = (e as Error).message;
       st.state = "error";
       st.detail = detail;
+      ctx.log(`Error en ${node.label}: ${detail}`);
       publish(runId, { type: "node", nodeId: node.id, state: "error", detail });
       await persist("error");
       publish(runId, { type: "done", ok: false });

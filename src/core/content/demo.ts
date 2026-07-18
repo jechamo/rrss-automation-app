@@ -24,6 +24,8 @@ export interface AppFuncion {
   url: string; // ruta/URL concreta a navegar y grabar
   pasos: string[]; // pasos de navegacion para demostrarla
   navSteps?: NavStep[]; // acciones Playwright con selectores comprobados en el repo
+  evidencias?: string[]; // fichero:linea que sustenta el recorrido propuesto
+  confianza?: "alta" | "media" | "baja";
 }
 
 function str(v: unknown, def = ""): string {
@@ -41,6 +43,12 @@ export function coerceFuncion(raw: unknown): AppFuncion {
     url: str(o.url),
     pasos: strArr(o.pasos),
   };
+  const evidencias = strArr(o.evidencias);
+  if (evidencias.length > 0) funcion.evidencias = evidencias;
+  const confianza = str(o.confianza).toLowerCase();
+  if (confianza === "alta" || confianza === "media" || confianza === "baja") {
+    funcion.confianza = confianza;
+  }
   const navSteps = (
     Array.isArray(o.navSteps ?? o.nav_steps) ? (o.navSteps ?? o.nav_steps) : []
   ) as unknown[];
@@ -69,7 +77,7 @@ const NAV_EVIDENCE =
  * Inventario acotado del codigo local: rutas y selectores visibles para que la
  * IA no invente navegacion. No lee .env ni ficheros ajenos a UI web.
  */
-function repoNavigationContext(codePath: string): string {
+function repoNavigationContext(codePath: string, objective = ""): string {
   const root = path.resolve(codePath);
   try {
     if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) return "";
@@ -109,8 +117,15 @@ function repoNavigationContext(codePath: string): string {
     .slice(0, 80);
 
   const evidence: string[] = [];
+  const objectiveTokens = objective
+    .toLocaleLowerCase("es")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 3);
+  const targeted: string[] = [];
   for (const file of files) {
-    if (evidence.length >= 120) break;
+    if (evidence.length >= 120 && (objectiveTokens.length === 0 || targeted.length >= 100)) break;
     let text = "";
     try {
       text = fs.readFileSync(file, "utf8");
@@ -118,6 +133,23 @@ function repoNavigationContext(codePath: string): string {
       continue;
     }
     const lines = text.split(/\r?\n/);
+    const normalizedText = text
+      .toLocaleLowerCase("es")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    if (objectiveTokens.length > 0 && objectiveTokens.some((token) => normalizedText.includes(token))) {
+      for (let index = 0; index < lines.length && targeted.length < 100; index++) {
+        const normalizedLine = lines[index]
+          .toLocaleLowerCase("es")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "");
+        if (!objectiveTokens.some((token) => normalizedLine.includes(token))) continue;
+        const from = Math.max(0, index - 2);
+        const to = Math.min(lines.length, index + 3);
+        const excerpt = lines.slice(from, to).map((line) => line.trim()).filter(Boolean).join(" ");
+        targeted.push(`${relative(file)}:${index + 1} ${excerpt.slice(0, 420)}`);
+      }
+    }
     for (let index = 0; index < lines.length && evidence.length < 120; index++) {
       const line = lines[index].trim();
       if (NAV_EVIDENCE.test(line)) {
@@ -126,13 +158,19 @@ function repoNavigationContext(codePath: string): string {
     }
   }
 
-  if (routeFiles.length === 0 && evidence.length === 0) return "";
+  if (routeFiles.length === 0 && evidence.length === 0 && targeted.length === 0) return "";
   return [
     "## Evidencia del repositorio local (no inventar fuera de esta evidencia)",
     "Archivos de rutas/paginas:",
     ...(routeFiles.length ? routeFiles.map((file) => `- ${file}`) : ["- No detectados"]),
     "Selectores y navegacion encontrados:",
     ...(evidence.length ? evidence.map((line) => `- ${line}`) : ["- No detectados"]),
+    ...(objectiveTokens.length
+      ? [
+          `Coincidencias especificas para \"${objective}\":`,
+          ...(targeted.length ? targeted.map((line) => `- ${line}`) : ["- No detectadas"]),
+        ]
+      : []),
   ].join("\n");
 }
 
@@ -146,13 +184,17 @@ export async function analyzeFunctions(args: {
   appUrl: string;
   codeType?: string | null;
   codePath?: string | null;
+  objective?: string;
+  loginConfigured?: boolean;
 }): Promise<AppFuncion[]> {
   const { dossier, appUrl } = args;
+  const objective = args.objective?.trim() ?? "";
   const repoContext =
-    args.codeType === "local" && args.codePath ? repoNavigationContext(args.codePath) : "";
+    args.codeType === "local" && args.codePath ? repoNavigationContext(args.codePath, objective) : "";
 
-  const prompt = `Propon entre 3 y 6 funcionalidades demostrables de nuestra app para grabar un video
-corto que ensene su valor.
+  const prompt = `${objective
+    ? `Analiza EXCLUSIVAMENTE como demostrar la funcionalidad solicitada \"${objective}\". Devuelve una sola funcion y conserva ese objetivo como nombre.`
+    : "Propon entre 3 y 6 funcionalidades demostrables de nuestra app para grabar un video corto que ensene su valor."}
 
 ## Nuestra app (del dossier)
 - Negocio: ${dossier.negocio}
@@ -160,6 +202,7 @@ corto que ensene su valor.
 - Publico objetivo: ${dossier.publicoObjetivo}
 - Funcionalidades clave: ${dossier.funcionalidades.slice(0, 10).join(", ")}
 - URL base: ${appUrl}
+- Login previo al recorrido: ${args.loginConfigured ? "configurado; Playwright lo ejecutara antes de navSteps" : "no configurado"}
 
 ${repoContext}
 
@@ -172,6 +215,8 @@ Devuelve EXCLUSIVAMENTE un JSON con esta forma exacta:
       "descripcion": "que resuelve y por que es demostrable en video",
       "url": "URL o ruta concreta a navegar para mostrarla (usa la URL base si no sabes la ruta exacta)",
       "pasos": ["paso 1 de navegacion", "paso 2", "paso 3"],
+      "evidencias": ["ruta/archivo.tsx:linea que justifica el paso"],
+      "confianza": "alta | media | baja",
       "navSteps": [
         { "action": "goto", "url": "URL concreta" },
         { "action": "tap", "selector": "[data-testid='selector-real']" },
@@ -182,10 +227,14 @@ Devuelve EXCLUSIVAMENTE un JSON con esta forma exacta:
     }
   ]
 }
-Reglas: 3-6 funciones; prioriza las de mayor impacto visual; los pasos deben ser accionables.
+Reglas: ${objective ? "exactamente 1 funcion, la solicitada" : "3-6 funciones; prioriza las de mayor impacto visual"}; los pasos deben ser accionables.
 Si hay evidencia del repositorio, usa exclusivamente rutas y selectores que aparezcan en ella,
 prefiriendo data-testid. No inventes selectores. Si no hay evidencia suficiente, omite navSteps
-y conserva los pasos humanos; la grabacion usara su modo compatible. No incluyas nada fuera del JSON.`;
+y conserva los pasos humanos; la grabacion usara su modo compatible. navSteps puede contener varios
+goto si la funcionalidad atraviesa varias pantallas. No incluyas pasos ni valores de credenciales:
+el login cifrado ocurre antes de ejecutar este recorrido. Cuando haya navSteps, empieza por un goto
+a la primera pantalla funcional para que el recorrido sea determinista despues del login. Cada evidencia debe existir literalmente
+en el contexto proporcionado. No incluyas nada fuera del JSON.`;
 
   const settings = getSettings();
   const engine = getEngine(settings.aiEngine);

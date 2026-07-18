@@ -27,6 +27,49 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ## Historial
 
+### 2026-07-18 — Refinamiento REQ-004/005/006: recorridos dirigidos, pipeline y cortes fal.ai
+
+**Contenido propio / Playwright:**
+- «Analizar con IA» tiene dos modos: sin nombre conserva las propuestas múltiples; con un nombre
+  analiza esa funcionalidad concreta en el repositorio local, devuelve evidencias/confianza y
+  rellena el recorrido Playwright, incluidos varios cambios de ruta.
+- La URL raíz se hereda del proyecto y la ruta inicial queda como opción avanzada. Descripción,
+  evidencias y pasos del análisis se conservan en la pieza y alimentan el guion.
+- El login sigue fuera del prompt: la IA sólo conoce si está configurado; Playwright recupera las
+  credenciales cifradas y autentica antes del recorrido.
+
+**Estado, errores y etiquetas:**
+- Las pipelines se muestran también al terminar o fallar, restauran nodos/logs desde BD y ya no
+  dependen de alternar Lista/Carrusel. El estado persistido se fusiona por progreso de nodo.
+- El clon guarda título/plataforma al crearse: TikTok no aparece provisionalmente como YouTube.
+- Ranking dinámico (`Top N` o `+N nuevos`) según la cantidad solicitada.
+- Errores fal.ai de saldo, autenticación y rate limit se traducen a mensajes accionables. Todos los
+  registros y detalles ocultan keys/tokens, incluidos los runs antiguos al pintarlos.
+
+**Cortes y montaje:**
+- Manifiesto retrocompatible por corte: plano, prompt, modelo, duración solicitada/real, ruta y
+  estado. Se persiste después de cada corte, por lo que un fallo posterior no oculta los anteriores.
+- La tarjeta distingue preview provisional de montaje final y ofrece «Recursos generados» con un
+  reproductor individual por clip, también para piezas legacy.
+- Causa del montaje verde que sólo enseñaba el primer corte: con screencast + 2 o más clips la rama
+  antigua usaba únicamente `clips[0]`, la grabación y `clips.at(-1)`, omitiendo los intermedios sin
+  lanzar error. Ahora la escaleta gobierna la timeline: cada plano con prompt consume su clip fal.ai
+  y cada plano sin prompt consume el siguiente segmento de grabación. Una prueba exige 4/4 clips.
+- El montaje rechaza assets locales ausentes y deja de usar `-shortest`, evitando además que una
+  locución más corta elimine silenciosamente los últimos cortes.
+
+**Verificación:** TypeScript, 11/11 contratos y `next build` correctos. Prueba visual local confirma
+pipeline de error persistente en Lista/Carrusel, TikTok correcto, error real de fal.ai por saldo
+visible de forma segura y galería legacy de 4/4 cortes. El análisis dirigido llegó al Claude CLI,
+pero su respuesta real quedó bloqueada por el límite temporal de la sesión Pro; la UI lo traduce a
+un aviso breve y reintentable. Validación posterior con el `final.mp4` descargado por el usuario
+(hash idéntico al asset de la pieza): el original de 27,446s contiene sólo `clip-1` y screencast.
+El último clip quedaba detrás del screencast y `-shortest` cortaba a la duración de la locución;
+los dos intermedios ni siquiera estaban en la timeline antigua. Un montaje diagnóstico no destructivo
+con la nueva planificación dura 30,5s y muestra, en orden, clip 1 → pantalla → clip 4 → pantalla →
+clip 6 → clip 7. Añadido fallback de duración por último PTS para WebM de MediaRecorder sin
+`format.duration` (la grabación real medía 25,387s y antes ffprobe devolvía `N/A`).
+
 ### 2026-07-18 — REQ-011: herramientas, mediateca, REC/STOP, MIX y Guía
 
 **Herramientas sin tocar Claude CLI:**

@@ -4,6 +4,7 @@ import type { PieceAssets, Shot } from "@/core/content/types";
 import { assetAbsPath, pieceDir } from "./storage";
 import { ffprobeDuration, hasFfmpeg, runFfmpeg } from "./ffmpeg";
 import { writeAssSubtitles } from "./subtitles";
+import { planDemoTimeline } from "./contracts";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const VIDEO_FILTER =
@@ -161,6 +162,10 @@ export function assemble(args: AssembleArgs): AssembleResult | null {
 
   const dir = pieceDir(args.pieceId);
   const clips = args.assets.clips.map(existingAsset).filter((clip): clip is string => Boolean(clip));
+  const expectedClips = args.assets.clips.filter(Boolean).length;
+  if (clips.length !== expectedClips) {
+    throw new Error(`Faltan ${expectedClips - clips.length} cortes locales; no se crea un montaje incompleto.`);
+  }
   const recording = existingAsset(args.assets.recordingPath);
   const audio = existingAsset(args.assets.audioPath);
   if (!recording && clips.length === 0) return null;
@@ -170,7 +175,7 @@ export function assemble(args: AssembleArgs): AssembleResult | null {
     args.shots.reduce((sum, shot) => sum + Math.max(0, shot.segundos || 0), 0),
   );
   const audioDuration = audio ? ffprobeDuration(audio) : null;
-  const targetDuration = audioDuration ?? estimatedDuration;
+  const targetDuration = Math.max(audioDuration ?? 0, estimatedDuration);
   const recordingDuration = recording ? ffprobeDuration(recording) : null;
 
   const inputs: string[] = [];
@@ -183,29 +188,76 @@ export function assemble(args: AssembleArgs): AssembleResult | null {
   };
   const sources: VideoSource[] = [];
 
-  if (recording && clips.length >= 2) {
-    sources.push({ input: addInput(clips[0]), duration: HOOK_SECONDS });
-    const demoTarget = Math.max(5, targetDuration - HOOK_SECONDS - CLOSING_SECONDS + 1);
-    let segments = capSegments(readNavSegments(dir, recordingDuration), demoTarget);
-    if (segments.length === 0 && recordingDuration) {
-      segments = [{ start: 0, end: Math.min(recordingDuration, demoTarget) }];
+  if (recording && clips.length > 0) {
+    const recordingInput = addInput(recording);
+    let recordingSegments = readNavSegments(dir, recordingDuration);
+    if (recordingSegments.length === 0 && recordingDuration) {
+      recordingSegments = [{ start: 0, end: recordingDuration }];
     }
-    if (segments.length > 0) {
-      const recordingInput = addInput(recording);
-      sources.push(
-        ...segments.map((segment) => ({
+    let segmentIndex = 0;
+    let segmentCursor = recordingSegments[0]?.start ?? 0;
+    const appendRecording = (requestedSeconds: number) => {
+      let remaining = Math.max(1, requestedSeconds);
+      let lastSource: VideoSource | null = null;
+      while (remaining > 0.01 && segmentIndex < recordingSegments.length) {
+        const segment = recordingSegments[segmentIndex];
+        const start = Math.max(segment.start, segmentCursor);
+        const available = Math.max(0, segment.end - start);
+        if (available <= 0.01) {
+          segmentIndex += 1;
+          segmentCursor = recordingSegments[segmentIndex]?.start ?? 0;
+          continue;
+        }
+        const take = Math.min(available, remaining);
+        lastSource = { input: recordingInput, start, end: start + take };
+        sources.push(lastSource);
+        remaining -= take;
+        segmentCursor = start + take;
+        if (segmentCursor >= segment.end - 0.01) {
+          segmentIndex += 1;
+          segmentCursor = recordingSegments[segmentIndex]?.start ?? 0;
+        }
+      }
+      if (remaining > 0.01 && lastSource) {
+        lastSource.padAfter = (lastSource.padAfter ?? 0) + remaining;
+      } else if (remaining > 0.01 && recordingDuration) {
+        const end = recordingDuration;
+        const start = Math.max(0, end - Math.min(0.5, end));
+        sources.push({
           input: recordingInput,
-          start: segment.start,
-          end: segment.end,
-        })),
+          start,
+          end,
+          padAfter: Math.max(0, remaining - (end - start)),
+        });
+      } else if (remaining > 0.01) {
+        sources.push({ input: recordingInput, duration: remaining });
+      }
+    };
+
+    for (const slot of planDemoTimeline(args.shots, clips.length)) {
+      const shot = slot.shotIndex >= 0 ? args.shots[slot.shotIndex] : undefined;
+      const requestedSeconds = Math.max(
+        1,
+        shot?.segundos ||
+          (slot.clipIndex !== undefined
+            ? args.assets.clipManifest[slot.clipIndex]?.requestedSeconds
+            : 0) ||
+          3,
       );
-    } else {
-      sources.push({ input: addInput(recording) });
+      if (slot.kind === "clip" && slot.clipIndex !== undefined) {
+        const clip = clips[slot.clipIndex];
+        const actualSeconds = ffprobeDuration(clip);
+        sources.push({
+          input: addInput(clip),
+          duration: requestedSeconds,
+          ...(actualSeconds && actualSeconds < requestedSeconds
+            ? { padAfter: requestedSeconds - actualSeconds }
+            : {}),
+        });
+      } else {
+        appendRecording(requestedSeconds);
+      }
     }
-    sources.push({ input: addInput(clips.at(-1)!), duration: CLOSING_SECONDS });
-  } else if (recording && clips.length === 1) {
-    sources.push({ input: addInput(clips[0]), duration: HOOK_SECONDS });
-    sources.push({ input: addInput(recording) });
   } else if (recording) {
     // Caso degradado: solo grabacion, se conserva entera.
     sources.push({ input: addInput(recording) });
@@ -228,7 +280,8 @@ export function assemble(args: AssembleArgs): AssembleResult | null {
   const outputArgs = [
     "-map",
     "[v]",
-    ...(audioInput !== null ? ["-map", `${audioInput}:a:0`, "-shortest"] : []),
+    // No usar -shortest: una locucion mas corta no debe eliminar los ultimos cortes.
+    ...(audioInput !== null ? ["-map", `${audioInput}:a:0`] : []),
     "-c:v",
     "libx264",
     "-preset",

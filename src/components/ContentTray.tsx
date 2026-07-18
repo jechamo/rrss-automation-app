@@ -8,6 +8,7 @@ import { PieceCarousel } from "@/components/PieceCarousel";
 import { PublishModal } from "@/components/PublishModal";
 import { SelfRecordModal } from "@/components/SelfRecordModal";
 import type { ContentPiece, DemoConfig, MediaConfig } from "@/core/content/types";
+import { friendlyProviderFailure, sanitizeProviderMessage } from "@/core/media/contracts";
 
 type RunEvent =
   | { type: "node"; nodeId: string; state: NodeState; detail?: string }
@@ -16,6 +17,13 @@ type RunEvent =
   | { type: "log"; message: string };
 
 type ViralPick = { url: string; titulo: string; plataforma: string };
+type RunSnapshot = {
+  requisito: string;
+  status: string;
+  nodes: string;
+  logs: string | null;
+  updatedAt: string;
+};
 
 // Pasos estaticos de los pipelines (evita importar el modulo de servidor).
 const REQ005_STEPS: { id: string; label: string }[] = [
@@ -41,6 +49,24 @@ const nodesFrom = (steps: { id: string; label: string }[]): GraphNode[] =>
 
 const initialNodes = (): GraphNode[] => nodesFrom(REQ005_STEPS);
 
+const NODE_PROGRESS: Record<NodeState, number> = { pending: 0, running: 1, ok: 2, error: 2 };
+
+function mergeNodeProgress(previous: GraphNode[] | undefined, incoming: GraphNode[]): GraphNode[] {
+  if (!previous?.length) return incoming;
+  return incoming.map((next) => {
+    const current = previous.find((node) => node.id === next.id);
+    if (!current) return next;
+    return NODE_PROGRESS[next.state] >= NODE_PROGRESS[current.state] ? next : current;
+  });
+}
+
+function displayGenerationMessage(message: string): string {
+  const safe = sanitizeProviderMessage(message);
+  return /fal\.run|fal\.ai|exhausted balance/i.test(safe) && /http 4\d\d|balance|credit|quota/i.test(safe)
+    ? friendlyProviderFailure("fal.ai", safe)
+    : safe;
+}
+
 const STATUS_META: Record<string, { text: string; color: string }> = {
   borrador: { text: "Borrador", color: "var(--color-state-pending)" },
   generando: { text: "Generando…", color: "var(--color-state-running)" },
@@ -60,6 +86,7 @@ export function ContentTray({
 }) {
   const [pieces, setPieces] = useState<ContentPiece[]>([]);
   const [runNodes, setRunNodes] = useState<Record<string, GraphNode[]>>({});
+  const [runLogs, setRunLogs] = useState<Record<string, string[]>>({});
   const [virales, setVirales] = useState<ViralPick[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [showDemoModal, setShowDemoModal] = useState(false);
@@ -79,19 +106,32 @@ export function ContentTray({
     }
     const d = (await r.json()) as {
       pieces: ContentPiece[];
-      runs: Record<string, { status: string; nodes: string }>;
+      runs: Record<string, RunSnapshot>;
     };
     setLoading(false);
     setPieces(d.pieces);
     const nodesMap: Record<string, GraphNode[]> = {};
+    const logsMap: Record<string, string[]> = {};
     for (const [runId, run] of Object.entries(d.runs)) {
       try {
         nodesMap[runId] = JSON.parse(run.nodes) as GraphNode[];
       } catch {
-        nodesMap[runId] = initialNodes();
+        nodesMap[runId] = run.requisito === "REQ-006" ? nodesFrom(REQ006_STEPS) : initialNodes();
+      }
+      try {
+        logsMap[runId] = run.logs ? JSON.parse(run.logs) as string[] : [];
+      } catch {
+        logsMap[runId] = [];
       }
     }
-    setRunNodes((prev) => ({ ...nodesMap, ...prev }));
+    setRunNodes((previous) => {
+      const merged = { ...previous };
+      for (const [runId, incoming] of Object.entries(nodesMap)) {
+        merged[runId] = mergeNodeProgress(previous[runId], incoming);
+      }
+      return merged;
+    });
+    setRunLogs((previous) => ({ ...previous, ...logsMap }));
   }, [projectId]);
 
   const loadVirales = useCallback(async () => {
@@ -116,19 +156,26 @@ export function ContentTray({
         if (e.type === "node") {
           setRunNodes((prev) => ({
             ...prev,
-            [runId]: (prev[runId] ?? initialNodes()).map((n) =>
-              n.id === e.nodeId ? { ...n, state: e.state, detail: e.detail } : n,
-            ),
+            [runId]: prev[runId]?.length
+              ? prev[runId].map((n) =>
+                  n.id === e.nodeId ? { ...n, state: e.state, detail: e.detail } : n,
+                )
+              : [{ id: e.nodeId, label: e.nodeId, state: e.state, detail: e.detail }],
+          }));
+        } else if (e.type === "log") {
+          setRunLogs((prev) => ({
+            ...prev,
+            [runId]: [...(prev[runId] ?? []), e.message],
           }));
         } else if (e.type === "done") {
           es.close();
           esRef.current.delete(runId);
-          load();
+          void load();
+          window.setTimeout(() => void load(), 500);
         }
       };
       es.onerror = () => {
-        es.close();
-        esRef.current.delete(runId);
+        void load();
       };
     },
     [load],
@@ -163,8 +210,9 @@ export function ContentTray({
     });
     setBusy(false);
     if (r.ok) {
-      const d = (await r.json()) as { runId: string; pieceId: string };
-      setRunNodes((prev) => ({ ...prev, [d.runId]: initialNodes() }));
+      const d = (await r.json()) as { runId: string; pieceId: string; nodes?: GraphNode[] };
+      setRunNodes((prev) => ({ ...prev, [d.runId]: d.nodes ?? initialNodes() }));
+      setRunLogs((prev) => ({ ...prev, [d.runId]: [] }));
       setShowModal(false);
       subscribe(d.runId);
       await load();
@@ -180,8 +228,9 @@ export function ContentTray({
     });
     setBusy(false);
     if (r.ok) {
-      const d = (await r.json()) as { runId: string; pieceId: string };
-      setRunNodes((prev) => ({ ...prev, [d.runId]: nodesFrom(REQ006_STEPS) }));
+      const d = (await r.json()) as { runId: string; pieceId: string; nodes?: GraphNode[] };
+      setRunNodes((prev) => ({ ...prev, [d.runId]: d.nodes ?? nodesFrom(REQ006_STEPS) }));
+      setRunLogs((prev) => ({ ...prev, [d.runId]: [] }));
       setShowDemoModal(false);
       subscribe(d.runId);
       await load();
@@ -317,6 +366,7 @@ export function ContentTray({
                 projectId={projectId}
                 piece={focus}
                 nodes={focus.runId ? runNodes[focus.runId] : undefined}
+                runLogs={focus.runId ? runLogs[focus.runId] : undefined}
                 expanded={!!expanded[focus.id]}
                 onToggle={() => setExpanded((e) => ({ ...e, [focus.id]: !e[focus.id] }))}
                 onRegenerate={() => (focus.origin === "own" ? setShowDemoModal(true) : setShowModal(true))}
@@ -337,6 +387,7 @@ export function ContentTray({
                 projectId={projectId}
                 piece={p}
                 nodes={p.runId ? runNodes[p.runId] : undefined}
+                runLogs={p.runId ? runLogs[p.runId] : undefined}
                 expanded={!!expanded[p.id]}
                 onToggle={() => setExpanded((e) => ({ ...e, [p.id]: !e[p.id] }))}
                 onRegenerate={() => (p.origin === "own" ? setShowDemoModal(true) : setShowModal(true))}
@@ -363,6 +414,7 @@ export function ContentTray({
       {showDemoModal && (
         <DemoContentModal
           projectId={projectId}
+          projectUrl={projectUrl}
           onClose={() => setShowDemoModal(false)}
           onGenerate={generateDemo}
           busy={busy}
@@ -387,6 +439,7 @@ function PieceCard({
   projectId,
   piece,
   nodes,
+  runLogs,
   expanded,
   onToggle,
   onRegenerate,
@@ -399,6 +452,7 @@ function PieceCard({
   projectId: string;
   piece: ContentPiece;
   nodes?: GraphNode[];
+  runLogs?: string[];
   expanded: boolean;
   onToggle: () => void;
   onRegenerate: () => void;
@@ -409,13 +463,35 @@ function PieceCard({
   onReload: () => void;
 }) {
   const [showPublish, setShowPublish] = useState(false);
+  const [showClips, setShowClips] = useState(false);
   const meta = STATUS_META[piece.status] ?? STATUS_META.borrador;
   const asset = (rel: string) =>
     `/api/content/${projectId}/${piece.id}/asset?path=${encodeURIComponent(rel)}`;
   const g = piece.content.guion;
   const isOwn = piece.origin === "own";
   const isMounted = /(?:^|\/)final\.mp4$/i.test(piece.assets.videoPath);
-  const ffmpegMissing = piece.assets.logs.some((log) => log.includes("FFmpeg no encontrado"));
+  const allLogs = [...piece.assets.logs, ...(runLogs ?? [])].map(displayGenerationMessage).filter(
+    (log, index, list) => list.indexOf(log) === index,
+  );
+  const ffmpegMissing = allLogs.some((log) => log.includes("FFmpeg no encontrado"));
+  const displayNodes = nodes?.map((node) => ({
+    ...node,
+    ...(node.detail ? { detail: displayGenerationMessage(node.detail) } : {}),
+  }));
+  const errorNode = displayNodes?.find((node) => node.state === "error");
+  const clipItems = piece.assets.clipManifest.length > 0
+    ? piece.assets.clipManifest
+    : piece.assets.clips.map((path, index) => ({
+        shot: index + 1,
+        description: "Corte generado",
+        prompt: "",
+        model: piece.config.videoModelo,
+        requestedSeconds: piece.config.falClipSeconds,
+        actualSeconds: null,
+        path,
+        status: "ok" as const,
+        error: undefined as string | undefined,
+      }));
 
   return (
     <div className="glass card-lift p-4">
@@ -484,30 +560,82 @@ function PieceCard({
         </div>
       </div>
 
-      {piece.status === "generando" && nodes && (
+      {displayNodes && displayNodes.length > 0 && (
         <div className="mb-3">
-          <PipelineGraph nodes={nodes} />
+          <PipelineGraph nodes={displayNodes} />
+        </div>
+      )}
+      {piece.status === "generando" && (!nodes || nodes.length === 0) && (
+        <div className="mb-3 rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-white/45">
+          Preparando pipeline…
+        </div>
+      )}
+      {piece.status === "error" && (
+        <div className="mb-3 rounded-lg border border-[var(--color-state-error)]/45 bg-[var(--color-state-error)]/10 p-3 text-xs">
+          <div className="font-semibold text-[var(--color-state-error)]">
+            Falló {errorNode ? `en «${errorNode.label}»` : "la generación"}
+          </div>
+          <div className="mt-1 text-white/65">
+            {(errorNode?.detail ? displayGenerationMessage(errorNode.detail) : "") || allLogs.at(-1) || "Consulta el registro de generación para ver el motivo."}
+          </div>
         </div>
       )}
 
       {/* Reproductores de lo generado */}
       {piece.assets.videoPath && (
-        <video
-          key={piece.assets.videoPath}
-          controls
-          className="mb-3 max-h-80 w-full rounded-lg bg-black"
-          src={asset(piece.assets.videoPath)}
-        />
+        <div className="mb-3">
+          <div className="mb-1 text-[11px] font-medium text-white/55">
+            {isMounted ? "Vídeo final montado" : "Preview provisional"}
+            {!isMounted && piece.assets.clips[0] === piece.assets.videoPath ? " · corte 1" : ""}
+          </div>
+          <video
+            key={piece.assets.videoPath}
+            controls
+            className="max-h-80 w-full rounded-lg bg-black"
+            src={asset(piece.assets.videoPath)}
+          />
+        </div>
       )}
       {piece.assets.audioPath && (
         <audio key={piece.assets.audioPath} controls className="mb-3 w-full" src={asset(piece.assets.audioPath)} />
       )}
-      {piece.assets.clips.length > 1 && !isMounted && (
-        <div className="mb-3 text-xs text-white/50">
-          {piece.assets.clips.length} cortes generados (montaje con FFmpeg pendiente).
+      {clipItems.length > 0 && (
+        <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+          <button
+            type="button"
+            onClick={() => setShowClips((value) => !value)}
+            className="flex w-full items-center justify-between text-left text-xs font-medium text-white/70"
+          >
+            <span>Recursos generados ({clipItems.filter((clip) => clip.status === "ok").length}/{clipItems.length})</span>
+            <span className="text-[var(--color-accent-2)]">{showClips ? "Ocultar" : "Ver todos"}</span>
+          </button>
+          {showClips && (
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {clipItems.map((clip, index) => (
+                <div key={`${clip.shot}-${clip.path}-${index}`} className="rounded-lg border border-white/10 bg-black/20 p-2">
+                  <div className="mb-2 flex items-center justify-between gap-2 text-[11px]">
+                    <b>Corte {index + 1} · plano {clip.shot}</b>
+                    <span className={clip.status === "ok" ? "text-[var(--color-state-ok)]" : clip.status === "error" ? "text-[var(--color-state-error)]" : "text-white/40"}>
+                      {clip.status === "ok" ? "Generado" : clip.status === "error" ? "Error" : "Generando…"}
+                    </span>
+                  </div>
+                  {clip.path && <video controls preload="metadata" className="w-full rounded bg-black" src={asset(clip.path)} />}
+                  <div className="mt-2 text-[10px] text-white/45">
+                    {clip.description || "Corte generado"}
+                    <div>
+                      Duración: {clip.actualSeconds ? `${clip.actualSeconds.toFixed(1)}s real` : `${clip.requestedSeconds}s solicitada`}
+                      {clip.model ? ` · ${clip.model.split("/").at(-1)}` : ""}
+                    </div>
+                    {clip.error && <div className="mt-1 text-[var(--color-state-error)]">{clip.error}</div>}
+                    {clip.prompt && <details className="mt-1"><summary className="cursor-pointer">Ver prompt</summary><div className="mt-1 break-words">{clip.prompt}</div></details>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
-      {piece.assets.logs.length > 0 && (
+      {allLogs.length > 0 && (
         <div
           className={[
             "mb-3 rounded-lg border p-3 text-xs",
@@ -518,7 +646,7 @@ function PieceCard({
         >
           <div className="mb-1 font-medium text-white/70">Registro de generación</div>
           <ul className="flex list-disc flex-col gap-1 pl-4 text-white/55">
-            {piece.assets.logs.map((log, index) => (
+            {allLogs.map((log, index) => (
               <li key={`${index}-${log}`}>{log}</li>
             ))}
           </ul>

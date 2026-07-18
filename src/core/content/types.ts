@@ -58,6 +58,9 @@ export interface NavStep {
  */
 export interface DemoConfig {
   funcion: string; // nombre de la funcionalidad a mostrar
+  funcionDescripcion?: string; // resultado del analisis dirigido, reutilizado por el guion
+  funcionEvidencias?: string[]; // referencias de codigo que justifican el recorrido
+  funcionConfianza?: "alta" | "media" | "baja";
   funcionUrl: string; // ruta/URL concreta a navegar y grabar
   pasos: string[]; // pasos de navegacion (Playwright / guia manual)
   navSteps?: NavStep[]; // pasos ejecutables; opcional para compat con piezas antiguas
@@ -65,6 +68,18 @@ export interface DemoConfig {
   usarLogin: boolean; // requiere login (credenciales cifradas por proyecto en el vault)
   grabacionModo: GrabacionModo;
   recordingAssetId?: string; // REQ-011: grabación reutilizable elegida de la mediateca
+}
+
+export interface ClipManifestItem {
+  shot: number;
+  description: string;
+  prompt: string;
+  model: string;
+  requestedSeconds: number;
+  actualSeconds: number | null;
+  path: string;
+  status: "pending" | "ok" | "error";
+  error?: string;
 }
 
 /** Como se narra un video de avatar HeyGen. */
@@ -110,6 +125,7 @@ export interface PieceAssets {
   presenterPath: string; // original HeyGen antes del montaje con el screencast
   audioPath: string; // locucion (rama fal)
   clips: string[]; // cortes de fal por plano
+  clipManifest: ClipManifestItem[]; // metadatos y estado de cada corte fal
   recordingPath: string; // screencast de la app (REQ-006: Playwright o subido a mano)
   externalUrl: string; // url del proveedor si no se descargo
   logs: string[]; // trazas de generacion
@@ -183,6 +199,7 @@ export const EMPTY_ASSETS: PieceAssets = {
   presenterPath: "",
   audioPath: "",
   clips: [],
+  clipManifest: [],
   recordingPath: "",
   externalUrl: "",
   logs: [],
@@ -293,6 +310,14 @@ export function coerceDemo(raw: unknown): DemoConfig {
     usarLogin: bool(o.usarLogin, false),
     grabacionModo: rawMode === "manual" || rawMode === "library" ? rawMode : "auto",
   };
+  const funcionDescripcion = str(o.funcionDescripcion);
+  if (funcionDescripcion) demo.funcionDescripcion = funcionDescripcion;
+  const funcionEvidencias = strArr(o.funcionEvidencias);
+  if (funcionEvidencias.length > 0) demo.funcionEvidencias = funcionEvidencias;
+  const funcionConfianza = str(o.funcionConfianza);
+  if (["alta", "media", "baja"].includes(funcionConfianza)) {
+    demo.funcionConfianza = funcionConfianza as DemoConfig["funcionConfianza"];
+  }
   const recordingAssetId = str(o.recordingAssetId);
   if (recordingAssetId) demo.recordingAssetId = recordingAssetId;
   const navSteps = arr(o.navSteps ?? o.nav_steps)
@@ -364,11 +389,31 @@ export function validateMediaConfig(config: MediaConfig): string {
 
 export function coerceAssets(raw: unknown): PieceAssets {
   const o = (raw ?? {}) as Record<string, unknown>;
+  const clipManifest = arr(o.clipManifest).map((item) => {
+    const clip = (item ?? {}) as Record<string, unknown>;
+    const rawStatus = str(clip.status);
+    const status: ClipManifestItem["status"] =
+      rawStatus === "ok" || rawStatus === "error" ? rawStatus : "pending";
+    const result: ClipManifestItem = {
+      shot: num(clip.shot, 0),
+      description: str(clip.description),
+      prompt: str(clip.prompt),
+      model: str(clip.model),
+      requestedSeconds: num(clip.requestedSeconds, 0),
+      actualSeconds: clip.actualSeconds == null ? null : num(clip.actualSeconds, 0),
+      path: str(clip.path),
+      status,
+    };
+    const error = str(clip.error);
+    if (error) result.error = error;
+    return result;
+  });
   return {
     videoPath: str(o.videoPath),
     presenterPath: str(o.presenterPath),
     audioPath: str(o.audioPath),
     clips: strArr(o.clips),
+    clipManifest,
     recordingPath: str(o.recordingPath),
     externalUrl: str(o.externalUrl),
     logs: strArr(o.logs),

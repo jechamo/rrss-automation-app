@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { buildReq005Pipeline } from "@/core/pipeline/req005";
 import { executeRun, initialNodeStatus } from "@/core/pipeline/engine";
 import { coerceConfig, validateMediaConfig } from "@/core/content/types";
+import { coerceVirales } from "@/core/virales/types";
 
 export const dynamic = "force-dynamic";
 
@@ -33,14 +34,27 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       { status: 409 },
     );
   }
+  const normalizedSource = sourceUrl.trim().toLowerCase().replace(/\/+$/, "");
+  const virales = coerceVirales(JSON.parse(project.virales.content));
+  const selectedViral = virales.virales.find(
+    (viral) => viral.url.trim().toLowerCase().replace(/\/+$/, "") === normalizedSource,
+  );
+  if (!selectedViral) {
+    return NextResponse.json(
+      { error: "El viral seleccionado ya no está disponible. Actualiza la lista de virales." },
+      { status: 409 },
+    );
+  }
 
   const piece = await prisma.contentPiece.create({
     data: {
       projectId: id,
       origin: "viral",
       sourceUrl,
+      titulo: selectedViral.titulo,
+      plataforma: selectedViral.plataforma,
       config: JSON.stringify(config),
-      status: "borrador",
+      status: "generando",
     },
   });
 
@@ -53,7 +67,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       nodes: JSON.stringify(initialNodeStatus(def)),
     },
   });
-  await prisma.contentPiece.update({ where: { id: piece.id }, data: { runId: run.id } });
+  await prisma.contentPiece.update({
+    where: { id: piece.id },
+    data: { runId: run.id, status: "generando" },
+  });
 
   // Fire-and-forget: ejecuta y reconcilia el estado de la pieza si el run falla.
   void (async () => {
@@ -75,5 +92,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
   })();
 
-  return NextResponse.json({ runId: run.id, pieceId: piece.id });
+  return NextResponse.json({
+    runId: run.id,
+    pieceId: piece.id,
+    nodes: initialNodeStatus(def),
+    plataforma: selectedViral.plataforma,
+    titulo: selectedViral.titulo,
+  });
 }

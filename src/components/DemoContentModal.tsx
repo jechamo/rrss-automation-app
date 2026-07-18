@@ -21,17 +21,21 @@ type AppFuncion = {
   url: string;
   pasos: string[];
   navSteps?: NavStep[];
+  evidencias?: string[];
+  confianza?: "alta" | "media" | "baja";
 };
 
 type RecordingAsset = SavedMediaAsset & { kind: string; duration: number | null };
 
 export function DemoContentModal({
   projectId,
+  projectUrl,
   onClose,
   onGenerate,
   busy,
 }: {
   projectId: string;
+  projectUrl: string;
   onClose: () => void;
   onGenerate: (demo: DemoConfig, config: Partial<MediaConfig>) => void;
   busy: boolean;
@@ -41,6 +45,9 @@ export function DemoContentModal({
   const [funcsErr, setFuncsErr] = useState("");
 
   const [funcion, setFuncion] = useState("");
+  const [funcionDescripcion, setFuncionDescripcion] = useState("");
+  const [funcionEvidencias, setFuncionEvidencias] = useState<string[]>([]);
+  const [funcionConfianza, setFuncionConfianza] = useState<"alta" | "media" | "baja" | "">("");
   const [funcionUrl, setFuncionUrl] = useState("");
   const [pasosText, setPasosText] = useState("");
   const [navSteps, setNavSteps] = useState<NavStep[] | undefined>();
@@ -48,6 +55,7 @@ export function DemoContentModal({
   const [navStepsError, setNavStepsError] = useState("");
   const [dryRunState, setDryRunState] = useState<"idle" | "testing" | "ok" | "error">("idle");
   const [dryRunMessage, setDryRunMessage] = useState("");
+  const [showAdvancedRoute, setShowAdvancedRoute] = useState(false);
 
   const [grabacionModo, setGrabacionModo] = useState<"auto" | "manual" | "library">("auto");
   const [recordingAssetId, setRecordingAssetId] = useState("");
@@ -88,7 +96,12 @@ export function DemoContentModal({
   async function analizar() {
     setLoadingFuncs(true);
     setFuncsErr("");
-    const r = await fetch(`/api/projects/${projectId}/functions`, { method: "POST" });
+    const objective = funcion.trim();
+    const r = await fetch(`/api/projects/${projectId}/functions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ objetivo: objective, usarLogin }),
+    });
     setLoadingFuncs(false);
     if (!r.ok) {
       setFuncsErr(`HTTP ${r.status}`);
@@ -96,11 +109,15 @@ export function DemoContentModal({
     }
     const d = (await r.json()) as { funciones: AppFuncion[]; error?: string };
     setFunciones(d.funciones);
+    if (objective && d.funciones.length > 0) pick(d.funciones[0]);
     if (d.error) setFuncsErr(d.error);
   }
 
   function pick(f: AppFuncion) {
     setFuncion(f.nombre);
+    setFuncionDescripcion(f.descripcion);
+    setFuncionEvidencias(f.evidencias ?? []);
+    setFuncionConfianza(f.confianza ?? "");
     setFuncionUrl(f.url);
     setPasosText(f.pasos.join("\n"));
     setNavSteps(f.navSteps);
@@ -151,6 +168,9 @@ export function DemoContentModal({
   function currentDemo(): DemoConfig {
     return {
       funcion: funcion.trim(),
+      ...(funcionDescripcion ? { funcionDescripcion } : {}),
+      ...(funcionEvidencias.length ? { funcionEvidencias } : {}),
+      ...(funcionConfianza ? { funcionConfianza } : {}),
       funcionUrl: funcionUrl.trim(),
       pasos: pasosText
         .split("\n")
@@ -221,12 +241,16 @@ export function DemoContentModal({
                 disabled={loadingFuncs}
                 className="rounded-lg border border-white/15 px-2 py-1 text-xs hover:bg-white/5 disabled:opacity-40"
               >
-                {loadingFuncs ? "Analizando…" : "Analizar con IA"}
+                {loadingFuncs
+                  ? "Analizando…"
+                  : funcion.trim()
+                    ? "Analizar esta funcionalidad"
+                    : "Buscar funciones con IA"}
               </button>
             </div>
             <p className="mb-2 text-[11px] text-white/40">
-              «Analizar con IA» propone funciones de tu app a partir del dossier y
-              autorrellena la URL y los pasos. También puedes escribirlos a mano.
+              Si escribes un nombre, la IA busca esa funcionalidad en el código y prepara su
+              recorrido completo. Si lo dejas vacío, propone varias opciones.
             </p>
             {funciones.length > 0 && (
               <div className="mb-2 flex flex-col gap-1">
@@ -251,19 +275,54 @@ export function DemoContentModal({
               className="input"
               placeholder="Nombre de la funcionalidad"
               value={funcion}
-              onChange={(e) => setFuncion(e.target.value)}
+              onChange={(e) => {
+                setFuncion(e.target.value);
+                setFuncionDescripcion("");
+                setFuncionEvidencias([]);
+                setFuncionConfianza("");
+              }}
             />
+            {funcionConfianza && (
+              <div className="mt-2 rounded-lg border border-white/10 bg-white/5 p-2 text-[11px] text-white/55">
+                Confianza del recorrido: <b className="text-white/75">{funcionConfianza}</b>
+                {funcionDescripcion && <div className="mt-1">{funcionDescripcion}</div>}
+                {funcionEvidencias.length > 0 && (
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-[var(--color-accent-2)]">
+                      Ver evidencias del código ({funcionEvidencias.length})
+                    </summary>
+                    <ul className="mt-1 list-disc pl-4 font-mono text-[10px] text-white/45">
+                      {funcionEvidencias.map((evidence) => <li key={evidence}>{evidence}</li>)}
+                    </ul>
+                  </details>
+                )}
+              </div>
+            )}
           </div>
 
-          <label className="block">
-            <span className="mb-1 block text-xs text-white/50">URL / ruta a grabar</span>
-            <input
-              className="input"
-              placeholder="https://tu-app…/funcionalidad"
-              value={funcionUrl}
-              onChange={(e) => setFuncionUrl(e.target.value)}
-            />
-          </label>
+          <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+            <div className="text-xs text-white/50">URL raíz de la app</div>
+            <div className="mt-1 break-all text-xs text-white/75">{projectUrl}</div>
+            <div className="mt-2 text-[11px] text-white/40">
+              Playwright puede atravesar varias pantallas; el recorrido detectado se define en los
+              pasos de abajo, no en una única ruta.
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAdvancedRoute((value) => !value)}
+              className="mt-2 text-[11px] text-[var(--color-accent-2)] hover:underline"
+            >
+              {showAdvancedRoute ? "Ocultar ruta inicial avanzada" : "Editar ruta inicial (avanzado)"}
+            </button>
+            {showAdvancedRoute && (
+              <input
+                className="input mt-2"
+                placeholder={projectUrl}
+                value={funcionUrl}
+                onChange={(e) => setFuncionUrl(e.target.value)}
+              />
+            )}
+          </div>
 
           <label className="block">
             <span className="mb-1 block text-xs text-white/50">Pasos de navegación (uno por línea)</span>
@@ -296,8 +355,8 @@ export function DemoContentModal({
                 onChange={(event) => updateNavSteps(event.target.value)}
               />
               <span className="mt-1 block text-[10px] text-white/35">
-                «Analizar con IA» los rellena con selectores del repositorio. Vacío mantiene el
-                recorrido compatible por scroll.
+                La IA los rellena con selectores del repositorio y puede incluir varios cambios de
+                ruta. Vacío mantiene el recorrido compatible por scroll.
               </span>
               {navStepsError && (
                 <span className="mt-1 block text-xs text-[var(--color-state-error)]">
