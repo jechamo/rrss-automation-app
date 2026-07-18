@@ -18,18 +18,48 @@ export const buildRequestBody = buildFalRequestBody;
 export const FAL_MODELS: MediaOption[] = [
   {
     id: FAL_MODEL_IDS.seedance,
-    label: "Seedance Pro Fast",
-    hint: "Recomendado · rápido y eficiente",
+    label: "Seedance 1.0 Pro Fast",
+    hint: "Recomendado · económico · ≈ 0,049 $/s",
+  },
+  {
+    id: FAL_MODEL_IDS.seedanceV2Fast,
+    label: "Seedance 2.0 Fast",
+    hint: "Nueva generación · 720p · 0,2419 $/s",
+  },
+  {
+    id: FAL_MODEL_IDS.seedanceV2,
+    label: "Seedance 2.0 Standard",
+    hint: "Máxima calidad Seedance · 720p · 0,3034 $/s",
+  },
+  {
+    id: FAL_MODEL_IDS.kling25,
+    label: "Kling 2.5 Turbo Pro",
+    hint: "Precisión de prompt · 0,07 $/s",
   },
   {
     id: FAL_MODEL_IDS.kling,
-    label: "Kling v3 Standard",
-    hint: "Movimiento y detalle",
+    label: "Kling 3.0 Standard",
+    hint: "Movimiento y detalle · 0,084 $/s",
+  },
+  {
+    id: FAL_MODEL_IDS.klingPro,
+    label: "Kling 3.0 Pro",
+    hint: "Calidad premium · 0,112 $/s",
+  },
+  {
+    id: FAL_MODEL_IDS.veo31Fast,
+    label: "Veo 3.1 Fast",
+    hint: "Google · 1080p · 0,10 $/s",
+  },
+  {
+    id: FAL_MODEL_IDS.veo31,
+    label: "Veo 3.1 Standard",
+    hint: "Google premium · 1080p · 0,20 $/s",
   },
   {
     id: FAL_MODEL_IDS.luma,
     label: "Luma Ray 2",
-    hint: "Estilo cinematográfico",
+    hint: "Estilo cinematográfico · ≈ 0,10 $/s",
   },
 ];
 

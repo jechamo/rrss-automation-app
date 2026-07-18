@@ -37,6 +37,15 @@ export interface PieceContent {
   notaLegal: string; // recordatorio: concepto reinterpretado, no copia
 }
 
+/**
+ * Preflight de REQ-013: el guion y los prompts que el usuario reviso antes de
+ * autorizar cualquier peticion de video a fal.ai.
+ */
+export interface FalPromptReview {
+  approvedAt: string;
+  content: PieceContent;
+}
+
 /** Modo de grabacion de la demo (REQ-006). */
 export type GrabacionModo = "auto" | "manual" | "library";
 
@@ -117,6 +126,8 @@ export interface MediaConfig {
   falClipCount: number;
   // comprension del viral fuente
   usarGemini: boolean; // true = analizar el video con Gemini; false = reusar datos REQ-004
+  // REQ-013: contenido aprobado en el preflight. Solo se usa en rama fal.
+  falPromptReview?: FalPromptReview;
   // rama="heygen": avatar/narracion. Opcional para compat con piezas antiguas.
   heygen?: HeygenConfig;
   // REQ-006 (solo piezas origin="own"): demo de la propia app
@@ -377,7 +388,36 @@ export function coerceConfig(raw: unknown): MediaConfig {
     config.heygen = coerceHeygen(o.heygen, o);
   }
   if (o.demo && typeof o.demo === "object") config.demo = coerceDemo(o.demo);
+  if (o.falPromptReview && typeof o.falPromptReview === "object") {
+    const review = o.falPromptReview as Record<string, unknown>;
+    const approvedAt = str(review.approvedAt);
+    if (approvedAt && review.content && typeof review.content === "object") {
+      config.falPromptReview = {
+        approvedAt,
+        content: coerceContent(review.content),
+      };
+    }
+  }
   return config;
+}
+
+/** Valida que los prompts aprobados coincidan con el numero de cortes elegido. */
+export function validateFalPromptReview(
+  config: MediaConfig,
+  origin: "viral" | "own",
+): string {
+  if (config.rama !== "fal") return "";
+  const review = config.falPromptReview;
+  if (!review) return "Prepara y revisa los prompts antes de generar con fal.ai.";
+  const promptShots = review.content.escaleta.filter((shot) => shot.prompt.trim());
+  const expected = coerceFalClipCount(config.falClipCount);
+  if (promptShots.length !== expected) {
+    return `El plan aprobado debe contener exactamente ${expected} prompt${expected === 1 ? "" : "s"} de fal.ai.`;
+  }
+  if (origin === "viral" && review.content.escaleta.length !== expected) {
+    return "El storyboard del viral cambio. Vuelve a preparar y revisar los prompts.";
+  }
+  return "";
 }
 
 /** Validacion compartida antes de crear una pieza o consumir un proveedor. */

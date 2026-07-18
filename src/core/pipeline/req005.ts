@@ -77,6 +77,10 @@ export function buildReq005Pipeline(pieceId: string): PipelineDef {
       const dossier = ctx.artifacts.dossier as Dossier;
       const viral = ctx.artifacts.viral as Viral;
       const config = ctx.artifacts.config as MediaConfig;
+      if (config.rama === "fal" && config.falPromptReview) {
+        ctx.log("Análisis reutilizado del preflight de prompts (sin repetir la IA).");
+        return;
+      }
       const ex = await extractViral({ viral, dossier, config, log: ctx.log });
       ctx.artifacts.extract = ex;
       ctx.log(
@@ -95,12 +99,14 @@ export function buildReq005Pipeline(pieceId: string): PipelineDef {
       const viral = ctx.artifacts.viral as Viral;
       const ex = ctx.artifacts.extract as ViralExtract;
       const config = ctx.artifacts.config as MediaConfig;
-      const content = await generateGuion({
-        dossier,
-        extract: ex,
-        plataforma: viral.plataforma,
-        clipCount: effectiveClipLimit(config),
-      });
+      const content = config.rama === "fal" && config.falPromptReview
+        ? config.falPromptReview.content
+        : await generateGuion({
+            dossier,
+            extract: ex,
+            plataforma: viral.plataforma,
+            clipCount: effectiveClipLimit(config),
+          });
       ctx.artifacts.content = content;
       // Persistir el guion cuanto antes: aunque el render falle, es revisable.
       await prisma.contentPiece.update({
@@ -111,7 +117,11 @@ export function buildReq005Pipeline(pieceId: string): PipelineDef {
           plataforma: content.plataforma,
         },
       });
-      ctx.log(`Guion original generado (${content.escaleta.length} planos).`);
+      ctx.log(
+        config.rama === "fal" && config.falPromptReview
+          ? `Guion y prompts aprobados por el usuario (${content.escaleta.length} planos).`
+          : `Guion original generado (${content.escaleta.length} planos).`,
+      );
     },
   };
 

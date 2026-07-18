@@ -15,7 +15,11 @@ import {
   retryDelayMs,
 } from "./contracts.js";
 import { buildVisualPlan, estimateNarrationSeconds, effectiveClipLimit } from "./planning.js";
-import { DEFAULT_CONFIG } from "../content/types.js";
+import {
+  DEFAULT_CONFIG,
+  EMPTY_CONTENT,
+  validateFalPromptReview,
+} from "../content/types.js";
 import { coerceMixRecipe, mixVideoCount, mixVisualDuration } from "./mix-contracts.js";
 
 test("fal.ai construye bodies verticales segun cada esquema", () => {
@@ -70,6 +74,53 @@ test("buildFalRequestBody incluye 15 en Kling", () => {
     duration: "15",
     generate_audio: false,
   });
+});
+
+test("fal.ai usa los contratos oficiales de Seedance 2, Kling 2.5 y Veo 3.1", () => {
+  assert.deepEqual(buildFalRequestBody(FAL_MODEL_IDS.seedanceV2Fast, "demo", 15), {
+    prompt: "demo",
+    resolution: "720p",
+    aspect_ratio: "9:16",
+    duration: "15",
+    generate_audio: false,
+  });
+  assert.deepEqual(buildFalRequestBody(FAL_MODEL_IDS.kling25, "demo", 15), {
+    prompt: "demo",
+    aspect_ratio: "9:16",
+    duration: "10",
+  });
+  assert.deepEqual(buildFalRequestBody(FAL_MODEL_IDS.veo31Fast, "demo", 10), {
+    prompt: "demo",
+    aspect_ratio: "9:16",
+    duration: "8s",
+    resolution: "1080p",
+    generate_audio: false,
+  });
+  assert.equal(resolveFalDuration(FAL_MODEL_IDS.veo31, 5).body, "4s");
+  assert.equal(resolveFalDuration(FAL_MODEL_IDS.klingPro, 15).body, "15");
+});
+
+test("fal.ai exige prompts revisados y conserva compatibilidad con HeyGen", () => {
+  assert.match(validateFalPromptReview(DEFAULT_CONFIG, "viral"), /revisa los prompts/i);
+  assert.equal(
+    validateFalPromptReview({ ...DEFAULT_CONFIG, rama: "heygen" }, "viral"),
+    "",
+  );
+  const approved = {
+    ...DEFAULT_CONFIG,
+    falClipMode: "manual" as const,
+    falClipCount: 1,
+    falPromptReview: {
+      approvedAt: "2026-07-19T10:00:00.000Z",
+      content: {
+        ...EMPTY_CONTENT,
+        escaleta: [
+          { n: 1, descripcion: "Plano", prompt: "Cinematic vertical shot", texto: "", segundos: 5 },
+        ],
+      },
+    },
+  };
+  assert.equal(validateFalPromptReview(approved, "viral"), "");
 });
 
 test("HeyGen usa exactamente una narracion", () => {

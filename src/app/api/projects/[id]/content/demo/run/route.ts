@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buildReq006Pipeline } from "@/core/pipeline/req006";
 import { executeRun, initialNodeStatus } from "@/core/pipeline/engine";
-import { coerceConfig, coerceDemo, validateMediaConfig } from "@/core/content/types";
+import {
+  coerceConfig,
+  coerceDemo,
+  validateFalPromptReview,
+  validateMediaConfig,
+} from "@/core/content/types";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +23,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const config = coerceConfig((body?.config as unknown) ?? {});
   const configError = validateMediaConfig(config);
   if (configError) return NextResponse.json({ error: configError }, { status: 400 });
+  const reviewError = validateFalPromptReview(config, "own");
+  if (reviewError) return NextResponse.json({ error: reviewError }, { status: 400 });
   config.demo = demo;
 
   const project = await prisma.project.findUnique({ where: { id }, include: { dossier: true } });

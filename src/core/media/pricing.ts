@@ -2,16 +2,22 @@ import { FAL_MODEL_IDS, resolveFalDuration } from "./contracts";
 import type { MediaConfig } from "@/core/content/types";
 
 /**
- * Tarifas aproximadas publicas (USD), revisadas 2026-07-18.
+ * Tarifas publicas/orientativas (USD), revisadas 2026-07-19.
  * Son orientativas: cada proveedor puede cambiar precios/planes.
  * Fuentes: documentacion fal.ai, tarifas tipicas HeyGen/ElevenLabs API.
  */
-export const PRICING_AS_OF = "2026-07";
+export const PRICING_AS_OF = "2026-07-19";
 
 /** USD por segundo de video generado (audio nativo OFF — usamos locucion aparte). */
 const FAL_USD_PER_SEC: Record<string, number> = {
-  [FAL_MODEL_IDS.seedance]: 0.03, // Seedance V1 Pro Fast (aprox.)
+  [FAL_MODEL_IDS.seedance]: 0.049, // Seedance V1 Pro Fast, 1080p aprox.
+  [FAL_MODEL_IDS.seedanceV2Fast]: 0.2419, // 720p; audio incluido en la tarifa
+  [FAL_MODEL_IDS.seedanceV2]: 0.3034, // 720p; audio incluido en la tarifa
+  [FAL_MODEL_IDS.kling25]: 0.07,
   [FAL_MODEL_IDS.kling]: 0.084, // Kling v3 Standard sin audio nativo
+  [FAL_MODEL_IDS.klingPro]: 0.112, // Kling v3 Pro sin audio nativo
+  [FAL_MODEL_IDS.veo31Fast]: 0.1, // 1080p sin audio
+  [FAL_MODEL_IDS.veo31]: 0.2, // 1080p sin audio
   [FAL_MODEL_IDS.luma]: 0.1, // Luma Ray 2 = 0.50 USD / 5s
 };
 
@@ -45,9 +51,15 @@ function falModelId(config: MediaConfig): string {
 }
 
 function falModelLabel(modelId: string): string {
-  if (modelId === FAL_MODEL_IDS.kling) return "Kling v3 Standard";
+  if (modelId === FAL_MODEL_IDS.seedanceV2Fast) return "Seedance 2.0 Fast";
+  if (modelId === FAL_MODEL_IDS.seedanceV2) return "Seedance 2.0 Standard";
+  if (modelId === FAL_MODEL_IDS.kling25) return "Kling 2.5 Turbo Pro";
+  if (modelId === FAL_MODEL_IDS.kling) return "Kling 3.0 Standard";
+  if (modelId === FAL_MODEL_IDS.klingPro) return "Kling 3.0 Pro";
+  if (modelId === FAL_MODEL_IDS.veo31Fast) return "Veo 3.1 Fast";
+  if (modelId === FAL_MODEL_IDS.veo31) return "Veo 3.1 Standard";
   if (modelId === FAL_MODEL_IDS.luma) return "Luma Ray 2";
-  return "Seedance Pro Fast";
+  return "Seedance 1.0 Pro Fast";
 }
 
 function formatUsd(n: number): string {

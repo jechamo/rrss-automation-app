@@ -214,7 +214,7 @@ export function MediaProviderConfigurator({
             value={value.videoModelo}
             setValue={(videoModelo) => patch({ videoModelo })}
             options={videoOptions}
-            autoHint="Modelo recomendado: Seedance Pro Fast"
+            autoHint="Modelo recomendado: Seedance 1.0 Pro Fast (menor coste)"
           />
           <div>
             <span className="mb-1 block text-xs text-white/50">Duración de cada corte</span>

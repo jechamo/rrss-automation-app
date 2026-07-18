@@ -1,23 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { DEFAULT_CONFIG, EMPTY_HEYGEN, type MediaConfig } from "@/core/content/types";
+import {
+  coerceContent,
+  DEFAULT_CONFIG,
+  EMPTY_HEYGEN,
+  type MediaConfig,
+  type PieceContent,
+} from "@/core/content/types";
 import {
   MediaProviderConfigurator,
   mediaProviderError,
 } from "@/components/MediaProviderConfigurator";
 import { VisualPlanCard } from "@/components/VisualPlanCard";
 import { buildVisualPlan } from "@/core/media/planning";
+import { FalPromptReviewPanel } from "@/components/FalPromptReviewPanel";
 
 type ViralPick = { url: string; titulo: string; plataforma: string };
 
 export function GenerateContentModal({
+  projectId,
   virales,
   initialUrl,
   onClose,
   onGenerate,
   busy,
 }: {
+  projectId: string;
   virales: ViralPick[];
   initialUrl?: string;
   onClose: () => void;
@@ -30,18 +39,80 @@ export function GenerateContentModal({
     heygen: { ...EMPTY_HEYGEN },
   });
   const [usarGemini, setUsarGemini] = useState(false);
+  const [promptContent, setPromptContent] = useState<PieceContent | null>(null);
+  const [promptIndexes, setPromptIndexes] = useState<number[]>([]);
+  const [promptSignature, setPromptSignature] = useState("");
+  const [promptLoading, setPromptLoading] = useState(false);
+  const [promptError, setPromptError] = useState("");
+
+  function plannedConfig(): MediaConfig {
+    const config = { ...mediaConfig, usarGemini };
+    const plan = buildVisualPlan({ config, origin: "viral" });
+    return { ...config, falClipCount: plan.clipCount, falPromptReview: undefined };
+  }
+
+  function currentPromptSignature(config = plannedConfig()): string {
+    return JSON.stringify({
+      sourceUrl,
+      usarGemini: config.usarGemini,
+      videoAuto: config.videoAuto,
+      videoModelo: config.videoModelo,
+      falClipSeconds: config.falClipSeconds,
+      falClipMode: config.falClipMode,
+      falClipCount: config.falClipCount,
+    });
+  }
+
+  async function preparePrompts() {
+    if (!sourceUrl || providerError) return;
+    const config = plannedConfig();
+    const signature = currentPromptSignature(config);
+    setPromptLoading(true);
+    setPromptError("");
+    try {
+      const response = await fetch(`/api/projects/${projectId}/content/plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceUrl, config }),
+      });
+      const data = (await response.json()) as { content?: unknown; error?: string };
+      if (!response.ok || !data.content) throw new Error(data.error || `HTTP ${response.status}`);
+      const content = coerceContent(data.content);
+      setPromptContent(content);
+      setPromptIndexes(
+        content.escaleta.flatMap((shot, index) => (shot.prompt.trim() ? [index] : [])),
+      );
+      setPromptSignature(signature);
+    } catch (error) {
+      setPromptError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setPromptLoading(false);
+    }
+  }
 
   function submit() {
     if (!sourceUrl) return;
-    const config = { ...mediaConfig, usarGemini };
-    const plan = buildVisualPlan({ config, origin: "viral" });
-    onGenerate(sourceUrl, { ...config, falClipCount: plan.clipCount });
+    const config = plannedConfig();
+    if (config.rama === "fal") {
+      if (!promptContent || promptSignature !== currentPromptSignature(config)) return;
+      onGenerate(sourceUrl, {
+        ...config,
+        falPromptReview: { approvedAt: new Date().toISOString(), content: promptContent },
+      });
+      return;
+    }
+    onGenerate(sourceUrl, config);
   }
 
   const providerError = mediaProviderError(mediaConfig) ||
     (mediaConfig.rama === "fal" && mediaConfig.falClipMode === "manual" && mediaConfig.falClipCount === 0
       ? "Para reinterpretar un viral con fal.ai necesitas al menos un corte."
       : "");
+  const promptsStale = Boolean(promptContent) && promptSignature !== currentPromptSignature();
+  const promptsComplete = Boolean(promptContent) &&
+    promptIndexes.length === plannedConfig().falClipCount &&
+    promptIndexes.every((index) => Boolean(promptContent?.escaleta[index]?.prompt.trim()));
+  const falReady = mediaConfig.rama !== "fal" || (promptsComplete && !promptsStale);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -82,6 +153,19 @@ export function GenerateContentModal({
             usarGemini={usarGemini}
           />
 
+          {mediaConfig.rama === "fal" && (
+            <FalPromptReviewPanel
+              content={promptContent}
+              promptIndexes={promptIndexes}
+              onChange={setPromptContent}
+              onPrepare={preparePrompts}
+              loading={promptLoading}
+              error={promptError}
+              stale={promptsStale}
+              disabled={busy || Boolean(providerError)}
+            />
+          )}
+
           <label className="flex items-start gap-2">
             <input
               type="checkbox"
@@ -115,10 +199,14 @@ export function GenerateContentModal({
             </button>
             <button
               onClick={submit}
-              disabled={busy || !sourceUrl || Boolean(providerError)}
+              disabled={busy || promptLoading || !sourceUrl || Boolean(providerError) || !falReady}
               className="rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium disabled:opacity-40"
             >
-              {busy ? "Lanzando…" : "Aprobar plan y generar"}
+              {busy
+                ? "Lanzando…"
+                : mediaConfig.rama === "fal"
+                  ? "Aprobar prompts y generar"
+                  : "Aprobar plan y generar"}
             </button>
           </div>
         </div>

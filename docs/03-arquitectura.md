@@ -595,6 +595,18 @@ locución como pista maestra, mezcla música opcional, quema ASS y crea `mix-<id
   duración visual debe coincidir con la pista maestra dentro de 0,25 s; no se usa padding oculto.
 - La UI de `MixStudioPanel` prepara recetas v2 y el endpoint existente continúa aceptando v1.
 
+### REQ-013 — Preflight de prompts y contratos fal.ai
+
+- `POST /api/projects/:id/content/plan` prepara REQ-005 y
+  `POST /api/projects/:id/content/demo/plan` prepara REQ-006; ninguno crea `ContentPiece` ni llama fal.ai.
+- `MediaConfig.falPromptReview` guarda `approvedAt` y el `PieceContent` completo aprobado. Es un campo
+  JSON aditivo, por lo que no requiere migración Prisma y las piezas antiguas siguen normalizándose.
+- Las rutas `run` validan cantidad y prompts; los nodos de guion reutilizan el contenido aprobado.
+- `FalPromptReviewPanel` conserva los índices de cortes B-roll aunque el usuario vacíe temporalmente
+  un textarea, evitando confundirlos con planos de grabación.
+- `contracts.ts` contiene IDs, enums de duración y bodies verticales por endpoint. El catálogo y
+  `pricing.ts` comparten los IDs; el audio nativo se desactiva cuando el esquema lo permite.
+
 ---
 
 ## 9. Arquitectura concreta de REQ-001 (primer requisito)
@@ -630,6 +642,9 @@ locución como pista maestra, mezcla música opcional, quema ASS y crea `mix-<id
 | REQ-008 | secrets, connectors (test), Ajustes UI |
 | REQ-009 | UI (React Flow, carrusel 360, tema) |
 | REQ-010 | content/publish, PublishModal, asset route (download) |
+| REQ-011 | media library, recorder, mix, subtitles, system tools |
+| REQ-012 | media planning, mix recipe v2, timeline editor |
+| REQ-013 | content preflight, fal contracts/pricing, prompt review UI |
 
 ---
 

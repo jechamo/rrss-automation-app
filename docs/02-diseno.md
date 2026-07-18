@@ -284,3 +284,11 @@ La cabecera compara duración visual y locución. **Ajustar a locución** repart
 segmentos no protegidos dentro de los límites de sus fuentes. Los avisos distinguen estimación,
 desajuste, recurso ausente y corte sin utilizar. Los marcadores Playwright se representan como
 segmentos de demo protegidos; los manuales pueden bloquearse desde el propio editor.
+
+## 17. Revisión previa de prompts fal.ai (REQ-013)
+
+En ambos modales, la rama fal.ai añade una tarjeta violeta entre el plan audiovisual y el CTA final.
+El estado vacío explica que aún no habrá consumo; «Preparar guion y prompts» muestra el hook y una
+tarjeta editable por corte. Cambios que alteren el plan muestran una advertencia de obsolescencia y
+bloquean el CTA. Un prompt vacío también bloquea la aprobación. El CTA final se denomina «Aprobar
+prompts y generar». El selector de modelo incluye versión, perfil y coste por segundo en cada opción.

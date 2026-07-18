@@ -350,6 +350,29 @@ montajes automáticos y las recetas MIX anteriores.
 - Toda salida con voz conserva subtítulos inferiores en la zona segura.
 - Piezas y MIX anteriores continúan abriendo, renderizando y publicándose.
 
+### REQ-013 — Preflight de prompts y catálogo fal.ai ampliado
+
+**Objetivo:** que ningún prompt generativo se envíe a fal.ai sin que el usuario pueda verlo,
+modificarlo y aprobarlo, y ofrecer una selección actual de modelos con coste comparable.
+
+**Flujo obligatorio en rama fal.ai:**
+- «Preparar guion y prompts» ejecuta análisis/guion, pero no crea la pieza ni llama a fal.ai.
+- Se muestran hook, duración y todos los cortes generativos con descripción, plano y prompt editable.
+- Si cambia viral, funcionalidad, modelo, duración o cantidad, la revisión queda obsoleta y debe repetirse.
+- «Aprobar prompts y generar» persiste la versión aprobada; el pipeline la reutiliza exactamente y
+  no vuelve a pedir a la IA un guion diferente.
+- El servidor rechaza una creación fal.ai sin revisión o con prompts vacíos/cantidad incoherente.
+- HeyGen conserva su flujo directo porque no consume prompts text-to-video de fal.ai.
+
+**Catálogo curado:** Seedance 1.0 Pro Fast, Seedance 2.0 Fast/Standard, Kling 2.5 Turbo Pro,
+Kling 3.0 Standard/Pro, Veo 3.1 Fast/Standard y Luma Ray 2. Cada opción muestra tarifa estimada;
+el cuerpo y duración se adaptan al contrato oficial del endpoint, siempre vertical y sin audio
+nativo cuando existe esa opción, ya que la locución continua se monta aparte.
+
+**Criterios de aceptación:** ningún crédito de vídeo se consume en el preflight; los prompts editados
+son los que aparecen en el manifiesto de clips; las duraciones incompatibles se ajustan y explican;
+coste y modelo coinciden con el render autorizado; piezas antiguas y la rama HeyGen siguen funcionando.
+
 ---
 
 ## 5. Requisitos no funcionales

@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  coerceContent,
   coerceNavStep,
   DEFAULT_CONFIG,
   EMPTY_HEYGEN,
   type DemoConfig,
   type MediaConfig,
   type NavStep,
+  type PieceContent,
 } from "@/core/content/types";
 import {
   MediaProviderConfigurator,
@@ -16,6 +18,7 @@ import {
 import { SelfRecordModal, type SavedMediaAsset } from "@/components/SelfRecordModal";
 import { VisualPlanCard } from "@/components/VisualPlanCard";
 import { buildVisualPlan } from "@/core/media/planning";
+import { FalPromptReviewPanel } from "@/components/FalPromptReviewPanel";
 
 type AppFuncion = {
   nombre: string;
@@ -73,6 +76,11 @@ export function DemoContentModal({
     ...DEFAULT_CONFIG,
     heygen: { ...EMPTY_HEYGEN },
   });
+  const [promptContent, setPromptContent] = useState<PieceContent | null>(null);
+  const [promptIndexes, setPromptIndexes] = useState<number[]>([]);
+  const [promptSignature, setPromptSignature] = useState("");
+  const [promptLoading, setPromptLoading] = useState(false);
+  const [promptError, setPromptError] = useState("");
 
   const loadLogin = useCallback(async () => {
     const r = await fetch(`/api/projects/${projectId}/login`);
@@ -216,22 +224,80 @@ export function DemoContentModal({
     }
   }
 
-  function submit() {
-    if (!funcion.trim()) return;
-    const demo = currentDemo();
+  function plannedConfig(demo = currentDemo()): MediaConfig {
     const plan = buildVisualPlan({
       config: mediaConfig,
       origin: "own",
       recordingSeconds: selectedRecordingSeconds,
-      navSteps,
+      navSteps: demo.navSteps,
     });
-    onGenerate(demo, { ...mediaConfig, falClipCount: plan.clipCount });
+    return { ...mediaConfig, falClipCount: plan.clipCount, falPromptReview: undefined };
+  }
+
+  function currentPromptSignature(demo = currentDemo(), config = plannedConfig(demo)): string {
+    return JSON.stringify({
+      demo,
+      videoAuto: config.videoAuto,
+      videoModelo: config.videoModelo,
+      falClipSeconds: config.falClipSeconds,
+      falClipMode: config.falClipMode,
+      falClipCount: config.falClipCount,
+      recordingSeconds: selectedRecordingSeconds,
+    });
+  }
+
+  async function preparePrompts() {
+    if (!funcion.trim() || providerError || navStepsError) return;
+    const demo = currentDemo();
+    const config = plannedConfig(demo);
+    const signature = currentPromptSignature(demo, config);
+    setPromptLoading(true);
+    setPromptError("");
+    try {
+      const response = await fetch(`/api/projects/${projectId}/content/demo/plan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ demo, config }),
+      });
+      const data = (await response.json()) as { content?: unknown; error?: string };
+      if (!response.ok || !data.content) throw new Error(data.error || `HTTP ${response.status}`);
+      const content = coerceContent(data.content);
+      setPromptContent(content);
+      setPromptIndexes(
+        content.escaleta.flatMap((shot, index) => (shot.prompt.trim() ? [index] : [])),
+      );
+      setPromptSignature(signature);
+    } catch (error) {
+      setPromptError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setPromptLoading(false);
+    }
+  }
+
+  function submit() {
+    if (!funcion.trim()) return;
+    const demo = currentDemo();
+    const config = plannedConfig(demo);
+    if (config.rama === "fal") {
+      if (!promptContent || promptSignature !== currentPromptSignature(demo, config)) return;
+      onGenerate(demo, {
+        ...config,
+        falPromptReview: { approvedAt: new Date().toISOString(), content: promptContent },
+      });
+      return;
+    }
+    onGenerate(demo, config);
   }
 
   const providerError = mediaProviderError(mediaConfig);
   const selectedRecordingSeconds = grabacionModo === "library"
     ? recordings.find((asset) => asset.id === recordingAssetId)?.duration ?? null
     : null;
+  const promptsStale = Boolean(promptContent) && promptSignature !== currentPromptSignature();
+  const promptsComplete = Boolean(promptContent) &&
+    promptIndexes.length === plannedConfig().falClipCount &&
+    promptIndexes.every((index) => Boolean(promptContent?.escaleta[index]?.prompt.trim()));
+  const falReady = mediaConfig.rama !== "fal" || (promptsComplete && !promptsStale);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -490,6 +556,19 @@ export function DemoContentModal({
             navSteps={navSteps}
           />
 
+          {mediaConfig.rama === "fal" && (
+            <FalPromptReviewPanel
+              content={promptContent}
+              promptIndexes={promptIndexes}
+              onChange={setPromptContent}
+              onPrepare={preparePrompts}
+              loading={promptLoading}
+              error={promptError}
+              stale={promptsStale}
+              disabled={busy || Boolean(providerError) || Boolean(navStepsError)}
+            />
+          )}
+
           {providerError && (
             <div className="text-xs text-[var(--color-state-pending)]">{providerError}</div>
           )}
@@ -512,14 +591,20 @@ export function DemoContentModal({
               onClick={submit}
               disabled={
                 busy ||
+                promptLoading ||
                 !funcion.trim() ||
                 (grabacionModo === "auto" && Boolean(navStepsError)) ||
                 (grabacionModo === "library" && !recordingAssetId) ||
-                Boolean(providerError)
+                Boolean(providerError) ||
+                !falReady
               }
               className="rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium disabled:opacity-40"
             >
-              {busy ? "Lanzando…" : "Aprobar plan y generar"}
+              {busy
+                ? "Lanzando…"
+                : mediaConfig.rama === "fal"
+                  ? "Aprobar prompts y generar"
+                  : "Aprobar plan y generar"}
             </button>
           </div>
         </div>

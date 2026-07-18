@@ -404,6 +404,7 @@ export function ContentTray({
 
       {showModal && (
         <GenerateContentModal
+          projectId={projectId}
           virales={virales}
           onClose={() => setShowModal(false)}
           onGenerate={generate}

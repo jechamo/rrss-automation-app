@@ -1,6 +1,12 @@
 export const FAL_MODEL_IDS = {
   seedance: "fal-ai/bytedance/seedance/v1/pro/fast/text-to-video",
+  seedanceV2Fast: "bytedance/seedance-2.0/fast/text-to-video",
+  seedanceV2: "bytedance/seedance-2.0/text-to-video",
+  kling25: "fal-ai/kling-video/v2.5-turbo/pro/text-to-video",
   kling: "fal-ai/kling-video/v3/standard/text-to-video",
+  klingPro: "fal-ai/kling-video/v3/pro/text-to-video",
+  veo31Fast: "fal-ai/veo3.1/fast",
+  veo31: "fal-ai/veo3.1",
   luma: "fal-ai/luma-dream-machine/ray-2",
 } as const;
 
@@ -23,20 +29,33 @@ export interface FalDuration {
 
 /**
  * Traduce los segundos pedidos (5/10/15) al esquema de duracion de cada modelo.
- * Mapeo oficial (revisado 2026-07-18): Kling v3 acepta 5/10/15; Seedance Pro Fast
- * 5/10/12 (15 se pide como 12, su maximo); Luma Ray 2 solo 5s/9s (10 y 15 -> 9s).
+ * Mapeo oficial revisado en fal.ai (2026-07-19). Cada endpoint tiene enums
+ * distintos; esta funcion evita enviar una duracion que el proveedor rechazara.
  */
 export function resolveFalDuration(model: string, requestedSeconds?: number): FalDuration {
   const seconds = clampSeconds(requestedSeconds);
   switch (model) {
-    case FAL_MODEL_IDS.kling: {
+    case FAL_MODEL_IDS.kling:
+    case FAL_MODEL_IDS.klingPro: {
       const eff = seconds >= 13 ? 15 : seconds >= 8 ? 10 : 5;
+      return { body: String(eff), effectiveSeconds: eff, label: `${eff} s` };
+    }
+    case FAL_MODEL_IDS.kling25: {
+      const eff = seconds >= 8 ? 10 : 5;
       return { body: String(eff), effectiveSeconds: eff, label: `${eff} s` };
     }
     case FAL_MODEL_IDS.seedance: {
       // Esquema 5..12: se pasa el valor pedido acotado (15 -> 12, su maximo).
       const eff = Math.min(12, Math.max(5, seconds));
       return { body: String(eff), effectiveSeconds: eff, label: `${eff} s` };
+    }
+    case FAL_MODEL_IDS.seedanceV2:
+    case FAL_MODEL_IDS.seedanceV2Fast:
+      return { body: String(seconds), effectiveSeconds: seconds, label: `${seconds} s` };
+    case FAL_MODEL_IDS.veo31:
+    case FAL_MODEL_IDS.veo31Fast: {
+      const eff = seconds < 8 ? 4 : 8;
+      return { body: `${eff}s`, effectiveSeconds: eff, label: `${eff} s` };
     }
     case FAL_MODEL_IDS.luma: {
       const eff = seconds < 8 ? 5 : 9;
@@ -57,10 +76,31 @@ export function buildFalRequestBody(
   const duration = resolveFalDuration(model, requestedSeconds).body;
   switch (model) {
     case FAL_MODEL_IDS.kling:
+    case FAL_MODEL_IDS.klingPro:
       // Audio nativo OFF: la locucion va por ElevenLabs (mas barato y controlable).
       return { prompt, aspect_ratio: "9:16", duration, generate_audio: false };
+    case FAL_MODEL_IDS.kling25:
+      return { prompt, aspect_ratio: "9:16", duration };
     case FAL_MODEL_IDS.seedance:
       return { prompt, aspect_ratio: "9:16", duration };
+    case FAL_MODEL_IDS.seedanceV2:
+    case FAL_MODEL_IDS.seedanceV2Fast:
+      return {
+        prompt,
+        resolution: "720p",
+        aspect_ratio: "9:16",
+        duration,
+        generate_audio: false,
+      };
+    case FAL_MODEL_IDS.veo31:
+    case FAL_MODEL_IDS.veo31Fast:
+      return {
+        prompt,
+        aspect_ratio: "9:16",
+        duration,
+        resolution: "1080p",
+        generate_audio: false,
+      };
     case FAL_MODEL_IDS.luma:
       return { prompt, aspect_ratio: "9:16", duration };
     default:

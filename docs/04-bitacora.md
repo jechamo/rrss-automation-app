@@ -21,12 +21,25 @@
 | REQ-010 | Publicación asistida en redes | 🟡 Implementado (D-06: descargar vídeo + copiar copy + abrir red; sin APIs/tokens; marca `publicado` con `publishedTo`/`publishedAt`) — pendiente pruebas del usuario |
 | REQ-011 | Estudio multimedia + REC/STOP + MIX + Guía | 🟡 Implementado — herramientas y subtítulos verificados; pendiente prueba manual del selector de captura |
 | REQ-012 | Plan audiovisual + cortes configurables + montador ligero | 🟡 Implementado — contratos/build correctos; pendiente prueba del usuario con un render MIX v2 real |
+| REQ-013 | Revisión de prompts + catálogo fal.ai ampliado | 🟡 Implementado — pendiente prueba real con créditos fal.ai |
 
 Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ---
 
 ## Historial
+
+### 2026-07-19 — REQ-013: preflight de prompts y nuevos modelos fal.ai
+
+- Nuevo paso sin consumo fal.ai para preparar guion/storyboard en viral y contenido propio; todos
+  los prompts B-roll se pueden editar antes del CTA «Aprobar prompts y generar».
+- Firma de plan en cliente y validación defensiva en servidor: cambios de fuente/modelo/duración/
+  cantidad invalidan la revisión; prompts vacíos o cantidades incoherentes no crean la pieza.
+- Los pipelines reutilizan exactamente el contenido aprobado y omiten el segundo análisis de guion.
+- Catálogo: Seedance 1.0/2.0, Kling 2.5/3.0, Veo 3.1 y Luma Ray 2, con contratos verticales,
+  audio nativo desactivado cuando procede, duración efectiva visible y coste por segundo.
+- Guía general y especificaciones SDD actualizadas. Verificado con TypeScript, build de producción,
+  `git diff --check` y 17/17 contratos (incluido quemado ASS real); sin consumir créditos fal.ai.
 
 ### 2026-07-18 — REQ-012: plan audiovisual y montador ligero
 

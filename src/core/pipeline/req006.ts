@@ -151,13 +151,15 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
           `Ya hay ${demo.videosPrevios} video(s) de esta funcion: la IA buscara un angulo distinto.`,
         );
       }
-      const content = await generateDemoGuion({
-        dossier,
-        funcion,
-        plataforma: "youtube",
-        previousCount: demo.videosPrevios,
-        clipCount: effectiveClipLimit(config),
-      });
+      const content = config.rama === "fal" && config.falPromptReview
+        ? config.falPromptReview.content
+        : await generateDemoGuion({
+            dossier,
+            funcion,
+            plataforma: "youtube",
+            previousCount: demo.videosPrevios,
+            clipCount: effectiveClipLimit(config),
+          });
       ctx.artifacts.content = content;
       await prisma.contentPiece.update({
         where: { id: pieceId },
@@ -167,7 +169,11 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
           plataforma: content.plataforma,
         },
       });
-      ctx.log(`Guion product-led generado (${content.escaleta.length} planos).`);
+      ctx.log(
+        config.rama === "fal" && config.falPromptReview
+          ? `Guion product-led y prompts aprobados por el usuario (${content.escaleta.length} planos).`
+          : `Guion product-led generado (${content.escaleta.length} planos).`,
+      );
     },
   };
 
