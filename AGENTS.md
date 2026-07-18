@@ -50,6 +50,9 @@ requisitos **REQ-001 … REQ-010**, uno a uno, con validación del usuario entre
 - **SSE** (ReadableStream) para progreso en vivo; bus EventEmitter en memoria (`src/core/pipeline/bus.ts`).
 - **FFmpeg/ffprobe del sistema** para montaje final (opcional: si falta, la pieza conserva el preview
   y muestra el comando `winget install ffmpeg`; no debe romper el run).
+- **yt-dlp del sistema** (opcional, como FFmpeg): para el análisis multimodal de Gemini de
+  TikTok/Instagram (`ytdlp.ts` → `hasYtDlp()`). YouTube no lo necesita (URL nativa). Si falta,
+  el análisis degrada a los datos de REQ-004 sin romper el run.
 - **Motor IA:** Claude Code CLI en modo headless (`-p --output-format json`), plan Pro = sin coste de API.
   Resolución del binario en `src/core/ai/claude-cli.ts` (`resolveBinary`), en este orden:
   1. `CLAUDE_CLI_PATH` (env, override manual).

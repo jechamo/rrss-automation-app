@@ -1,4 +1,4 @@
-import { FAL_MODEL_IDS } from "./contracts";
+import { FAL_MODEL_IDS, resolveFalDuration } from "./contracts";
 import type { MediaConfig } from "@/core/content/types";
 
 /**
@@ -21,8 +21,8 @@ const HEYGEN_USD_PER_MIN = { min: 0.2, max: 1.2 };
 /** ElevenLabs TTS: coste tipico por 1000 caracteres. */
 const ELEVEN_USD_PER_1K_CHARS = 0.18;
 
-/** Gemini Flash (enriquecimiento textual): practicamente residual. */
-const GEMINI_USD_PER_CALL = 0.002;
+/** Gemini Flash analisis de VIDEO (multimodal): rango orientativo por pieza. */
+const GEMINI_VIDEO_USD = { min: 0.01, max: 0.08 };
 
 export interface CostLine {
   label: string;
@@ -80,11 +80,13 @@ export function estimatePieceCost(
   if (config.rama === "fal") {
     const model = falModelId(config);
     const rate = FAL_USD_PER_SEC[model] ?? FAL_USD_PER_SEC[FAL_MODEL_IDS.seedance];
-    const totalSec = clipSeconds * clipCount;
+    // Segundos EFECTIVOS del modelo (p.ej. Luma pide 15 pero genera 9s).
+    const effSec = resolveFalDuration(model, clipSeconds).effectiveSeconds;
+    const totalSec = effSec * clipCount;
     const videoCost = rate * totalSec;
     lines.push({
       label: `Vídeo · ${falModelLabel(model)}`,
-      detail: `≈ ${clipCount} cortes × ${clipSeconds}s ≈ ${totalSec}s · ~${rate.toFixed(3)} $/s`,
+      detail: `≈ ${clipCount} cortes × ${effSec}s ≈ ${totalSec}s · ~${rate.toFixed(3)} $/s`,
       usdMin: videoCost * 0.85,
       usdMax: videoCost * 1.15,
     });
@@ -116,10 +118,10 @@ export function estimatePieceCost(
 
   if (opts.usarGemini) {
     lines.push({
-      label: "Comprensión · Gemini",
-      detail: "Enriquecimiento opcional del viral (texto)",
-      usdMin: GEMINI_USD_PER_CALL,
-      usdMax: GEMINI_USD_PER_CALL * 3,
+      label: "Análisis · Gemini",
+      detail: "Comprensión multimodal del vídeo fuente",
+      usdMin: GEMINI_VIDEO_USD.min,
+      usdMax: GEMINI_VIDEO_USD.max,
     });
   }
 

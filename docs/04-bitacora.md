@@ -26,6 +26,30 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ## Historial
 
+### 2026-07-18 — Duración de corte fal.ai (5/10/15) + Gemini multimodal real
+
+**Duración de corte fal.ai (selector explícito):**
+- `MediaConfig.falClipSeconds` (5/10/15, default 5, coerción defensiva → piezas antiguas siguen).
+- `resolveFalDuration(model, requested)` en `contracts.ts`: mapeo por modelo → **Kling v3** 5/10/15,
+  **Seedance Pro Fast** 5–12 (15→12), **Luma Ray 2** 5s/9s (10 y 15→9s). Devuelve el valor del body,
+  los **segundos efectivos** y una etiqueta para la UI. `clampSeconds` sube a 15.
+- UI en `MediaProviderConfigurator` (solo rama fal): botones 5/10/15 con nota «este modelo enviará Xs».
+  El coste (`pricing.ts`) usa los **segundos efectivos** (Luma 15 se cobra como 9s).
+- Pipelines REQ-005/006 pasan `config.falClipSeconds` a `generateClip` (antes `shot.segundos`).
+- **Red de seguridad** en `fal.ts`: si la cola responde 4xx por la duración, reintenta una vez el
+  corte a 5s y lo loguea (un enum equivocado no tumba el run).
+
+**Gemini analiza el vídeo de verdad (multimodal):**
+- `gemini.ts` reescrito: YouTube público → `file_data.file_uri` nativo; otras redes → `yt-dlp` local
+  + **Files API** (subida resumable, espera `ACTIVE`, análisis, borrado remoto + temporal en `finally`).
+  Modelo `gemini-2.0-flash` (fallback `gemini-1.5-flash`). Timeout amplio.
+- `ytdlp.ts` nuevo: `hasYtDlp()` + `downloadVideo()` (binario del sistema **opcional**, patrón FFmpeg).
+- `extract.ts` conserva la degradación: sin key/red/yt-dlp → log claro y sigue con datos de REQ-004.
+- Checkbox del modal actualizado; coste de Gemini pasa de residual a rango de análisis de vídeo.
+
+**Verificación:** `npm run test:contracts` 7/7 (incluye mapeo 5/10/15 por modelo), `tsc --noEmit`,
+`next build` EXIT=0.
+
 ### 2026-07-18 — Integración robusta HeyGen v3 + fal.ai
 
 **HeyGen:**

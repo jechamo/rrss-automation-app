@@ -8,6 +8,7 @@ import {
   isRetriableStatus,
   providerHttpError,
   queueFailureMessage,
+  resolveFalDuration,
   retryDelayMs,
 } from "./contracts.js";
 
@@ -32,8 +33,37 @@ test("fal.ai construye bodies verticales segun cada esquema", () => {
 
 test("fal.ai acota duraciones y rechaza contratos desconocidos", () => {
   assert.equal(buildFalRequestBody(FAL_MODEL_IDS.seedance, "demo", 2).duration, "5");
-  assert.equal(buildFalRequestBody(FAL_MODEL_IDS.seedance, "demo", 99).duration, "10");
+  // Seedance tope en 12: una peticion de 99 (o 15) se acota a "12".
+  assert.equal(buildFalRequestBody(FAL_MODEL_IDS.seedance, "demo", 99).duration, "12");
   assert.throws(() => buildFalRequestBody("fal-ai/modelo-antiguo", "demo"), /no tiene un contrato/);
+});
+
+test("resolveFalDuration mapea 5/10/15 al esquema de cada modelo", () => {
+  // Kling v3: 5/10/15 tal cual.
+  assert.deepEqual(resolveFalDuration(FAL_MODEL_IDS.kling, 15), {
+    body: "15",
+    effectiveSeconds: 15,
+    label: "15 s",
+  });
+  assert.equal(resolveFalDuration(FAL_MODEL_IDS.kling, 10).body, "10");
+  // Seedance Pro Fast: 5/10/12 (15 -> 12).
+  assert.equal(resolveFalDuration(FAL_MODEL_IDS.seedance, 15).body, "12");
+  assert.equal(resolveFalDuration(FAL_MODEL_IDS.seedance, 15).effectiveSeconds, 12);
+  assert.equal(resolveFalDuration(FAL_MODEL_IDS.seedance, 10).body, "10");
+  // Luma Ray 2: solo 5s/9s (10 y 15 -> 9s).
+  assert.equal(resolveFalDuration(FAL_MODEL_IDS.luma, 5).body, "5s");
+  assert.equal(resolveFalDuration(FAL_MODEL_IDS.luma, 10).body, "9s");
+  assert.equal(resolveFalDuration(FAL_MODEL_IDS.luma, 15).body, "9s");
+  assert.equal(resolveFalDuration(FAL_MODEL_IDS.luma, 15).effectiveSeconds, 9);
+});
+
+test("buildFalRequestBody incluye 15 en Kling", () => {
+  assert.deepEqual(buildFalRequestBody(FAL_MODEL_IDS.kling, "demo", 15), {
+    prompt: "demo",
+    aspect_ratio: "9:16",
+    duration: "15",
+    generate_audio: false,
+  });
 });
 
 test("HeyGen usa exactamente una narracion", () => {

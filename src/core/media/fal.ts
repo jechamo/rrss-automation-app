@@ -60,6 +60,10 @@ interface QueueStatus {
   logs?: Array<{ message?: string }>;
 }
 
+function is4xx(err: unknown): boolean {
+  return err instanceof Error && /HTTP 4\d\d/.test(err.message);
+}
+
 /** Genera un corte de video a partir de un prompt y lo descarga. Devuelve ruta relativa. */
 export async function generateClip(args: {
   pieceId: string;
@@ -67,19 +71,35 @@ export async function generateClip(args: {
   prompt: string;
   model: string;
   seconds?: number;
+  log?: (m: string) => void;
 }): Promise<string> {
   const model = args.model || autoModel();
   const auth = { Authorization: `Key ${key()}` };
-  const body = buildFalRequestBody(model, args.prompt, args.seconds);
-  const submit = await fetchJson<QueueSubmit>(
-    `https://queue.fal.run/${model}`,
-    {
-      method: "POST",
-      headers: { ...auth, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    },
-    120_000,
-  );
+
+  const submitClip = (seconds?: number) =>
+    fetchJson<QueueSubmit>(
+      `https://queue.fal.run/${model}`,
+      {
+        method: "POST",
+        headers: { ...auth, "Content-Type": "application/json" },
+        body: JSON.stringify(buildFalRequestBody(model, args.prompt, seconds)),
+      },
+      120_000,
+    );
+
+  // Red de seguridad: si el modelo rechaza la duracion pedida (4xx), reintenta
+  // una vez con el valor seguro (5s) en vez de tumbar el corte.
+  let submit: QueueSubmit;
+  try {
+    submit = await submitClip(args.seconds);
+  } catch (err) {
+    if (is4xx(err) && args.seconds !== undefined && args.seconds !== 5) {
+      args.log?.(`fal.ai rechazo la duracion pedida; reintentando el corte a 5s.`);
+      submit = await submitClip(5);
+    } else {
+      throw err;
+    }
+  }
   if (!submit.request_id) throw new Error("fal.ai no devolvio request_id.");
 
   const statusUrl =

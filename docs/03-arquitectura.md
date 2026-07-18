@@ -320,8 +320,12 @@ presenterPath, audioPath, clips[], recordingPath, externalUrl, logs[]}`), `runId
   `completed|failed`. Mutaciones con `Idempotency-Key`; 429/5xx reintentan respetando
   `Retry-After`; los mensajes nunca incluyen la API key.
 - `elevenlabs.ts`: `listVoices()`, `tts(pieceId,text,voiceId)` (guarda `locucion.mp3`).
-- `gemini.ts`: `describeViral(...)` (enriquecimiento opcional; comprensión real de vídeo vía
-  Files API queda a futuro).
+- `gemini.ts`: `describeViral(...)` **multimodal** — YouTube público por `file_data.file_uri`
+  nativo; otras redes vía `yt-dlp` (ver `ytdlp.ts`) + **Files API** (subida resumable → espera
+  `ACTIVE` → análisis → borrado remoto + temporal). Modelo `gemini-2.0-flash`. Degrada a REQ-004.
+- `ytdlp.ts`: `hasYtDlp()` + `downloadVideo()` — binario del sistema **opcional** (como FFmpeg).
+- `contracts.ts` → `resolveFalDuration(model, requested)`: duración de corte por modelo
+  (Kling 5/10/15 · Seedance 5–12 · Luma 5s/9s), con segundos efectivos + etiqueta para UI/coste.
 - `index.ts`: `listOptions(provider,kind)` despacha modelos/voces/avatares para el modal.
 - `storage.ts`: assets bajo `data/media/<pieceId>/`, rutas **relativas** a `data/`, guard
   anti-traversal. `http.ts`: fetch con timeout.
@@ -343,7 +347,8 @@ reinterpreta el concepto, no copies; español; JSON) tirando del dossier (marca,
 - **Extraer**/**Guion**: guion se **persiste pronto** (revisable aunque el render falle luego).
 - **Vídeo** (`media`): bifurca — `heygen` → `generateAvatarVideo` con avatar + voz elegida o
   audio subido (`presenterPath` conserva el original); `fal` → recorre la escaleta (máx.
-  `MAX_CLIPS=6`) `generateClip` → `clips[]`, `videoPath=clips[0]`.
+  `MAX_CLIPS=6`) `generateClip` (duración por `config.falClipSeconds` 5/10/15, ajustada por modelo)
+  → `clips[]`, `videoPath=clips[0]`. Reintento seguro a 5s si el modelo rechaza la duración (4xx).
 - **Locución** (`voz`): `fal` → ElevenLabs TTS; `heygen` → se omite (ya lleva voz).
 - **Montaje** (`montaje`): `assemble()` concatena clips, locución y subtítulos en `final.mp4`;
   `assets.videoPath` pasa a la salida final, genera frames QC cada 10s y pone `status:listo`,

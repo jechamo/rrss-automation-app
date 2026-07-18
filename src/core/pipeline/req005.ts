@@ -145,7 +145,8 @@ export function buildReq005Pipeline(pieceId: string): PipelineDef {
             index: shot.n,
             prompt: shot.prompt || shot.descripcion,
             model,
-            seconds: shot.segundos,
+            seconds: config.falClipSeconds,
+            log: ctx.log,
           });
           assets.clips.push(clip);
         }

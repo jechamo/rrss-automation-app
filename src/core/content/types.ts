@@ -4,6 +4,7 @@
 // normalizan con coerce* (los datos de IA/proveedores vienen poco estructurados).
 
 export type Rama = "fal" | "heygen";
+export type FalClipSeconds = 5 | 10 | 15; // duracion de corte fal que ofrece la UI
 export type Plataforma = "youtube" | "tiktok" | "instagram";
 export type PieceStatus = "borrador" | "generando" | "listo" | "publicado" | "error";
 export type VozProveedor = "elevenlabs" | "heygen";
@@ -92,6 +93,8 @@ export interface MediaConfig {
   vozProveedor: VozProveedor;
   vozAuto: boolean; // true = voz por defecto del proveedor
   vozId: string; // id de voz ("" si auto)
+  // duracion del CORTE fal (no del montaje). 5/10/15; el modelo la ajusta a su esquema.
+  falClipSeconds: FalClipSeconds;
   // comprension del viral fuente
   usarGemini: boolean; // true = analizar el video con Gemini; false = reusar datos REQ-004
   // rama="heygen": avatar/narracion. Opcional para compat con piezas antiguas.
@@ -138,8 +141,15 @@ export const DEFAULT_CONFIG: MediaConfig = {
   vozProveedor: "elevenlabs",
   vozAuto: true,
   vozId: "",
+  falClipSeconds: 5,
   usarGemini: false,
 };
+
+/** Normaliza la duracion de corte a uno de los valores validos (default 5). */
+export function coerceFalClipSeconds(v: unknown): FalClipSeconds {
+  const n = typeof v === "number" ? v : parseInt(String(v ?? ""), 10);
+  return n === 10 ? 10 : n === 15 ? 15 : 5;
+}
 
 export const EMPTY_HEYGEN: HeygenConfig = {
   avatarId: "",
@@ -317,6 +327,7 @@ export function coerceConfig(raw: unknown): MediaConfig {
     vozProveedor,
     vozAuto: bool(o.vozAuto, true),
     vozId: str(o.vozId),
+    falClipSeconds: coerceFalClipSeconds(o.falClipSeconds),
     usarGemini: bool(o.usarGemini, false),
   };
   // Reconstruye la config HeyGen desde el objeto nuevo o desde los campos legacy.

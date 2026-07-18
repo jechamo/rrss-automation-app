@@ -196,7 +196,8 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
               index: shot.n,
               prompt: shot.prompt,
               model,
-              seconds: shot.segundos,
+              seconds: config.falClipSeconds,
+              log: ctx.log,
             });
             assets.clips.push(clip);
           }

@@ -69,10 +69,18 @@ export function GenerateContentModal({
             usarGemini={usarGemini}
           />
 
-          <label className="flex items-center gap-2">
-            <input type="checkbox" checked={usarGemini} onChange={(e) => setUsarGemini(e.target.checked)} />
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={usarGemini}
+              onChange={(e) => setUsarGemini(e.target.checked)}
+            />
             <span className="text-xs text-white/70">
-              Enriquecer la comprensión del viral con Gemini (opcional, requiere key)
+              Analizar el vídeo con Gemini (multimodal, opcional · requiere key)
+              <span className="mt-0.5 block text-[10px] text-white/40">
+                YouTube se analiza directo. TikTok/Instagram requieren yt-dlp instalado; si falta, se usan los datos de REQ-004.
+              </span>
             </span>
           </label>
 

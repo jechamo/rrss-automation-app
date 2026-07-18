@@ -11,6 +11,10 @@ import {
 } from "@/core/content/types";
 import { SelectorAuto, loadOptions, type Option } from "@/components/SelectorAuto";
 import { estimatePieceCost, formatCostRange } from "@/core/media/pricing";
+import { FAL_MODEL_IDS, resolveFalDuration } from "@/core/media/contracts";
+import type { FalClipSeconds } from "@/core/content/types";
+
+const FAL_CLIP_OPTIONS: FalClipSeconds[] = [5, 10, 15];
 
 export function mediaProviderError(config: MediaConfig): string {
   return validateMediaConfig(config);
@@ -46,9 +50,19 @@ export function MediaProviderConfigurator({
     [voiceOptions, heygen.voiceId],
   );
   const cost = useMemo(
-    () => estimatePieceCost(value, { usarGemini }),
+    () => estimatePieceCost(value, { usarGemini, clipSeconds: value.falClipSeconds }),
     [value, usarGemini],
   );
+
+  // Modelo fal efectivo para la etiqueta de duracion (auto = Seedance).
+  const falModelId = value.videoAuto || !value.videoModelo ? FAL_MODEL_IDS.seedance : value.videoModelo;
+  const falDurationLabel = useMemo(() => {
+    try {
+      return resolveFalDuration(falModelId, value.falClipSeconds).label;
+    } catch {
+      return `${value.falClipSeconds} s`;
+    }
+  }, [falModelId, value.falClipSeconds]);
 
   useEffect(() => {
     let active = true;
@@ -198,6 +212,29 @@ export function MediaProviderConfigurator({
             options={videoOptions}
             autoHint="Modelo recomendado: Seedance Pro Fast"
           />
+          <div>
+            <span className="mb-1 block text-xs text-white/50">Duración de cada corte</span>
+            <div className="grid grid-cols-3 gap-2">
+              {FAL_CLIP_OPTIONS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => patch({ falClipSeconds: s })}
+                  className={[
+                    "rounded-lg border px-3 py-2 text-sm transition",
+                    value.falClipSeconds === s
+                      ? "border-[var(--color-accent)] bg-[var(--color-accent)]/15"
+                      : "border-white/15 hover:bg-white/5",
+                  ].join(" ")}
+                >
+                  {s} s
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-[10px] text-white/40">
+              Este modelo enviará <span className="text-white/60">{falDurationLabel}</span> por corte.
+            </p>
+          </div>
           <SelectorAuto
             label="Voz"
             auto={value.vozAuto}

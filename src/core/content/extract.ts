@@ -56,10 +56,10 @@ export async function extractViral(args: {
         `patronTransferible: ${viral.patronTransferible}`,
       ].join(" | ");
       base.notasGemini = await describeViral(viral.url, contexto);
-      log?.("Gemini enriquecio la comprension del viral fuente.");
+      log?.("Gemini analizo el video fuente (multimodal).");
     } catch (e) {
-      // Gemini es opcional: si falla (sin key/red), se sigue con los datos de REQ-004.
-      log?.(`Gemini no disponible (${(e as Error).message}). Se usan los datos de REQ-004.`);
+      // Gemini es opcional: si falla (sin key/red/yt-dlp), se sigue con REQ-004.
+      log?.(`Analisis con Gemini no disponible (${(e as Error).message}). Se usan los datos de REQ-004.`);
     }
   }
 
