@@ -1,7 +1,15 @@
+import fs from "node:fs";
+import path from "node:path";
 import { getEngine } from "@/core/ai";
 import { getSettings } from "@/core/settings";
 import type { Dossier } from "@/core/dossier/types";
-import { coerceContent, type PieceContent, type Plataforma } from "./types";
+import {
+  coerceContent,
+  coerceNavStep,
+  type NavStep,
+  type PieceContent,
+  type Plataforma,
+} from "./types";
 
 // REQ-006 — Contenido propio de la app.
 // (1) analyzeFunctions: la IA propone funcionalidades demostrables (con URL y pasos)
@@ -15,6 +23,7 @@ export interface AppFuncion {
   descripcion: string;
   url: string; // ruta/URL concreta a navegar y grabar
   pasos: string[]; // pasos de navegacion para demostrarla
+  navSteps?: NavStep[]; // acciones Playwright con selectores comprobados en el repo
 }
 
 function str(v: unknown, def = ""): string {
@@ -26,12 +35,105 @@ function strArr(v: unknown): string[] {
 
 export function coerceFuncion(raw: unknown): AppFuncion {
   const o = (raw ?? {}) as Record<string, unknown>;
-  return {
+  const funcion: AppFuncion = {
     nombre: str(o.nombre),
     descripcion: str(o.descripcion),
     url: str(o.url),
     pasos: strArr(o.pasos),
   };
+  const navSteps = (
+    Array.isArray(o.navSteps ?? o.nav_steps) ? (o.navSteps ?? o.nav_steps) : []
+  ) as unknown[];
+  const coerced = navSteps
+    .map(coerceNavStep)
+    .filter((step): step is NavStep => step !== null);
+  if (coerced.length > 0) funcion.navSteps = coerced;
+  return funcion;
+}
+
+const REPO_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".vue", ".svelte", ".html"]);
+const IGNORED_DIRS = new Set([
+  ".git",
+  ".next",
+  ".nuxt",
+  "node_modules",
+  "dist",
+  "build",
+  "coverage",
+  "vendor",
+]);
+const NAV_EVIDENCE =
+  /data-testid\s*=|(?:href|to|path)\s*=\s*["'`]|(?:id|name|aria-label)\s*=\s*["'`]|router\.(?:push|replace)\s*\(/i;
+
+/**
+ * Inventario acotado del codigo local: rutas y selectores visibles para que la
+ * IA no invente navegacion. No lee .env ni ficheros ajenos a UI web.
+ */
+function repoNavigationContext(codePath: string): string {
+  const root = path.resolve(codePath);
+  try {
+    if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) return "";
+  } catch {
+    return "";
+  }
+
+  const files: string[] = [];
+  const walk = (dir: string) => {
+    if (files.length >= 500) return;
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name.startsWith(".") && entry.isDirectory()) continue;
+      const absolute = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (!IGNORED_DIRS.has(entry.name)) walk(absolute);
+      } else if (
+        REPO_EXTENSIONS.has(path.extname(entry.name).toLowerCase()) &&
+        !/\.config\.[cm]?[jt]s$/i.test(entry.name)
+      ) {
+        files.push(absolute);
+      }
+      if (files.length >= 500) break;
+    }
+  };
+  walk(root);
+
+  const relative = (file: string) => path.relative(root, file).replace(/\\/g, "/");
+  const routeFiles = files
+    .filter((file) => /(?:^|\/)(?:app|pages|routes?)(?:\/|$)/i.test(relative(file)))
+    .map(relative)
+    .slice(0, 80);
+
+  const evidence: string[] = [];
+  for (const file of files) {
+    if (evidence.length >= 120) break;
+    let text = "";
+    try {
+      text = fs.readFileSync(file, "utf8");
+    } catch {
+      continue;
+    }
+    const lines = text.split(/\r?\n/);
+    for (let index = 0; index < lines.length && evidence.length < 120; index++) {
+      const line = lines[index].trim();
+      if (NAV_EVIDENCE.test(line)) {
+        evidence.push(`${relative(file)}:${index + 1} ${line.slice(0, 220)}`);
+      }
+    }
+  }
+
+  if (routeFiles.length === 0 && evidence.length === 0) return "";
+  return [
+    "## Evidencia del repositorio local (no inventar fuera de esta evidencia)",
+    "Archivos de rutas/paginas:",
+    ...(routeFiles.length ? routeFiles.map((file) => `- ${file}`) : ["- No detectados"]),
+    "Selectores y navegacion encontrados:",
+    ...(evidence.length ? evidence.map((line) => `- ${line}`) : ["- No detectados"]),
+  ].join("\n");
 }
 
 const SYSTEM_FUNCS = `Eres un estratega de producto y contenido. A partir del dossier de un producto
@@ -42,8 +144,12 @@ en espanol y SOLO con JSON valido, sin markdown.`;
 export async function analyzeFunctions(args: {
   dossier: Dossier;
   appUrl: string;
+  codeType?: string | null;
+  codePath?: string | null;
 }): Promise<AppFuncion[]> {
   const { dossier, appUrl } = args;
+  const repoContext =
+    args.codeType === "local" && args.codePath ? repoNavigationContext(args.codePath) : "";
 
   const prompt = `Propon entre 3 y 6 funcionalidades demostrables de nuestra app para grabar un video
 corto que ensene su valor.
@@ -55,6 +161,8 @@ corto que ensene su valor.
 - Funcionalidades clave: ${dossier.funcionalidades.slice(0, 10).join(", ")}
 - URL base: ${appUrl}
 
+${repoContext}
+
 ## Instruccion
 Devuelve EXCLUSIVAMENTE un JSON con esta forma exacta:
 {
@@ -63,11 +171,21 @@ Devuelve EXCLUSIVAMENTE un JSON con esta forma exacta:
       "nombre": "nombre corto de la funcionalidad",
       "descripcion": "que resuelve y por que es demostrable en video",
       "url": "URL o ruta concreta a navegar para mostrarla (usa la URL base si no sabes la ruta exacta)",
-      "pasos": ["paso 1 de navegacion", "paso 2", "paso 3"]
+      "pasos": ["paso 1 de navegacion", "paso 2", "paso 3"],
+      "navSteps": [
+        { "action": "goto", "url": "URL concreta" },
+        { "action": "tap", "selector": "[data-testid='selector-real']" },
+        { "action": "fill", "selector": "[data-testid='campo-real']", "value": "dato de demostracion" },
+        { "action": "wait", "selector": "[data-testid='resultado-real']", "timeoutMs": 15000 },
+        { "action": "scroll", "pixels": 500, "pauseMs": 1500 }
+      ]
     }
   ]
 }
-Reglas: 3-6 funciones; prioriza las de mayor impacto visual; los pasos deben ser accionables. No incluyas nada fuera del JSON.`;
+Reglas: 3-6 funciones; prioriza las de mayor impacto visual; los pasos deben ser accionables.
+Si hay evidencia del repositorio, usa exclusivamente rutas y selectores que aparezcan en ella,
+prefiriendo data-testid. No inventes selectores. Si no hay evidencia suficiente, omite navSteps
+y conserva los pasos humanos; la grabacion usara su modo compatible. No incluyas nada fuera del JSON.`;
 
   const settings = getSettings();
   const engine = getEngine(settings.aiEngine);
@@ -97,8 +215,9 @@ export async function generateDemoGuion(args: {
   dossier: Dossier;
   funcion: AppFuncion;
   plataforma: Plataforma;
+  previousCount?: number;
 }): Promise<PieceContent> {
-  const { dossier, funcion, plataforma } = args;
+  const { dossier, funcion, plataforma, previousCount = 0 } = args;
 
   const prompt = `Crea un guion de video ORIGINAL que muestre esta funcionalidad de NUESTRA app.
 
@@ -113,6 +232,7 @@ export async function generateDemoGuion(args: {
 - Nombre: ${funcion.nombre}
 - Descripcion: ${funcion.descripcion}
 - Pasos en la app: ${funcion.pasos.join(" -> ")}
+${previousCount > 0 ? `- Ya existen ${previousCount} videos de esta funcionalidad: usa un angulo, hook y estructura claramente distintos.` : ""}
 
 ## Plataforma destino
 ${plataforma} (formato vertical corto salvo YouTube largo).

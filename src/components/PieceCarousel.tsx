@@ -31,7 +31,9 @@ export function PieceCarousel({
       getKey={(p) => p.id}
       onSelectCenter={(p) => onSelect?.(p.id)}
       renderCard={(p, isCenter) => {
-        const preview = p.assets.recordingPath || p.assets.videoPath;
+        // El montaje final tiene prioridad; recordingPath queda como fallback
+        // para piezas propias antiguas o pendientes de FFmpeg.
+        const preview = p.assets.videoPath || p.assets.recordingPath;
         const color = STATUS_COLOR[p.status] ?? STATUS_COLOR.borrador;
         return (
           <>

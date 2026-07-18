@@ -25,6 +25,21 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: "Genera primero el dossier (REQ-001)." }, { status: 409 });
   }
 
+  const previousPieces = await prisma.contentPiece.findMany({
+    where: { projectId: id, origin: "own" },
+    select: { titulo: true, config: true },
+  });
+  const functionKey = demo.funcion.trim().toLocaleLowerCase("es");
+  demo.videosPrevios = previousPieces.filter((previous) => {
+    if (previous.titulo.trim().toLocaleLowerCase("es") === functionKey) return true;
+    try {
+      const previousDemo = coerceConfig(JSON.parse(previous.config)).demo;
+      return previousDemo?.funcion.trim().toLocaleLowerCase("es") === functionKey;
+    } catch {
+      return false;
+    }
+  }).length;
+
   const piece = await prisma.contentPiece.create({
     data: {
       projectId: id,

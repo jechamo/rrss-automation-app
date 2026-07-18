@@ -367,6 +367,8 @@ function PieceCard({
     `/api/content/${projectId}/${piece.id}/asset?path=${encodeURIComponent(rel)}`;
   const g = piece.content.guion;
   const isOwn = piece.origin === "own";
+  const isMounted = /(?:^|\/)final\.mp4$/i.test(piece.assets.videoPath);
+  const ffmpegMissing = piece.assets.logs.some((log) => log.includes("FFmpeg no encontrado"));
 
   return (
     <div className="glass card-lift p-4">
@@ -389,6 +391,11 @@ function PieceCard({
             ) : (
               <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/50">
                 {piece.config.rama === "heygen" ? "HeyGen" : "fal.ai"}
+              </span>
+            )}
+            {isMounted && (
+              <span className="rounded-full bg-[var(--color-state-ok)]/15 px-2 py-0.5 text-[10px] text-[var(--color-state-ok)]">
+                Montaje ✓
               </span>
             )}
           </div>
@@ -448,9 +455,31 @@ function PieceCard({
       {piece.assets.audioPath && (
         <audio key={piece.assets.audioPath} controls className="mb-3 w-full" src={asset(piece.assets.audioPath)} />
       )}
-      {piece.assets.clips.length > 1 && (
+      {piece.assets.clips.length > 1 && !isMounted && (
         <div className="mb-3 text-xs text-white/50">
           {piece.assets.clips.length} cortes generados (montaje con FFmpeg pendiente).
+        </div>
+      )}
+      {piece.assets.logs.length > 0 && (
+        <div
+          className={[
+            "mb-3 rounded-lg border p-3 text-xs",
+            ffmpegMissing
+              ? "border-[var(--color-state-pending)]/40 bg-[var(--color-state-pending)]/10"
+              : "border-white/10 bg-white/5",
+          ].join(" ")}
+        >
+          <div className="mb-1 font-medium text-white/70">Registro de generación</div>
+          <ul className="flex list-disc flex-col gap-1 pl-4 text-white/55">
+            {piece.assets.logs.map((log, index) => (
+              <li key={`${index}-${log}`}>{log}</li>
+            ))}
+          </ul>
+          {ffmpegMissing && (
+            <code className="mt-2 block rounded bg-black/30 px-2 py-1 text-[11px] text-white/70">
+              winget install ffmpeg
+            </code>
+          )}
         </div>
       )}
 

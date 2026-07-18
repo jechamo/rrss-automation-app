@@ -42,7 +42,12 @@ export function ProjectsCarousel({ projects }: { projects: RecentProject[] }) {
             <>
               <div className="relative flex flex-1 flex-col items-center justify-center gap-3 bg-gradient-to-br from-[var(--color-accent)]/30 via-black/50 to-[var(--color-accent-2)]/25 p-4">
                 <div className={isCenter ? "float" : ""}>
-                  <EntityLogo name={p.name} web={p.url} size={64} />
+                  <EntityLogo
+                    name={p.name}
+                    web={p.url}
+                    src={p.logoPath ? `/api/projects/${p.id}/logo` : undefined}
+                    size={64}
+                  />
                 </div>
                 <div className="text-center">
                   <div className="line-clamp-2 text-sm font-semibold">{p.name}</div>

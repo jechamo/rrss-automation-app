@@ -16,6 +16,7 @@ model Project {
   url       String
   codeType  String? // local | github_public | github_private | none
   codePath  String? // ruta local o URL de repo
+  logoPath  String? // ruta relativa en data/media/project-<id>/ (logo manual)
   niche       String?
   createdAt   DateTime       @default(now())
   dossier     Dossier?

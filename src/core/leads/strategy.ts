@@ -79,11 +79,29 @@ cada negocio; conciso y accionable):
       "estrategia": "como abordar a este negocio en 1-2 frases",
       "borrador": { "asunto": "(solo si es correo)", "cuerpo": "correo o guion de visita" },
       "fitScore": 1,
-      "intentScore": 1
+      "intentScore": 1,
+      "scoreRazon": "senal observable que justifica fit e intencion"
     }
   ]
 }
-Incluye TODOS los negocios de la lista, con sus datos. No incluyas nada fuera del JSON.`;
+Incluye TODOS los negocios de la lista, con sus datos.
+
+Rubrica obligatoria (enteros 1-5, compara los negocios entre si):
+- fitScore: 1=no corresponde al publico objetivo; 2=encaje debil; 3=encaje razonable;
+  4=encaje claro con varios dolores; 5=encaje excepcional y verificable con la propuesta.
+- intentScore: 1=sin señal de necesidad; 2=señal tenue; 3=necesidad plausible sin compra activa;
+  4=señal publica reciente y concreta; 5=señal explicita de busqueda/compra inmediata.
+- temperatura caliente SOLO si fitScore>=4 e intentScore>=4 y scoreRazon cita una señal observable.
+  Templado si hay buen encaje pero intención no confirmada; frío si faltan encaje o señales.
+
+Calibracion del lote:
+- Ordena mentalmente los leads antes de puntuar y usa diferencias reales; no des la misma pareja
+  de scores a todos.
+- Como maximo el 25% del lote puede ser caliente (redondeando hacia arriba).
+- Un directorio, una web activa o pertenecer al sector NO son por si solos intención de compra.
+- Si no hay evidencia, baja intentScore a 1-3 y dilo en scoreRazon. No inventes señales.
+- scoreRazon debe ser una frase corta y concreta, no una afirmacion generica.
+No incluyas nada fuera del JSON.`;
 
   const settings = getSettings();
   const engine = getEngine(settings.aiEngine);

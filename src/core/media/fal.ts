@@ -35,21 +35,50 @@ interface QueueSubmit {
   response_url?: string;
 }
 
+/** Cierta si el error es un HTTP 4xx (modelo que no acepta los parametros extra). */
+function isHttp4xx(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /HTTP 4\d\d\b/.test(msg);
+}
+
 /** Genera un corte de video a partir de un prompt y lo descarga. Devuelve ruta relativa. */
 export async function generateClip(args: {
   pieceId: string;
   index: number;
   prompt: string;
   model: string;
+  seconds?: number;
 }): Promise<string> {
   const model = args.model || autoModel();
   const auth = { Authorization: `Key ${key()}` };
 
-  const submit = await fetchJson<QueueSubmit>(`https://queue.fal.run/${model}`, {
-    method: "POST",
-    headers: { ...auth, "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt: args.prompt }),
-  });
+  // Cortes verticales acotados 5-10s (patron video-factory). Si el modelo rechaza
+  // estos extras con un 4xx, se reintenta con solo {prompt} (compat total).
+  const seconds =
+    typeof args.seconds === "number"
+      ? Math.min(10, Math.max(5, Math.round(args.seconds)))
+      : undefined;
+  const baseBody: Record<string, unknown> = { prompt: args.prompt };
+  const richBody: Record<string, unknown> = {
+    ...baseBody,
+    aspect_ratio: "9:16",
+    ...(seconds ? { duration: String(seconds) } : {}),
+  };
+
+  const post = (body: Record<string, unknown>) =>
+    fetchJson<QueueSubmit>(`https://queue.fal.run/${model}`, {
+      method: "POST",
+      headers: { ...auth, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+  let submit: QueueSubmit;
+  try {
+    submit = await post(richBody);
+  } catch (err) {
+    if (!isHttp4xx(err)) throw err;
+    submit = await post(baseBody);
+  }
 
   const statusUrl =
     submit.status_url ?? `https://queue.fal.run/${model}/requests/${submit.request_id}/status`;

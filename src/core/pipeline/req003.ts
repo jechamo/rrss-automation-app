@@ -125,6 +125,18 @@ export function buildReq003Pipeline(opts: Req003Opts = {}): PipelineDef {
       }));
 
       const generados = await generateStrategy({ dossier, research: perfil, leads: inputs });
+      if (generados.leads.length > 1) {
+        const signatures = new Set(
+          generados.leads.map(
+            (lead) => `${lead.fitScore}/${lead.intentScore}/${lead.temperatura}`,
+          ),
+        );
+        if (signatures.size === 1) {
+          ctx.log(
+            "Aviso de calibracion: la IA devolvio la misma puntuacion a todo el lote; revisa las señales antes de aprobar.",
+          );
+        }
+      }
 
       let leads = generados;
       if (modo === "ampliar") {

@@ -11,6 +11,8 @@ import {
 import { extractViral, type ViralExtract } from "@/core/content/extract";
 import { generateGuion } from "@/core/content/guion";
 import { fal, heygen, elevenlabs } from "@/core/media";
+import { assemble } from "@/core/media/assemble";
+import { hasFfmpeg } from "@/core/media/ffmpeg";
 import type { PipelineDef, PipelineNode } from "./engine";
 
 export const REQ005_NODES = [
@@ -132,6 +134,7 @@ export function buildReq005Pipeline(pieceId: string): PipelineDef {
             index: shot.n,
             prompt: shot.prompt || shot.descripcion,
             model,
+            seconds: shot.segundos,
           });
           assets.clips.push(clip);
         }
@@ -174,13 +177,43 @@ export function buildReq005Pipeline(pieceId: string): PipelineDef {
     run: async (ctx) => {
       const config = ctx.artifacts.config as MediaConfig;
       const assets = ctx.artifacts.assets as PieceAssets;
+      const content = ctx.artifacts.content as PieceContent;
 
-      // Montaje real (FFmpeg: unir cortes + locucion + subtitulos) queda para un
-      // paso posterior (D-12). Por ahora se deja el material listo para revision.
-      if (config.rama === "fal" && assets.clips.length > 1) {
-        assets.logs.push(
-          `Montaje pendiente: ${assets.clips.length} cortes + locucion listos para unir con FFmpeg.`,
-        );
+      if (config.rama === "fal") {
+        if (!hasFfmpeg()) {
+          const warning =
+            "FFmpeg no encontrado: instala con 'winget install ffmpeg' y pulsa Regenerar. Se conserva el preview actual.";
+          assets.logs.push(warning);
+          ctx.log(warning);
+        } else {
+          try {
+            const result = assemble({
+              pieceId,
+              assets,
+              locucionText: content.guion.locucion || content.guion.desarrollo,
+              shots: content.escaleta,
+            });
+            if (result) {
+              assets.videoPath = result.path;
+              const duration = result.seconds ? ` (${result.seconds.toFixed(1)}s)` : "";
+              const message = `Montaje FFmpeg completado${duration}.`;
+              assets.logs.push(message);
+              if (!result.subtitlesBurned) {
+                assets.logs.push(
+                  "FFmpeg no pudo quemar subtitulos (falta soporte libass); se genero el video sin ellos.",
+                );
+              }
+              if (result.qcFrames) assets.logs.push("Frames de control de calidad generados.");
+              ctx.log(message);
+            } else {
+              assets.logs.push("Montaje omitido: no hay clips de video utilizables.");
+            }
+          } catch (error) {
+            const warning = `Montaje FFmpeg no disponible: ${(error as Error).message}. Se conserva el preview actual.`;
+            assets.logs.push(warning);
+            ctx.log(warning);
+          }
+        }
       }
 
       await prisma.contentPiece.update({

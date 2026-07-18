@@ -38,6 +38,19 @@ export interface PieceContent {
 /** Modo de grabacion de la demo (REQ-006). */
 export type GrabacionModo = "auto" | "manual"; // auto = Playwright movil | manual = subir screencast
 
+/** Accion de navegacion ejecutable por Playwright (REQ-006 recorder v2). */
+export type NavAction = "goto" | "tap" | "fill" | "wait" | "scroll";
+
+export interface NavStep {
+  action: NavAction;
+  url?: string;
+  selector?: string;
+  value?: string;
+  timeoutMs?: number;
+  pixels?: number;
+  pauseMs?: number;
+}
+
 /**
  * Config extra de REQ-006 (contenido propio de la app): que funcionalidad se
  * demuestra y como se graba. Vive dentro del blob `config` bajo `demo`.
@@ -46,6 +59,8 @@ export interface DemoConfig {
   funcion: string; // nombre de la funcionalidad a mostrar
   funcionUrl: string; // ruta/URL concreta a navegar y grabar
   pasos: string[]; // pasos de navegacion (Playwright / guia manual)
+  navSteps?: NavStep[]; // pasos ejecutables; opcional para compat con piezas antiguas
+  videosPrevios?: number; // anti-repeticion: piezas anteriores de esta funcion
   usarLogin: boolean; // requiere login (credenciales cifradas por proyecto en el vault)
   grabacionModo: GrabacionModo;
 }
@@ -166,6 +181,33 @@ function coercePlataforma(v: unknown): Plataforma {
   return s === "tiktok" || s === "instagram" ? s : "youtube";
 }
 
+export function coerceNavStep(raw: unknown): NavStep | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const action = str(o.action).toLowerCase();
+  if (!["goto", "tap", "fill", "wait", "scroll"].includes(action)) return null;
+
+  const step: NavStep = { action: action as NavAction };
+  const url = str(o.url);
+  const selector = str(o.selector);
+  const value = str(o.value);
+  if (url) step.url = url;
+  if (selector) step.selector = selector;
+  if (value) step.value = value;
+
+  const optionalNumber = (value: unknown): number | undefined => {
+    const parsed = typeof value === "number" ? value : parseFloat(String(value ?? ""));
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
+  const timeoutMs = optionalNumber(o.timeoutMs ?? o.timeout_ms);
+  const pixels = optionalNumber(o.pixels);
+  const pauseMs = optionalNumber(o.pauseMs ?? o.pause_ms);
+  if (timeoutMs !== undefined) step.timeoutMs = Math.max(0, timeoutMs);
+  if (pixels !== undefined) step.pixels = pixels;
+  if (pauseMs !== undefined) step.pauseMs = Math.max(0, pauseMs);
+  return step;
+}
+
 export function coerceShot(raw: unknown, i = 0): Shot {
   const o = (raw ?? {}) as Record<string, unknown>;
   return {
@@ -202,13 +244,20 @@ export function coerceContent(raw: unknown): PieceContent {
 
 export function coerceDemo(raw: unknown): DemoConfig {
   const o = (raw ?? {}) as Record<string, unknown>;
-  return {
+  const demo: DemoConfig = {
     funcion: str(o.funcion),
     funcionUrl: str(o.funcionUrl),
     pasos: strArr(o.pasos),
     usarLogin: bool(o.usarLogin, false),
     grabacionModo: str(o.grabacionModo) === "manual" ? "manual" : "auto",
   };
+  const navSteps = arr(o.navSteps ?? o.nav_steps)
+    .map(coerceNavStep)
+    .filter((step): step is NavStep => step !== null);
+  if (navSteps.length > 0) demo.navSteps = navSteps;
+  const videosPrevios = num(o.videosPrevios, 0);
+  if (videosPrevios > 0) demo.videosPrevios = Math.floor(videosPrevios);
+  return demo;
 }
 
 export function coerceConfig(raw: unknown): MediaConfig {

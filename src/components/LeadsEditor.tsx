@@ -153,6 +153,9 @@ export function LeadsEditor({
                   <ScoreBar label="Fit" value={lead.fitScore} max={5} color="var(--color-state-ok)" />
                   <ScoreBar label="Intención" value={lead.intentScore} max={5} color={meta.color} />
                 </div>
+                {lead.scoreRazon && (
+                  <DetailRow label="Por qué tiene estas puntuaciones" value={lead.scoreRazon} />
+                )}
                 <div className="flex flex-wrap gap-3 text-xs text-white/60">
                   {lead.telefono && <span>📞 {lead.telefono}</span>}
                   {lead.email && <span>✉ {lead.email}</span>}
@@ -245,6 +248,13 @@ export function LeadsEditor({
               </div>
               <div className="md:col-span-2">
                 <TextField label="Motivo (por qué encaja)" value={lead.motivo} onChange={(v) => setLead(i, { motivo: v })} />
+              </div>
+              <div className="md:col-span-2">
+                <TextField
+                  label="Justificación de las puntuaciones"
+                  value={lead.scoreRazon}
+                  onChange={(v) => setLead(i, { scoreRazon: v })}
+                />
               </div>
               <div className="md:col-span-2">
                 <TextField label="Estrategia de captación" value={lead.estrategia} onChange={(v) => setLead(i, { estrategia: v })} />

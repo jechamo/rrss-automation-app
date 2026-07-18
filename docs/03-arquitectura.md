@@ -23,7 +23,7 @@
 | IA vídeo | **Gemini API** | Comprensión de vídeo cuando sea indispensable (D-03). |
 | Secretos | **AES-256-GCM** + derivación de clave (passphrase/DPAPI) | Keys cifradas en reposo (REQ-008). |
 
-**Gestor de paquetes:** pnpm (a confirmar; npm si prefieres). **Entorno:** Windows 11.
+**Gestor de paquetes:** npm. **Entorno:** Windows 11.
 
 ---
 
@@ -180,6 +180,7 @@ model Project {
   url        String
   codeType   String?  // local | github_public | github_private | none
   codePath   String?  // ruta local o URL de repo
+  logoPath   String?  // logo manual bajo data/media/project-<id>/
   niche      String?
   createdAt  DateTime @default(now())
   dossier    Dossier?
@@ -306,8 +307,9 @@ clips[], externalUrl, logs[]}`), `runId`, `status(borrador|generando|listo|publi
 
 **Módulos de media** (`src/core/media/`, cada uno tira su key del vault):
 - `fal.ts`: `FAL_MODELS` (curados: ltx-video, kling, minimax, luma, hunyuan), `listModels()`,
-  `autoModel()`, `generateClip({pieceId,index,prompt,model})` (cola `queue.fal.run`, polling,
-  descarga `clip-N.mp4`).
+  `autoModel()`, `generateClip({pieceId,index,prompt,model,seconds?})` (cola `queue.fal.run`,
+  vídeo 9:16, duración 5-10s, reintento compatible sin esos parámetros si el modelo devuelve 4xx,
+  polling y descarga `clip-N.mp4`).
 - `heygen.ts`: `listAvatars()`, `listVoices()` (v2), `generateAvatarVideo(...)` (v2/generate +
   v1/video_status, vertical 720×1280, requiere `avatarId`).
 - `elevenlabs.ts`: `listVoices()`, `tts(pieceId,text,voiceId)` (guarda `locucion.mp3`).
@@ -316,6 +318,11 @@ clips[], externalUrl, logs[]}`), `runId`, `status(borrador|generando|listo|publi
 - `index.ts`: `listOptions(provider,kind)` despacha modelos/voces/avatares para el modal.
 - `storage.ts`: assets bajo `data/media/<pieceId>/`, rutas **relativas** a `data/`, guard
   anti-traversal. `http.ts`: fetch con timeout.
+- `ffmpeg.ts`: detección cacheada de `ffmpeg`/`ffprobe`, duración y ejecución con
+  `execFileSync(args[])` sin shell (quoting seguro en Windows).
+- `assemble.ts`: montaje determinista vertical 1080×1920, concat/recortes, audio, SRT,
+  subtítulos quemados y frames QC. Degrada por combinaciones de assets y permite conservar el
+  preview si el render falla.
 
 **Lógica IA** (`src/core/content/`): `extract.ts` reutiliza el `Viral` de REQ-004 (+ Gemini si
 `usarGemini`) → `ViralExtract`; `guion.ts` genera un `PieceContent` **original** (system prompt:
@@ -329,7 +336,9 @@ reinterpreta el concepto, no copies; español; JSON) tirando del dossier (marca,
 - **Vídeo** (`media`): bifurca — `heygen` → `generateAvatarVideo` (usa `videoModelo` como avatar);
   `fal` → recorre la escaleta (máx. `MAX_CLIPS=6`) `generateClip` → `clips[]`, `videoPath=clips[0]`.
 - **Locución** (`voz`): `fal` → ElevenLabs TTS; `heygen` → se omite (ya lleva voz).
-- **Montaje** (`montaje`): **stub** (registra FFmpeg pendiente), pone `status:listo`, `version++`.
+- **Montaje** (`montaje`): `assemble()` concatena clips, locución y subtítulos en `final.mp4`;
+  `assets.videoPath` pasa a la salida final, genera frames QC cada 10s y pone `status:listo`,
+  `version++`. Sin FFmpeg o ante fallo conserva el preview y deja aviso en `assets.logs`.
 
 **Endpoints:** `POST /api/projects/:id/content/run` (valida sourceUrl + config, 409 sin
 dossier/virales, crea pieza + run, fire-and-forget `executeRun` con reconciliación de estado),
@@ -350,23 +359,26 @@ key, sin romper el modal). **UI:** `ContentTray` (bandeja + SSE por pieza en gen
 endpoints de listado/asset/PUT/DELETE. Sin cambio de esquema Prisma: la config del demo viaja dentro
 del blob `config` JSON.
 
-**Tipos nuevos** (`src/core/content/types.ts`): `DemoConfig{funcion, funcionUrl, pasos[], usarLogin,
-grabacionModo(auto|manual)}` como campo opcional `demo?` de `MediaConfig`; `PieceAssets` gana
+**Tipos nuevos** (`src/core/content/types.ts`): `DemoConfig{funcion, funcionUrl, pasos[],
+navSteps?:NavStep[], usarLogin, grabacionModo(auto|manual), videosPrevios?}` como campo opcional
+`demo?` de `MediaConfig`; `NavStep` soporta `goto|tap|fill|wait|scroll`; `PieceAssets` gana
 `recordingPath` (screencast real de la app). `coerceDemo()` + `EMPTY_DEMO`.
 
 **Credenciales (DA-05)** (`src/core/secrets/login.ts`): `setLogin/getLogin/hasLogin/deleteLogin` sobre
 el Vault existente (AES-256-GCM) con clave `login:<projectId>`. La contraseña **nunca** sale de la API.
 
-**Grabación** (`src/core/media/recorder.ts`): `recordDemo({pieceId,url,pasos,login,log})` con
-**import dinámico** de `playwright` (chromium + `devices["iPhone 13"]` + `recordVideo` 390×844).
-Login best-effort (selectores usuario/pass/submit), recorre `pasos` con scroll, guarda
-`screencast.webm` (ruta relativa). Lanza errores amistosos si falta el paquete/navegador → el
-pipeline degrada a manual.
+**Grabación** (`src/core/media/recorder.ts`): `recordDemo({projectId,pieceId,url,pasos,navSteps,
+login,log,dryRun?})` con **import dinámico** de Playwright (chromium + iPhone 13 + vídeo 390×844).
+Reutiliza `storageState` en `data/sessions/<projectId>.json`, ejecuta pasos tipados y escribe
+`nav_log.json` con `t_inicio/t_fin`; captura `error.jpg` al fallar. Si hay FFmpeg normaliza WebM a
+`screen.mp4` (30fps/yuv420p). Sin `navSteps` conserva el scroll guiado anterior. Los errores de
+paquete/navegador siguen degradando a subida manual.
 
-**Lógica IA** (`src/core/content/demo.ts`): `analyzeFunctions({dossier,appUrl})` propone 3-6
-`AppFuncion{nombre,descripcion,url,pasos[]}` leyendo el dossier; `generateDemoGuion({dossier,funcion,
-plataforma})` genera un `PieceContent` **product-led** cuya escaleta alterna planos de grabación de
-pantalla (prompt vacío) y **cortes B-roll** (prompt en inglés para fal.ai).
+**Lógica IA** (`src/core/content/demo.ts`): `analyzeFunctions` propone 3-6 funciones y, para
+`codeType=local`, construye un inventario acotado de rutas/selectores (`data-testid`, `href`, etc.)
+del repo para devolver `navSteps` reales; sin evidencia omite los pasos tipados. El guion
+**product-led** alterna grabación y B-roll y recibe el nº de vídeos previos de la función para evitar
+repetir ángulo/hook.
 
 **Nodos del pipeline** (`src/core/pipeline/req006.ts`):
 `[Entrada] → [Grabar app] → [Guion] → [Cortes] → [Locución] → [Montaje]`
@@ -379,12 +391,14 @@ pantalla (prompt vacío) y **cortes B-roll** (prompt en inglés para fal.ai).
 - **Cortes** (`media`): filtra planos con prompt no vacío (B-roll) → `fal.generateClip` (máx. 6);
   `videoPath = recordingPath || clips[0]`.
 - **Locución** (`voz`): ElevenLabs TTS.
-- **Montaje** (`montaje`): **stub** (intercalado grabación+cortes con FFmpeg pendiente), avisa si no
-  hay grabación, pone `status:listo`, `version++`.
+- **Montaje** (`montaje`): `assemble()` aplica plantilla hook B-roll → demo recortada por
+  `nav_log` → cierre B-roll, locución y subtítulos; contempla solo clips, solo grabación,
+  `nav_log` vacío y ausencia de audio. Produce `final.mp4` o conserva el preview sin romper el run.
 
 **Endpoints nuevos:** `POST /api/projects/:id/content/demo/run` (crea pieza `own` + run REQ-006,
 fuerza `config.rama=fal`, 409 sin dossier), `POST /api/projects/:id/functions` (analiza funciones con
 IA), `GET/PUT/DELETE /api/projects/:id/login` (credenciales cifradas; GET solo informa `configured`),
+`POST /api/projects/:id/demo/dryrun` (valida URL/selectores sin vídeo),
 `POST /api/content/:projectId/:pieceId/upload` (multipart, sube screencast manual → `recordingPath`).
 El endpoint `asset` amplía content-type a `.webm`/`.mov`.
 
@@ -399,6 +413,11 @@ listas vía `GET /api/providers/:provider/options`). El modal explica los modos 
 manual la zona de subida de `PieceCard` se resalta (borde de acento) cuando la pieza propia aún no
 tiene grabación. La **fuente de código** del proyecto es editable tras crearlo vía
 `PUT /api/projects/:id` (valida `codeType`/`codePath`) + editor «Fuente de código» en `/proyecto/[id]`.
+
+**D-12 resuelto (2026-07-18):** FFmpeg local es la implementación principal de montaje. Es una
+dependencia opcional del sistema: su ausencia no impide generar/revisar una pieza, pero deja el
+preview y un aviso instalable (`winget install ffmpeg`). Las rutas del filtro `subtitles` son
+relativas con `cwd=pieceDir` para evitar escapes frágiles de `C:\...`.
 
 > Playwright con navegador real y las llamadas a proveedores solo se validan en la máquina del
 > usuario (la shell del agente no tiene red; requiere `npx playwright install chromium` + keys).
@@ -455,6 +474,21 @@ anterior. Endpoints `.../run` leen `{ modo, cantidad }`; virales expone `cantida
 
 > Capa de presentación + descubrimiento incremental; sin cambios de esquema Prisma. Verificado con
 > `tsc` + `next build`. Logos/mapas/miniaturas YT dependen de la red del navegador del usuario.
+
+---
+
+## 8.8. Refinamientos de identidad, dossier y scoring (2026-07-18)
+
+- `Project.logoPath` permite un logo manual en `data/media/project-<id>/`; el endpoint
+  `GET/POST/DELETE /api/projects/:id/logo` valida PNG/JPG/WebP (máx. 2 MB). `EntityLogo` aplica
+  cascada: logo manual → Clearbit → Google favicon → iniciales.
+- `DossierEditor` separa vista de lectura y edición, se pliega (aprobado cerrado por defecto) y
+  agrupa la información en cuatro áreas. `CardArt` usa `bg-dossier.webp` generado para la cabecera.
+- Competencia guarda `scores? {producto,presenciaRRSS,amenaza,justificacion}` dentro del JSON.
+  Datos antiguos sin scores conservan el cálculo legacy. Leads añade `scoreRazon`; ambos prompts
+  usan rúbricas comparativas para evitar notas uniformes/infladas.
+- `PipelineGraph` asocia los 16 ids de nodo a iconos IA en `public/img/nodes/`; el estado running
+  dibuja un anillo CSS animado y ok/error un badge. Si falla un asset vuelve al punto anterior.
 
 ---
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import {
   ReactFlow,
   Background,
@@ -28,34 +29,87 @@ const STATE_STYLE: Record<NodeState, { dot: string; ring: string; text: string }
   error: { dot: "var(--color-state-error)", ring: "var(--color-state-error)", text: "Error" },
 };
 
-type StepData = { label: string; state: NodeState; detail?: string };
+const NODE_ICONS: Record<string, string> = {
+  input: "/img/nodes/input.png",
+  crawl: "/img/nodes/crawl.png",
+  repo: "/img/nodes/repo.png",
+  dossier: "/img/nodes/dossier.png",
+  discover: "/img/nodes/discover.png",
+  compare: "/img/nodes/compare.png",
+  research: "/img/nodes/research.png",
+  strategy: "/img/nodes/strategy.png",
+  rank: "/img/nodes/rank.png",
+  analyze: "/img/nodes/analyze.png",
+  extract: "/img/nodes/extract.png",
+  guion: "/img/nodes/guion.png",
+  media: "/img/nodes/media.png",
+  voz: "/img/nodes/voz.png",
+  montaje: "/img/nodes/montaje.png",
+  grabacion: "/img/nodes/grabacion.png",
+};
+
+type StepData = { iconId: string; label: string; state: NodeState; detail?: string };
 
 function StepNode({ data }: NodeProps) {
   const d = data as StepData;
   const s = STATE_STYLE[d.state];
+  const [iconBroken, setIconBroken] = useState(false);
+  const icon = NODE_ICONS[d.iconId];
   return (
     <div
-      className="glass-strong px-4 py-3"
+      className="glass-strong px-3 py-3"
       style={{
-        minWidth: 170,
+        minWidth: 200,
         border: `1px solid ${s.ring}`,
         boxShadow: d.state === "running" ? `0 0 18px ${s.ring}` : undefined,
         transition: "border-color 0.35s ease, box-shadow 0.35s ease",
       }}
     >
       <Handle type="target" position={Position.Left} style={{ opacity: 0 }} />
-      <div className="flex items-center gap-2">
-        <span
-          className="inline-block h-2.5 w-2.5 rounded-full"
-          style={{
-            background: s.dot,
-            animation: d.state === "running" ? "pulse 1.2s ease-in-out infinite" : undefined,
-          }}
-        />
-        <span className="text-sm font-semibold">{d.label}</span>
-      </div>
-      <div className="mt-1 text-xs" style={{ color: s.dot }}>
-        {s.text}
+      <div className="flex items-center gap-3">
+        <div
+          className={[
+            "node-icon-shell",
+            d.state === "running" ? "node-spinner" : "",
+          ].join(" ")}
+          style={{ "--node-state-color": s.dot } as CSSProperties}
+        >
+          <div className="node-icon-inner">
+            {icon && !iconBroken ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={icon}
+                alt=""
+                aria-hidden
+                className="h-full w-full object-cover"
+                onError={() => setIconBroken(true)}
+              />
+            ) : (
+              <span
+                className="inline-block h-3 w-3 rounded-full"
+                style={{
+                  background: s.dot,
+                  animation: d.state === "running" ? "pulse 1.2s ease-in-out infinite" : undefined,
+                }}
+              />
+            )}
+          </div>
+          {(d.state === "ok" || d.state === "error") && (
+            <span
+              className="absolute -bottom-1 -right-1 z-10 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#12121a] text-[10px] font-bold text-black"
+              style={{ background: s.dot }}
+              aria-hidden
+            >
+              {d.state === "ok" ? "✓" : "×"}
+            </span>
+          )}
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold">{d.label}</div>
+          <div className="mt-0.5 text-xs" style={{ color: s.dot }}>
+            {s.text}
+          </div>
+        </div>
       </div>
       {d.detail && d.state === "error" && (
         <div className="mt-1 max-w-[200px] text-[11px] text-white/50">{d.detail}</div>
@@ -74,7 +128,7 @@ export function PipelineGraph({ nodes }: { nodes: GraphNode[] }) {
         id: n.id,
         type: "step",
         position: { x: i * 230, y: 0 },
-        data: { label: n.label, state: n.state, detail: n.detail },
+        data: { iconId: n.id, label: n.label, state: n.state, detail: n.detail },
         draggable: false,
         connectable: false,
       })),

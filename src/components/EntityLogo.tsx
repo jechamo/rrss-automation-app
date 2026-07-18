@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // Logo de una entidad (competidor/lead/proyecto) a partir de su web.
 // Cascada de fallback sin API key: Clearbit → Google favicon → iniciales.
@@ -33,20 +33,28 @@ function hueOf(name: string): number {
 export function EntityLogo({
   name,
   web,
+  src: customSrc,
   size = 56,
   className = "",
 }: {
   name: string;
   web?: string;
+  src?: string;
   size?: number;
   className?: string;
 }) {
   const domain = domainOf(web ?? "");
-  // step 0 = clearbit, 1 = favicon, 2 = iniciales
-  const [step, setStep] = useState(domain ? 0 : 2);
+  // step -1 = imagen manual, 0 = clearbit, 1 = favicon, 2 = iniciales
+  const [step, setStep] = useState(customSrc ? -1 : domain ? 0 : 2);
 
-  const src =
-    step === 0
+  useEffect(() => {
+    setStep(customSrc ? -1 : domain ? 0 : 2);
+  }, [customSrc, domain]);
+
+  const imageSrc =
+    step === -1
+      ? customSrc
+      : step === 0
       ? `https://logo.clearbit.com/${domain}`
       : step === 1
         ? `https://www.google.com/s2/favicons?domain=${domain}&sz=128`
@@ -59,7 +67,7 @@ export function EntityLogo({
     borderRadius: size * 0.28,
   } as const;
 
-  if (step >= 2 || !domain) {
+  if (step >= 2 || (step >= 0 && !domain)) {
     const hue = hueOf(name || domain || "?");
     return (
       <div
@@ -78,13 +86,18 @@ export function EntityLogo({
 
   return (
     <img
-      src={src}
+      src={imageSrc}
       alt={name}
       width={size}
       height={size}
       loading="lazy"
       referrerPolicy="no-referrer"
-      onError={() => setStep((s) => s + 1)}
+      onError={() =>
+        setStep((current) => {
+          if (current === -1) return domain ? 0 : 2;
+          return current < 1 ? current + 1 : 2;
+        })
+      }
       className={`bg-white/90 object-contain p-1 ${className}`}
       style={box}
     />

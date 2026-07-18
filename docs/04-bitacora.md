@@ -13,8 +13,8 @@
 | REQ-002 | Análisis de competencia | 🟡 Implementado — pendiente pruebas del usuario |
 | REQ-003 | Scraping de clientes potenciales + estrategia | 🟡 Implementado (DA-02 resuelta: negocios locales reales vía IA+WebSearch) — pendiente pruebas del usuario |
 | REQ-004 | Scraping de virales del nicho (YT/TikTok/IG) | 🟡 Implementado (DA-03 resuelta: IA+WebSearch, viral relativo al autor, ventana 30d, Top 20) — pendiente pruebas del usuario |
-| REQ-005 | Generación de vídeo (clonado de viral) | 🟡 Implementado (DA-04 resuelta: reinterpretación conceptual + cableado real fal/HeyGen/ElevenLabs/Gemini, atributos auto/manual, montaje stub) — pendiente pruebas del usuario (red+keys) |
-| REQ-006 | Generación de contenido propio de la app | 🟡 Implementado (DA-05 resuelta: login cifrado en vault por proyecto, grabación Playwright móvil + fallback manual, cortes B-roll + locución, montaje stub) — pendiente pruebas del usuario (red+keys+navegador Playwright) |
+| REQ-005 | Generación de vídeo (clonado de viral) | 🟡 Implementado (DA-04 resuelta: reinterpretación conceptual + proveedores reales + montaje FFmpeg a `final.mp4`) — pendiente prueba real con red+keys |
+| REQ-006 | Generación de contenido propio de la app | 🟡 Implementado (login cifrado, recorder v2 con nav_log/storageState/dry-run, repo-scan y montaje FFmpeg) — pendiente prueba real con red+keys+navegador Playwright |
 | REQ-007 | Skills | 🟡 Pase de curación hecho (skills de proyecto + catálogo, DA-06 resuelta); feature UI aplazada |
 | REQ-008 | Configuración de herramientas/APIs (Ajustes) | 🟡 Base construida (shell de Ajustes) |
 | REQ-009 | Experiencia visual | 🟡 Implementado (hero con aurora, tarjetas con elevación 3D + entrada escalonada, carrusel 360 cover-flow de piezas, skeletons, transiciones de estado) — pendiente visto bueno del usuario |
@@ -25,6 +25,44 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 ---
 
 ## Historial
+
+### 2026-07-18 — Adopción de video-factory + refinamientos visuales y scoring
+
+**Objetivo:** completar el montaje que REQ-005/006 tenían como stub reutilizando el patrón probado
+de `video-factory`, con degradación obligatoria, y resolver el feedback visual del usuario. Trabajo
+ejecutado por fases con aprobación explícita entre cada una.
+
+**Vídeo y grabación:**
+- `media/ffmpeg.ts`: detección de FFmpeg/ffprobe, duración y ejecución por array de argumentos.
+  `fal.generateClip` solicita 9:16 y 5-10s, con reintento compatible sin extras ante 4xx.
+- Recorder v2: `NavStep` tipado, tiempos por paso en `nav_log.json`, `storageState` por proyecto,
+  captura `error.jpg`, normalización a `screen.mp4` si hay FFmpeg y modo dry-run. Endpoint
+  `/api/projects/:id/demo/dryrun` + botón «Probar pasos».
+- `media/assemble.ts`: montaje vertical real a `final.mp4` (clips/grabación, recortes por nav_log,
+  locución, SRT proporcional, subtítulos, concat y QC). REQ-005/006 actualizan `assets.videoPath`;
+  sin FFmpeg o si falla conservan el preview y el run puede terminar.
+- El análisis de funciones usa contexto acotado del repo local para proponer selectores reales;
+  el modal permite editar `navSteps`. Los guiones propios reciben el recuento previo de la función
+  para variar ángulo y hook.
+- `ContentTray` muestra «Montaje ✓», logs y aviso de instalación; el carrusel prioriza `final.mp4`.
+
+**Feedback visual y de datos:**
+- Logo manual por proyecto (PNG/JPG/WebP, 2 MB) con API, editor en la cabecera y uso en dashboard.
+- Dossier plegable, lectura estructurada, edición separada y arte `bg-dossier.webp`.
+- Competencia: scores explícitos de producto/RRSS/amenaza con rúbrica y justificación; fallback
+  legacy. Leads: rúbrica calibrada, máximo 25% calientes, `scoreRazon` y aviso si el lote es uniforme.
+- Pipeline: 16 iconos generados con IA, spinner anular durante ejecución, badges ok/error y fallback.
+
+**Verificación global:**
+- `npm exec tsc -- --noEmit` → EXIT=0.
+- `npm run build` (Next.js 15.5.20) → EXIT=0; incluye las rutas nuevas de logo y dry-run.
+- Detección FFmpeg probada en ambos entornos simulados: `{false,false}` con `PATH` vacío y
+  `{true,true}` con la instalación del sistema.
+- Prisma: 1 proyecto existente; columna `logoPath` legible. No había piezas guardadas para una
+  prueba de datos legacy; la compatibilidad queda cubierta por campos opcionales/coerción y build.
+
+**Pendiente de validación end-to-end por el usuario:** generar una pieza real con red, keys,
+Playwright Chromium y FFmpeg para revisar el resultado audiovisual (cortes, voz y subtítulos).
 
 ### 2026-07-18 — Rediseño visual + carruseles con expandir + «buscar más» + mapas
 

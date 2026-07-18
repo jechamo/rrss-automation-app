@@ -24,6 +24,7 @@ export interface Lead {
   borrador: Borrador; // correo o guion de visita listo para revisar
   fitScore: number; // 1-5 encaje con la propuesta de valor
   intentScore: number; // 1-5 intencion/senal observable
+  scoreRazon: string; // evidencia breve que justifica ambos scores
   origen?: "ia" | "manual"; // "manual" => se conserva al regenerar
 }
 
@@ -59,6 +60,7 @@ export const EMPTY_LEAD: Lead = {
   borrador: { ...EMPTY_BORRADOR },
   fitScore: 3,
   intentScore: 3,
+  scoreRazon: "",
   origen: "manual",
 };
 
@@ -124,6 +126,7 @@ export function coerceLead(input: unknown): Lead {
     borrador: coerceBorrador(o.borrador),
     fitScore: score(o.fitScore),
     intentScore: score(o.intentScore),
+    scoreRazon: str(o.scoreRazon),
     origen,
   };
 }

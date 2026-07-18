@@ -16,7 +16,12 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
 
   try {
     const dossier = coerceDossier(JSON.parse(project.dossier.content));
-    const funciones = await analyzeFunctions({ dossier, appUrl: project.url });
+    const funciones = await analyzeFunctions({
+      dossier,
+      appUrl: project.url,
+      codeType: project.codeType,
+      codePath: project.codePath,
+    });
     return NextResponse.json({ funciones });
   } catch (e) {
     return NextResponse.json({ funciones: [], error: (e as Error).message });

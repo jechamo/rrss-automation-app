@@ -17,6 +17,11 @@ const EMPTY_COMPETIDOR: Competidor = {
   origen: "manual",
 };
 
+function legacyScore(comp: Competidor): number {
+  const total = comp.pros.length + comp.contras.length;
+  return total > 0 ? (comp.pros.length / total) * 5 : 2.5;
+}
+
 export function CompetenciaEditor({
   initial,
   status,
@@ -98,8 +103,7 @@ export function CompetenciaEditor({
           items={c.competidores}
           getKey={(_, i) => `c-${i}`}
           renderCard={(comp, isCenter) => {
-            const total = comp.pros.length + comp.contras.length;
-            const score = total > 0 ? (comp.pros.length / total) * 5 : 2.5;
+            const score = comp.scores?.amenaza ?? legacyScore(comp);
             return (
               <>
                 <div className="relative flex flex-1 flex-col items-center justify-center gap-2 bg-gradient-to-br from-[var(--color-accent)]/25 via-black/50 to-[var(--color-accent-2)]/20 p-3">
@@ -110,7 +114,12 @@ export function CompetenciaEditor({
                 </div>
                 <div className="shrink-0 space-y-1 p-2">
                   <div className="line-clamp-2 text-[10px] text-white/50">{comp.propuestaValor}</div>
-                  <ScoreBar label="Fortaleza (pros/contras)" value={score} max={5} color="var(--color-accent-2)" />
+                  <ScoreBar
+                    label={comp.scores ? "Amenaza competitiva" : "Fortaleza (análisis antiguo)"}
+                    value={score}
+                    max={5}
+                    color="var(--color-accent-2)"
+                  />
                 </div>
               </>
             );
@@ -131,6 +140,38 @@ export function CompetenciaEditor({
                   <span className="ml-auto shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/70">{comp.precios}</span>
                 )}
               </div>
+              {comp.scores ? (
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <ScoreBar
+                    label="Producto"
+                    value={comp.scores.producto}
+                    max={5}
+                    color="var(--color-state-ok)"
+                  />
+                  <ScoreBar
+                    label="Presencia RRSS"
+                    value={comp.scores.presenciaRRSS}
+                    max={5}
+                    color="var(--color-accent-2)"
+                  />
+                  <ScoreBar
+                    label="Amenaza"
+                    value={comp.scores.amenaza}
+                    max={5}
+                    color="var(--color-state-error)"
+                  />
+                </div>
+              ) : (
+                <ScoreBar
+                  label="Fortaleza legacy (pros/contras)"
+                  value={legacyScore(comp)}
+                  max={5}
+                  color="var(--color-accent-2)"
+                />
+              )}
+              {comp.scores?.justificacion && (
+                <DetailRow label="Justificación de las puntuaciones" value={comp.scores.justificacion} />
+              )}
               {comp.propuestaValor && <DetailRow label="Propuesta de valor" value={comp.propuestaValor} />}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {comp.pros.length > 0 && (
@@ -217,6 +258,44 @@ export function CompetenciaEditor({
                   onChange={(v) => setCompetidor(i, { diferenciadores: v })}
                 />
               </div>
+              {comp.scores && (
+                <>
+                  <div className="grid grid-cols-3 gap-3 md:col-span-2">
+                    <NumberField
+                      label="Producto"
+                      value={comp.scores.producto}
+                      onChange={(value) =>
+                        setCompetidor(i, { scores: { ...comp.scores!, producto: value } })
+                      }
+                    />
+                    <NumberField
+                      label="Presencia RRSS"
+                      value={comp.scores.presenciaRRSS}
+                      onChange={(value) =>
+                        setCompetidor(i, { scores: { ...comp.scores!, presenciaRRSS: value } })
+                      }
+                    />
+                    <NumberField
+                      label="Amenaza"
+                      value={comp.scores.amenaza}
+                      onChange={(value) =>
+                        setCompetidor(i, { scores: { ...comp.scores!, amenaza: value } })
+                      }
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <TextField
+                      label="Justificación de puntuaciones"
+                      value={comp.scores.justificacion}
+                      onChange={(value) =>
+                        setCompetidor(i, {
+                          scores: { ...comp.scores!, justificacion: value },
+                        })
+                      }
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         ))}
@@ -260,6 +339,32 @@ function InlineField({ label, value, onChange }: { label: string; value: string;
     <label className="block">
       <span className="mb-1 block text-xs text-white/50">{label}</span>
       <input className="input" value={value} onChange={(e) => onChange(e.target.value)} />
+    </label>
+  );
+}
+
+function NumberField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs text-white/50">{label} (1-5)</span>
+      <input
+        type="number"
+        min={1}
+        max={5}
+        className="input"
+        value={value}
+        onChange={(event) =>
+          onChange(Math.min(5, Math.max(1, parseInt(event.target.value, 10) || 1)))
+        }
+      />
     </label>
   );
 }

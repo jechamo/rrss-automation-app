@@ -1,10 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { DemoConfig, MediaConfig } from "@/core/content/types";
+import { coerceNavStep, type DemoConfig, type MediaConfig, type NavStep } from "@/core/content/types";
 import { SelectorAuto, loadOptions, type Option } from "@/components/SelectorAuto";
 
-type AppFuncion = { nombre: string; descripcion: string; url: string; pasos: string[] };
+type AppFuncion = {
+  nombre: string;
+  descripcion: string;
+  url: string;
+  pasos: string[];
+  navSteps?: NavStep[];
+};
 
 export function DemoContentModal({
   projectId,
@@ -24,6 +30,11 @@ export function DemoContentModal({
   const [funcion, setFuncion] = useState("");
   const [funcionUrl, setFuncionUrl] = useState("");
   const [pasosText, setPasosText] = useState("");
+  const [navSteps, setNavSteps] = useState<NavStep[] | undefined>();
+  const [navStepsText, setNavStepsText] = useState("");
+  const [navStepsError, setNavStepsError] = useState("");
+  const [dryRunState, setDryRunState] = useState<"idle" | "testing" | "ok" | "error">("idle");
+  const [dryRunMessage, setDryRunMessage] = useState("");
 
   const [grabacionModo, setGrabacionModo] = useState<"auto" | "manual">("auto");
   const [usarLogin, setUsarLogin] = useState(false);
@@ -90,6 +101,11 @@ export function DemoContentModal({
     setFuncion(f.nombre);
     setFuncionUrl(f.url);
     setPasosText(f.pasos.join("\n"));
+    setNavSteps(f.navSteps);
+    setNavStepsText(f.navSteps?.length ? JSON.stringify(f.navSteps, null, 2) : "");
+    setNavStepsError("");
+    setDryRunState("idle");
+    setDryRunMessage("");
   }
 
   async function saveLogin() {
@@ -107,18 +123,77 @@ export function DemoContentModal({
     }
   }
 
-  function submit() {
-    if (!funcion.trim()) return;
-    const demo: DemoConfig = {
+  function updateNavSteps(value: string) {
+    setNavStepsText(value);
+    setDryRunState("idle");
+    setDryRunMessage("");
+    if (!value.trim()) {
+      setNavSteps(undefined);
+      setNavStepsError("");
+      return;
+    }
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      if (!Array.isArray(parsed)) throw new Error("El JSON debe ser una lista de pasos.");
+      const coerced = parsed.map(coerceNavStep);
+      if (coerced.some((step) => step === null)) {
+        throw new Error("Hay una acción no válida. Usa goto, tap, fill, wait o scroll.");
+      }
+      setNavSteps(coerced as NavStep[]);
+      setNavStepsError("");
+    } catch (error) {
+      setNavStepsError(error instanceof Error ? error.message : "JSON no válido.");
+    }
+  }
+
+  function currentDemo(): DemoConfig {
+    return {
       funcion: funcion.trim(),
       funcionUrl: funcionUrl.trim(),
       pasos: pasosText
         .split("\n")
         .map((s) => s.trim())
         .filter(Boolean),
+      ...(navSteps?.length ? { navSteps } : {}),
       usarLogin,
       grabacionModo,
     };
+  }
+
+  async function testSteps() {
+    setDryRunState("testing");
+    setDryRunMessage("");
+    try {
+      const r = await fetch(`/api/projects/${projectId}/demo/dryrun`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(currentDemo()),
+      });
+      const data = (await r.json()) as {
+        ok?: boolean;
+        failedStep?: number;
+        error?: string;
+      };
+      if (!r.ok || !data.ok) {
+        setDryRunState("error");
+        setDryRunMessage(
+          data.failedStep
+            ? `Fallo en el paso ${data.failedStep}: ${data.error ?? "error desconocido"}`
+            : data.error ?? `HTTP ${r.status}`,
+        );
+        return;
+      }
+      setDryRunState("ok");
+      setDryRunMessage("URL y pasos validados correctamente.");
+    } catch (error) {
+      setDryRunState("error");
+      setDryRunMessage(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  function submit() {
+    if (!funcion.trim()) return;
+    const demo = currentDemo();
     const config: Partial<MediaConfig> = {
       videoAuto,
       videoModelo: videoAuto ? "" : videoModelo,
@@ -197,9 +272,41 @@ export function DemoContentModal({
               className="input min-h-20"
               placeholder={"Abrir la app\nIr a la sección…\nPulsar…"}
               value={pasosText}
-              onChange={(e) => setPasosText(e.target.value)}
+              onChange={(e) => {
+                setPasosText(e.target.value);
+                // Los pasos de texto siguen siendo compatibles; al editarlos se
+                // descartan selectores tipados que ya no corresponderian.
+                setNavSteps(undefined);
+                setNavStepsText("");
+                setNavStepsError("");
+                setDryRunState("idle");
+                setDryRunMessage("");
+              }}
             />
           </label>
+
+          {grabacionModo === "auto" && (
+            <label className="block">
+              <span className="mb-1 block text-xs text-white/50">
+                Pasos automáticos Playwright (JSON opcional)
+              </span>
+              <textarea
+                className="input min-h-32 font-mono text-[11px]"
+                placeholder={'[\n  { "action": "goto", "url": "https://…" },\n  { "action": "tap", "selector": "[data-testid=\\"boton\\"]" }\n]'}
+                value={navStepsText}
+                onChange={(event) => updateNavSteps(event.target.value)}
+              />
+              <span className="mt-1 block text-[10px] text-white/35">
+                «Analizar con IA» los rellena con selectores del repositorio. Vacío mantiene el
+                recorrido compatible por scroll.
+              </span>
+              {navStepsError && (
+                <span className="mt-1 block text-xs text-[var(--color-state-error)]">
+                  {navStepsError}
+                </span>
+              )}
+            </label>
+          )}
 
           <div>
             <span className="mb-1 block text-xs text-white/50">Grabación de la app</span>
@@ -227,40 +334,63 @@ export function DemoContentModal({
           </div>
 
           {grabacionModo === "auto" && (
-            <div className="rounded-lg bg-white/5 p-3">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={usarLogin} onChange={(e) => setUsarLogin(e.target.checked)} />
-                <span className="text-xs text-white/70">
-                  Requiere login {loginConfigured && <span className="text-[var(--color-state-ok)]">· credenciales guardadas</span>}
-                </span>
-              </label>
-              {usarLogin && (
-                <div className="mt-2 flex flex-col gap-2">
-                  <input
-                    className="input"
-                    placeholder="Usuario / email"
-                    value={loginUser}
-                    onChange={(e) => setLoginUser(e.target.value)}
-                  />
-                  <input
-                    className="input"
-                    type="password"
-                    placeholder={loginConfigured ? "•••••••• (guardada)" : "Contraseña"}
-                    value={loginPass}
-                    onChange={(e) => setLoginPass(e.target.value)}
-                  />
-                  <button
-                    onClick={saveLogin}
-                    disabled={savingLogin || !loginUser || !loginPass}
-                    className="self-start rounded-lg border border-white/15 px-2 py-1 text-xs hover:bg-white/5 disabled:opacity-40"
+            <div className="flex flex-col gap-2">
+              <div className="rounded-lg bg-white/5 p-3">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={usarLogin} onChange={(e) => setUsarLogin(e.target.checked)} />
+                  <span className="text-xs text-white/70">
+                    Requiere login {loginConfigured && <span className="text-[var(--color-state-ok)]">· credenciales guardadas</span>}
+                  </span>
+                </label>
+                {usarLogin && (
+                  <div className="mt-2 flex flex-col gap-2">
+                    <input
+                      className="input"
+                      placeholder="Usuario / email"
+                      value={loginUser}
+                      onChange={(e) => setLoginUser(e.target.value)}
+                    />
+                    <input
+                      className="input"
+                      type="password"
+                      placeholder={loginConfigured ? "•••••••• (guardada)" : "Contraseña"}
+                      value={loginPass}
+                      onChange={(e) => setLoginPass(e.target.value)}
+                    />
+                    <button
+                      onClick={saveLogin}
+                      disabled={savingLogin || !loginUser || !loginPass}
+                      className="self-start rounded-lg border border-white/15 px-2 py-1 text-xs hover:bg-white/5 disabled:opacity-40"
+                    >
+                      {savingLogin ? "Guardando…" : "Guardar credenciales (cifradas)"}
+                    </button>
+                    <p className="text-[10px] text-white/30">
+                      Se cifran en local (AES-256-GCM) por proyecto. La contraseña nunca se muestra ni sale del PC.
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={testSteps}
+                  disabled={dryRunState === "testing" || !funcionUrl.trim() || Boolean(navStepsError)}
+                  className="rounded-lg border border-[var(--color-accent)]/40 px-3 py-2 text-xs text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 disabled:opacity-40"
+                >
+                  {dryRunState === "testing" ? "Probando…" : "Probar pasos"}
+                </button>
+                {dryRunMessage && (
+                  <span
+                    className={[
+                      "text-xs",
+                      dryRunState === "ok"
+                        ? "text-[var(--color-state-ok)]"
+                        : "text-[var(--color-state-error)]",
+                    ].join(" ")}
                   >
-                    {savingLogin ? "Guardando…" : "Guardar credenciales (cifradas)"}
-                  </button>
-                  <p className="text-[10px] text-white/30">
-                    Se cifran en local (AES-256-GCM) por proyecto. La contraseña nunca se muestra ni sale del PC.
-                  </p>
-                </div>
-              )}
+                    {dryRunMessage}
+                  </span>
+                )}
+              </div>
             </div>
           )}
 
@@ -288,7 +418,8 @@ export function DemoContentModal({
 
           <div className="rounded-lg bg-white/5 p-3 text-xs text-white/50">
             Se genera un guion <b>product-led</b> y cortes B-roll (fal.ai) para intercalar con la grabación
-            real de la app. El montaje final (FFmpeg) queda pendiente. Las keys reales están en Ajustes.
+            real de la app. FFmpeg crea el montaje final; si no está disponible, se conserva el preview.
+            Las keys reales están en Ajustes.
           </div>
 
           <div className="flex justify-end gap-2">
@@ -300,7 +431,11 @@ export function DemoContentModal({
             </button>
             <button
               onClick={submit}
-              disabled={busy || !funcion.trim()}
+              disabled={
+                busy ||
+                !funcion.trim() ||
+                (grabacionModo === "auto" && Boolean(navStepsError))
+              }
               className="rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium disabled:opacity-40"
             >
               {busy ? "Lanzando…" : "Generar"}

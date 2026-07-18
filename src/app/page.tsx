@@ -83,6 +83,7 @@ export default async function DashboardPage() {
           id: p.id,
           name: p.name,
           url: p.url,
+          logoPath: p.logoPath,
           dossierStatus: (p.dossier?.status as "approved" | "draft" | undefined) ?? null,
         }))}
       />

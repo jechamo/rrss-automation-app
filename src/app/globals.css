@@ -231,6 +231,55 @@ body {
   height: 100%;
 }
 
+/* Nodo visual del pipeline: icono IA + anillo de actividad */
+@keyframes node-spin {
+  to { transform: rotate(360deg); }
+}
+.node-icon-shell {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 3rem;
+  padding: 3px;
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.08);
+}
+.node-icon-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 0.7rem;
+  background: #080812;
+}
+.node-spinner::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      var(--node-state-color, var(--color-state-running)) 80deg,
+      var(--color-accent) 150deg,
+      transparent 235deg
+    );
+  animation: node-spin 1.05s linear infinite;
+}
+.node-spinner {
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--node-state-color, var(--color-state-running)) 55%, transparent),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.001ms !important;

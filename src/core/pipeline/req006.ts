@@ -12,6 +12,8 @@ import { generateDemoGuion, type AppFuncion } from "@/core/content/demo";
 import { recordDemo } from "@/core/media/recorder";
 import { getLogin } from "@/core/secrets/login";
 import { fal, elevenlabs } from "@/core/media";
+import { assemble } from "@/core/media/assemble";
+import { hasFfmpeg } from "@/core/media/ffmpeg";
 import type { PipelineDef, PipelineNode } from "./engine";
 
 export const REQ006_NODES = [
@@ -92,9 +94,11 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
       const url = demo.funcionUrl || ctx.project.url;
       try {
         const rel = await recordDemo({
+          projectId: ctx.project.id,
           pieceId,
           url,
           pasos: demo.pasos,
+          navSteps: demo.navSteps,
           login,
           log: ctx.log,
         });
@@ -122,8 +126,19 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
         descripcion: demo.funcion,
         url: demo.funcionUrl,
         pasos: demo.pasos,
+        navSteps: demo.navSteps,
       };
-      const content = await generateDemoGuion({ dossier, funcion, plataforma: "youtube" });
+      if (demo.videosPrevios) {
+        ctx.log(
+          `Ya hay ${demo.videosPrevios} video(s) de esta funcion: la IA buscara un angulo distinto.`,
+        );
+      }
+      const content = await generateDemoGuion({
+        dossier,
+        funcion,
+        plataforma: "youtube",
+        previousCount: demo.videosPrevios,
+      });
       ctx.artifacts.content = content;
       await prisma.contentPiece.update({
         where: { id: pieceId },
@@ -158,6 +173,7 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
             index: shot.n,
             prompt: shot.prompt,
             model,
+            seconds: shot.segundos,
           });
           assets.clips.push(clip);
         }
@@ -194,18 +210,45 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
     label: "Montaje / listo",
     run: async (ctx) => {
       const assets = ctx.artifacts.assets as PieceAssets;
+      const content = ctx.artifacts.content as PieceContent;
 
-      // Montaje real (FFmpeg: intercalar grabacion + cortes + locucion + subtitulos)
-      // queda para un paso posterior (D-12). Se deja el material listo para revision.
-      const partes: string[] = [];
-      if (assets.recordingPath) partes.push("grabacion de la app");
-      if (assets.clips.length) partes.push(`${assets.clips.length} cortes b-roll`);
-      if (assets.audioPath) partes.push("locucion");
-      if (partes.length > 1) {
-        assets.logs.push(`Montaje pendiente: intercalar ${partes.join(" + ")} con FFmpeg.`);
-      }
       if (!assets.recordingPath) {
         assets.logs.push("Falta la grabacion de la app: subela a mano para completar el montaje.");
+      }
+
+      if (!hasFfmpeg()) {
+        const warning =
+          "FFmpeg no encontrado: instala con 'winget install ffmpeg' y pulsa Regenerar. Se conserva el preview actual.";
+        assets.logs.push(warning);
+        ctx.log(warning);
+      } else {
+        try {
+          const result = assemble({
+            pieceId,
+            assets,
+            locucionText: content.guion.locucion || content.guion.desarrollo,
+            shots: content.escaleta,
+          });
+          if (result) {
+            assets.videoPath = result.path;
+            const duration = result.seconds ? ` (${result.seconds.toFixed(1)}s)` : "";
+            const message = `Montaje FFmpeg completado${duration}.`;
+            assets.logs.push(message);
+            if (!result.subtitlesBurned) {
+              assets.logs.push(
+                "FFmpeg no pudo quemar subtitulos (falta soporte libass); se genero el video sin ellos.",
+              );
+            }
+            if (result.qcFrames) assets.logs.push("Frames de control de calidad generados.");
+            ctx.log(message);
+          } else {
+            assets.logs.push("Montaje omitido: no hay videos utilizables; se conserva el preview actual.");
+          }
+        } catch (error) {
+          const warning = `Montaje FFmpeg no disponible: ${(error as Error).message}. Se conserva el preview actual.`;
+          assets.logs.push(warning);
+          ctx.log(warning);
+        }
       }
 
       await prisma.contentPiece.update({

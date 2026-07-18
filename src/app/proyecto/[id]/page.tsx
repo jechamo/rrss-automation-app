@@ -7,6 +7,7 @@ import { CompetenciaPanel } from "@/components/CompetenciaPanel";
 import { LeadsPanel } from "@/components/LeadsPanel";
 import { ViralesPanel } from "@/components/ViralesPanel";
 import { ContentTray } from "@/components/ContentTray";
+import { EntityLogo } from "@/components/EntityLogo";
 
 type RunEvent =
   | { type: "node"; nodeId: string; state: NodeState; detail?: string }
@@ -21,6 +22,7 @@ type ProjectResp = {
     url: string;
     codeType: string | null;
     codePath: string | null;
+    logoPath: string | null;
   };
   lastRun: { id: string; status: string; nodes: string } | null;
 };
@@ -36,6 +38,7 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
   const [dossierStatus, setDossierStatus] = useState<string>("draft");
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [logoRevision, setLogoRevision] = useState(0);
   const esRef = useRef<EventSource | null>(null);
 
   const loadDossier = useCallback(async () => {
@@ -135,16 +138,28 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
   return (
     <div className="mx-auto max-w-5xl">
       <header className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">{project.name}</h1>
-          <a
-            href={project.url}
-            target="_blank"
-            rel="noreferrer"
-            className="text-sm text-[var(--color-accent-2)] hover:underline"
-          >
-            {project.url} ↗
-          </a>
+        <div className="flex items-center gap-3">
+          <EntityLogo
+            name={project.name}
+            web={project.url}
+            src={
+              project.logoPath
+                ? `/api/projects/${id}/logo?v=${logoRevision}`
+                : undefined
+            }
+            size={52}
+          />
+          <div>
+            <h1 className="text-2xl font-bold">{project.name}</h1>
+            <a
+              href={project.url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-[var(--color-accent-2)] hover:underline"
+            >
+              {project.url} ↗
+            </a>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <StatusBadge status={runStatus} />
@@ -162,7 +177,18 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
         <PipelineGraph nodes={nodes} />
       </section>
 
-      <section className="mb-6">
+      <section className="mb-6 grid gap-4 md:grid-cols-[240px_1fr]">
+        <ProjectLogoEditor
+          projectId={id}
+          projectName={project.name}
+          projectUrl={project.url}
+          logoPath={project.logoPath}
+          revision={logoRevision}
+          onChanged={(logoPath) => {
+            setProject((current) => (current ? { ...current, logoPath } : current));
+            setLogoRevision(Date.now());
+          }}
+        />
         <SourceEditor
           projectId={id}
           initialType={project.codeType ?? "none"}
@@ -237,6 +263,100 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
           <ContentTray projectId={id} ready={!!dossier} />
         </section>
       )}
+    </div>
+  );
+}
+
+function ProjectLogoEditor({
+  projectId,
+  projectName,
+  projectUrl,
+  logoPath,
+  revision,
+  onChanged,
+}: {
+  projectId: string;
+  projectName: string;
+  projectUrl: string;
+  logoPath: string | null;
+  revision: number;
+  onChanged: (logoPath: string | null) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function upload(file: File) {
+    setBusy(true);
+    setError("");
+    const form = new FormData();
+    form.set("file", file);
+    const response = await fetch(`/api/projects/${projectId}/logo`, {
+      method: "POST",
+      body: form,
+    });
+    const data = (await response.json().catch(() => ({}))) as {
+      logoPath?: string;
+      error?: string;
+    };
+    setBusy(false);
+    if (!response.ok || !data.logoPath) {
+      setError(data.error ?? `HTTP ${response.status}`);
+      return;
+    }
+    onChanged(data.logoPath);
+  }
+
+  async function remove() {
+    setBusy(true);
+    setError("");
+    const response = await fetch(`/api/projects/${projectId}/logo`, { method: "DELETE" });
+    setBusy(false);
+    if (!response.ok) {
+      const data = (await response.json().catch(() => ({}))) as { error?: string };
+      setError(data.error ?? `HTTP ${response.status}`);
+      return;
+    }
+    onChanged(null);
+  }
+
+  return (
+    <div className="glass flex flex-col items-center p-4 text-center">
+      <h2 className="mb-3 self-start text-sm font-semibold text-white/60">Logo del proyecto</h2>
+      <EntityLogo
+        name={projectName}
+        web={projectUrl}
+        src={logoPath ? `/api/projects/${projectId}/logo?v=${revision}` : undefined}
+        size={72}
+      />
+      <p className="mt-2 text-[10px] text-white/40">
+        PNG, JPG o WebP · máximo 2 MB
+      </p>
+      <div className="mt-3 flex flex-wrap justify-center gap-2">
+        <label className="cursor-pointer rounded-lg bg-[var(--color-accent)] px-3 py-1.5 text-xs font-medium">
+          {busy ? "Guardando…" : logoPath ? "Reemplazar" : "Subir logo"}
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp"
+            disabled={busy}
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void upload(file);
+              event.target.value = "";
+            }}
+          />
+        </label>
+        {logoPath && (
+          <button
+            onClick={remove}
+            disabled={busy}
+            className="rounded-lg border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5 disabled:opacity-40"
+          >
+            Quitar
+          </button>
+        )}
+      </div>
+      {error && <div className="mt-2 text-xs text-[var(--color-state-error)]">{error}</div>}
     </div>
   );
 }

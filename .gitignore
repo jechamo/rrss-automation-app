@@ -56,3 +56,5 @@ Thumbs.db
 # Datos locales del agente (memoria/sesiones), salvo los skills de proyecto (REQ-007)
 .claude/*
 !.claude/skills/
+.cursor/*
+!.cursor/skills/

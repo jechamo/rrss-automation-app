@@ -80,14 +80,33 @@ Devuelve EXCLUSIVAMENTE un objeto JSON con esta forma exacta (en espanol, concis
       "precios": "modelo de precios (o 'no disponible')",
       "pros": ["puntos fuertes del competidor"],
       "contras": ["debilidades del competidor"],
-      "diferenciadores": "en que se diferencia respecto a nuestro proyecto"
+      "diferenciadores": "en que se diferencia respecto a nuestro proyecto",
+      "scores": {
+        "producto": 1,
+        "presenciaRRSS": 1,
+        "amenaza": 1,
+        "justificacion": "una frase con la evidencia concreta que explica las notas"
+      }
     }
   ],
   "ventajas": ["nuestras ventajas frente al conjunto de competidores"],
   "amenazas": ["riesgos/amenazas competitivas para nuestro proyecto"],
   "oportunidades": ["huecos y oportunidades de posicionamiento a explotar"]
 }
-Incluye TODOS los competidores aportados, respetando su nombre y url. No incluyas nada fuera del JSON.`;
+Incluye TODOS los competidores aportados, respetando su nombre y url.
+
+Rubrica obligatoria de puntuacion (enteros 1-5):
+- producto: 1=oferta incipiente o poco clara; 3=producto valido pero convencional;
+  5=producto maduro, diferencial y con fuerte prueba de mercado.
+- presenciaRRSS: 1=presencia inexistente/inactiva; 3=actividad regular con alcance moderado;
+  5=distribucion dominante, comunidad activa y contenido frecuente.
+- amenaza: 1=solapamiento o capacidad comercial bajos; 3=competidor directo defendible;
+  5=amenaza directa con marca, producto y distribucion superiores.
+Compara dentro de ESTE conjunto: usa toda la escala que permita la evidencia. No des la misma
+nota a todos ni derives la nota contando pros y contras. El mejor del conjunto debe quedar en
+4-5 y el mas flojo en 1-2 cuando existan diferencias observables. Si falta evidencia, puntua
+con prudencia (2-3) y dilo en justificacion; nunca inventes actividad o datos.
+No incluyas nada fuera del JSON.`;
 
   const settings = getSettings();
   const engine = getEngine(settings.aiEngine);

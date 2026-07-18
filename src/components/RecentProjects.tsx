@@ -8,6 +8,7 @@ export type RecentProject = {
   id: string;
   name: string;
   url: string;
+  logoPath?: string | null;
   dossierStatus: "approved" | "draft" | null;
 };
 

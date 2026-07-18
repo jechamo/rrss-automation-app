@@ -48,6 +48,8 @@ requisitos **REQ-001 … REQ-010**, uno a uno, con validación del usuario entre
 - **Prisma 6.x + SQLite** (`DATABASE_URL="file:./dev.db"`). JSON se guarda como `String`.
 - **React Flow (@xyflow/react)** para el grafo de nodos del pipeline.
 - **SSE** (ReadableStream) para progreso en vivo; bus EventEmitter en memoria (`src/core/pipeline/bus.ts`).
+- **FFmpeg/ffprobe del sistema** para montaje final (opcional: si falta, la pieza conserva el preview
+  y muestra el comando `winget install ffmpeg`; no debe romper el run).
 - **Motor IA:** Claude Code CLI en modo headless (`-p --output-format json`), plan Pro = sin coste de API.
   Resolución del binario en `src/core/ai/claude-cli.ts` (`resolveBinary`), en este orden:
   1. `CLAUDE_CLI_PATH` (env, override manual).
@@ -88,7 +90,9 @@ src/app/                      Rutas (App Router)
                               [id]/content/run      POST crea pieza + lanza run REQ-005
                               [id]/content/demo/run POST crea pieza own + lanza run REQ-006
                               [id]/functions        POST analiza funciones de la app con IA (REQ-006)
+                              [id]/demo/dryrun       POST valida pasos Playwright sin grabar
                               [id]/login            GET/PUT/DELETE credenciales cifradas (REQ-006/DA-05)
+                              [id]/logo             GET/POST/DELETE logo manual del proyecto
     runs/[id]/stream/         Endpoint SSE del run
     dossier/[projectId]/      GET/PUT del dossier
     competencia/[projectId]/  GET/PUT de la competencia (REQ-002); GET incluye su lastRun
@@ -107,7 +111,8 @@ src/core/
   virales/                    Tipos + discover.ts (IA+WebSearch) + analyze.ts (patrones) (REQ-004)
   content/                    Tipos + extract.ts + guion.ts (REQ-005) + demo.ts (analyze/guion demo, REQ-006)
   media/                      Conectores fal/heygen/elevenlabs/gemini + storage/http/listOptions (REQ-005)
-                              + recorder.ts (Playwright móvil, import dinámico, fallback) (REQ-006)
+                              + recorder.ts (Playwright móvil, nav_log, storageState, dry-run)
+                              + ffmpeg.ts/assemble.ts (montaje final vertical + SRT + QC)
   secrets/login.ts            Credenciales de login cifradas por proyecto sobre el vault (REQ-006/DA-05)
   crawler/                    Crawl de la web (reutilizado por REQ-001 y REQ-002)
 src/lib/                      prisma, vault (cifrado)
@@ -153,7 +158,8 @@ prisma/schema.prisma          Modelo de datos multiproyecto
   **reinterpretación conceptual**, no copia). Cableado a **proveedores reales** (fal.ai/HeyGen/
   ElevenLabs/Gemini) con keys de Ajustes, **atributos auto/manual por pieza**, **rama fal|heygen
   elegible**. `ContentPiece` **muchos por proyecto** (bandeja de estados). Pipeline `req005.ts`
-  (`input → extract → guion → media → voz → montaje`; montaje = **stub** FFmpeg). UI `ContentTray` +
+  (`input → extract → guion → media → voz → montaje`; montaje FFmpeg real a `final.mp4`, con
+  degradación a preview si falta el binario). UI `ContentTray` +
   `GenerateContentModal`. Apoyo: skill `rrss-content-generation`. **Solo verificable con red+keys en
   la máquina del usuario** (la shell del agente no tiene red).
 - **REQ-006** (contenido propio — mostrar la app): **implementado** (DA-05 resuelta:
@@ -162,8 +168,10 @@ prisma/schema.prisma          Modelo de datos multiproyecto
   + login scriptado) con **fallback a subida manual**. IA propone funciones del dossier; guion
   **product-led** con **cortes B-roll** (fal.ai) intercalados + locución ElevenLabs. Reutiliza
   `ContentPiece` (`origin="own"`) y `ContentTray`. Pipeline `req006.ts` (`input → grabacion → guion →
-  media → voz → montaje`; montaje = **stub**). UI `DemoContentModal` + `PieceCard` (player/upload de
-  grabación). **Solo verificable con red+keys+`npx playwright install chromium` en la máquina del
+  media → voz → montaje`; montaje FFmpeg real). Recorder v2: pasos `goto|tap|fill|wait|scroll`,
+  `nav_log` temporal, sesión persistente, captura de error, normalización MP4 y dry-run; análisis
+  de funciones usa selectores del repo local y evita repetir ángulos. UI `DemoContentModal` +
+  `PieceCard`. **Solo verificable con red+keys+`npx playwright install chromium` en la máquina del
   usuario.** **Refinamiento UX (2026-07-18):** vídeo/voz del modal por **desplegable** (`SelectorAuto`
   compartido); ayuda de modos de grabación + realce de la subida manual en `PieceCard`; **fuente de
   código editable** tras crear el proyecto (`PUT /api/projects/:id` + editor en `/proyecto/[id]`).
@@ -187,5 +195,8 @@ prisma/schema.prisma          Modelo de datos multiproyecto
   dominio y mapa embebido en leads. **«Buscar más»** incremental en REQ-002/003/004 (`modo:"ampliar"`
   + `discover(excluir[])` + merge sin duplicar) y **nº de virales** configurable. Arte opcional en
   `public/img/` con fallback CSS.
+- **Refinamientos transversales (2026-07-18):** logo manual por proyecto (`Project.logoPath`),
+  dossier plegable y reorganizado con arte, scoring calibrado/justificado para competencia y leads,
+  e iconos IA por nodo con spinner CSS y badges de estado.
 - **Siguiente:** roadmap **REQ-001→010 implementado** + pase visual. Queda el **visto bueno end-to-end
   del usuario** (pruebas reales con red+keys+`npx playwright install chromium` en su máquina) para cerrar v1.
