@@ -66,6 +66,7 @@ export function GenerateContentModal({
             value={mediaConfig}
             onChange={setMediaConfig}
             disabled={busy}
+            usarGemini={usarGemini}
           />
 
           <label className="flex items-center gap-2">

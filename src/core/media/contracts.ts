@@ -17,7 +17,13 @@ export function buildFalRequestBody(
   const seconds = clampSeconds(requestedSeconds);
   switch (model) {
     case FAL_MODEL_IDS.kling:
-      return { prompt, aspect_ratio: "9:16", duration: seconds < 8 ? "5" : "10" };
+      // Audio nativo OFF: la locucion va por ElevenLabs (mas barato y controlable).
+      return {
+        prompt,
+        aspect_ratio: "9:16",
+        duration: seconds < 8 ? "5" : "10",
+        generate_audio: false,
+      };
     case FAL_MODEL_IDS.seedance:
       return { prompt, aspect_ratio: "9:16", duration: String(seconds) };
     case FAL_MODEL_IDS.luma:

@@ -52,6 +52,9 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 - Verificación final: 5/5 contratos, `tsc --noEmit`, `next build` (incluye lint/typecheck) y
   `git diff --check` correctos. `npm run lint` aislado sigue abriendo el configurador legado de
   Next porque el repo no tiene una configuración ESLint independiente.
+- Estimación de costes aproximados en el configurador de proveedores (fal/HeyGen/ElevenLabs/Gemini)
+  antes de lanzar; Kling se fuerza sin audio nativo (`generate_audio:false`) porque la locución
+  va por ElevenLabs.
 
 ### 2026-07-18 — Dashboard por vistas + navegación persistente
 

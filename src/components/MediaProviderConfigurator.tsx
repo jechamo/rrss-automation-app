@@ -10,6 +10,7 @@ import {
   validateMediaConfig,
 } from "@/core/content/types";
 import { SelectorAuto, loadOptions, type Option } from "@/components/SelectorAuto";
+import { estimatePieceCost, formatCostRange } from "@/core/media/pricing";
 
 export function mediaProviderError(config: MediaConfig): string {
   return validateMediaConfig(config);
@@ -19,10 +20,13 @@ export function MediaProviderConfigurator({
   value,
   onChange,
   disabled = false,
+  usarGemini = false,
 }: {
   value: MediaConfig;
   onChange: (config: MediaConfig) => void;
   disabled?: boolean;
+  /** Solo flujo clonar viral: incluye Gemini en la estimacion. */
+  usarGemini?: boolean;
 }) {
   const [videoOptions, setVideoOptions] = useState<Option[]>([]);
   const [avatarOptions, setAvatarOptions] = useState<Option[]>([]);
@@ -40,6 +44,10 @@ export function MediaProviderConfigurator({
   const selectedVoice = useMemo(
     () => voiceOptions.find((option) => option.id === heygen.voiceId),
     [voiceOptions, heygen.voiceId],
+  );
+  const cost = useMemo(
+    () => estimatePieceCost(value, { usarGemini }),
+    [value, usarGemini],
   );
 
   useEffect(() => {
@@ -324,6 +332,29 @@ export function MediaProviderConfigurator({
           )}
         </>
       )}
+
+      <div className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+        <div className="mb-1 flex items-baseline justify-between gap-2">
+          <span className="text-xs font-medium text-white/70">Coste estimado</span>
+          <span className="text-sm font-semibold tabular-nums text-[var(--color-accent-2)]">
+            {formatCostRange(cost.totalMin, cost.totalMax)}
+          </span>
+        </div>
+        <ul className="mt-2 space-y-1.5">
+          {cost.lines.map((line) => (
+            <li key={line.label} className="flex items-start justify-between gap-3 text-[11px]">
+              <span className="min-w-0">
+                <span className="text-white/65">{line.label}</span>
+                <span className="mt-0.5 block text-white/35">{line.detail}</span>
+              </span>
+              <span className="shrink-0 tabular-nums text-white/50">
+                {formatCostRange(line.usdMin, line.usdMax)}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-2 text-[10px] text-white/30">{cost.note}</p>
+      </div>
 
       {optionsError && <p className="text-xs text-[var(--color-state-pending)]">{optionsError}</p>}
       {uploadError && <p className="text-xs text-[var(--color-state-error)]">{uploadError}</p>}

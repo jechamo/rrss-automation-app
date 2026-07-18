@@ -16,6 +16,7 @@ test("fal.ai construye bodies verticales segun cada esquema", () => {
     prompt: "demo",
     aspect_ratio: "9:16",
     duration: "10",
+    generate_audio: false,
   });
   assert.deepEqual(buildFalRequestBody(FAL_MODEL_IDS.seedance, "demo", 7), {
     prompt: "demo",
