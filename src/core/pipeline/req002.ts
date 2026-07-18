@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { crawlSite, type CrawlResult } from "@/core/crawler";
 import { coerceDossier, type Dossier } from "@/core/dossier/types";
-import { coerceCompetencia, type Competidor } from "@/core/competencia/types";
+import { coerceCompetencia, type Competencia, type Competidor } from "@/core/competencia/types";
 import { discoverCompetidores, type CompetidorSemilla } from "@/core/competencia/discover";
 import { generateCompetencia, type CompetidorInput } from "@/core/competencia/generate";
 import type { PipelineDef, PipelineNode } from "./engine";
@@ -21,7 +21,14 @@ function domainOf(url: string): string {
   }
 }
 
-export function buildReq002Pipeline(): PipelineDef {
+export type ReqMode = "reemplazar" | "ampliar";
+export interface Req002Opts {
+  modo?: ReqMode;
+}
+
+export function buildReq002Pipeline(opts: Req002Opts = {}): PipelineDef {
+  const modo: ReqMode = opts.modo === "ampliar" ? "ampliar" : "reemplazar";
+
   const input: PipelineNode = {
     id: "input",
     label: "Entrada",
@@ -35,13 +42,18 @@ export function buildReq002Pipeline(): PipelineDef {
       const dossier = coerceDossier(JSON.parse(dossierRow.content));
       ctx.artifacts.dossier = dossier;
 
-      // Competidores manuales previos: se conservan al regenerar.
       const prev = await prisma.competencia.findUnique({ where: { projectId: ctx.project.id } });
-      const manual: Competidor[] = prev
-        ? coerceCompetencia(JSON.parse(prev.content)).competidores.filter((c) => c.origen === "manual")
-        : [];
+      const prevComp = prev ? coerceCompetencia(JSON.parse(prev.content)) : null;
+      const todos: Competidor[] = prevComp?.competidores ?? [];
+      const manual = todos.filter((c) => c.origen === "manual");
       ctx.artifacts.manual = manual;
-      ctx.log(`Dossier cargado. Competidores manuales conservados: ${manual.length}.`);
+      ctx.artifacts.prevComp = prevComp;
+      ctx.artifacts.existentesUrls = todos.map((c) => c.url).filter(Boolean);
+      ctx.log(
+        modo === "ampliar"
+          ? `Modo ampliar: se conservan ${todos.length} competidores y se buscan otros nuevos.`
+          : `Dossier cargado. Competidores manuales conservados: ${manual.length}.`,
+      );
     },
   };
 
@@ -51,8 +63,11 @@ export function buildReq002Pipeline(): PipelineDef {
     run: async (ctx) => {
       const dossier = ctx.artifacts.dossier as Dossier;
       const manual = (ctx.artifacts.manual as Competidor[]) ?? [];
-      const seedUrls = manual.map((c) => c.url).filter(Boolean);
-      const semillas = await discoverCompetidores(dossier, seedUrls);
+      const existentesUrls = (ctx.artifacts.existentesUrls as string[]) ?? [];
+      // ampliar: manual ya conservado → no re-sembrar; excluir TODO lo existente.
+      const seedUrls = modo === "ampliar" ? [] : manual.map((c) => c.url).filter(Boolean);
+      const excluir = modo === "ampliar" ? existentesUrls : [];
+      const semillas = await discoverCompetidores(dossier, seedUrls, excluir);
       ctx.artifacts.semillas = semillas;
       ctx.log(`Competidores identificados: ${semillas.length}.`);
     },
@@ -64,11 +79,16 @@ export function buildReq002Pipeline(): PipelineDef {
     run: async (ctx) => {
       const semillas = (ctx.artifacts.semillas as CompetidorSemilla[]) ?? [];
       const manual = (ctx.artifacts.manual as Competidor[]) ?? [];
+      const existentesUrls = (ctx.artifacts.existentesUrls as string[]) ?? [];
       const manualDomains = new Set(manual.map((c) => domainOf(c.url)));
       const nameByDomain = new Map(manual.map((c) => [domainOf(c.url), c.nombre]));
+      // En ampliar, evita recrawlear competidores ya existentes.
+      const existentesDomains = new Set(existentesUrls.map(domainOf));
+      const aProcesar =
+        modo === "ampliar" ? semillas.filter((s) => !existentesDomains.has(domainOf(s.url))) : semillas;
 
       const inputs: CompetidorInput[] = [];
-      for (const s of semillas) {
+      for (const s of aProcesar) {
         let crawlResult: CrawlResult | null = null;
         try {
           crawlResult = await crawlSite(s.url, 3);
@@ -95,7 +115,18 @@ export function buildReq002Pipeline(): PipelineDef {
     run: async (ctx) => {
       const dossier = ctx.artifacts.dossier as Dossier;
       const competidores = (ctx.artifacts.competidorInputs as CompetidorInput[]) ?? [];
-      const competencia = await generateCompetencia({ dossier, competidores });
+      const generada = await generateCompetencia({ dossier, competidores });
+
+      let competencia = generada;
+      if (modo === "ampliar") {
+        const prevComp = ctx.artifacts.prevComp as Competencia | null;
+        if (prevComp) {
+          const seen = new Set(prevComp.competidores.map((c) => domainOf(c.url)));
+          const nuevos = generada.competidores.filter((c) => !seen.has(domainOf(c.url)));
+          competencia = { ...prevComp, competidores: [...prevComp.competidores, ...nuevos] };
+        }
+      }
+
       await prisma.competencia.upsert({
         where: { projectId: ctx.project.id },
         create: {

@@ -8,9 +8,19 @@ import {
   type Leads,
   type Temperatura,
 } from "@/core/leads/types";
+import { ExpandableCarousel } from "@/components/ExpandableCarousel";
+import { ScoreBar } from "@/components/ScoreBar";
+import { EntityLogo } from "@/components/EntityLogo";
+import { MiniMap } from "@/components/MiniMap";
 
 const TEMPERATURAS: Temperatura[] = ["caliente", "templado", "frio"];
 const CANALES: Canal[] = ["correo", "visita", "otro"];
+
+const TEMP_META: Record<string, { color: string; label: string }> = {
+  caliente: { color: "#fb7185", label: "🔥 Caliente" },
+  templado: { color: "#f59e0b", label: "🌤 Templado" },
+  frio: { color: "#22d3ee", label: "❄ Frío" },
+};
 
 export function LeadsEditor({
   initial,
@@ -28,6 +38,7 @@ export function LeadsEditor({
   regenerating: boolean;
 }) {
   const [l, setL] = useState<Leads>(initial);
+  const [showEdit, setShowEdit] = useState(false);
   const approved = status === "approved";
 
   const set = <K extends keyof Leads>(k: K, v: Leads[K]) => setL((p) => ({ ...p, [k]: v }));
@@ -86,6 +97,95 @@ export function LeadsEditor({
         <InlineFieldCard label="Zona objetivo" value={l.zona} onChange={(v) => set("zona", v)} />
       </div>
 
+      {/* Vista visual: carrusel 360 de leads + detalle desplegable con mapa */}
+      {l.leads.length > 0 && (
+        <ExpandableCarousel
+          items={l.leads}
+          getKey={(_, i) => `l-${i}`}
+          renderCard={(lead, isCenter) => {
+            const meta = TEMP_META[lead.temperatura] ?? TEMP_META.frio;
+            return (
+              <>
+                <div
+                  className="relative flex flex-1 flex-col items-center justify-center gap-2 p-3"
+                  style={{ background: `linear-gradient(135deg, ${meta.color}22, #000a 70%)` }}
+                >
+                  <div className={isCenter ? "float" : ""}>
+                    <EntityLogo name={lead.nombre} web={lead.web} size={52} />
+                  </div>
+                  <div className="line-clamp-2 text-center text-xs font-semibold">{lead.nombre || "(sin nombre)"}</div>
+                  <span
+                    className="absolute left-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-medium text-white"
+                    style={{ background: `${meta.color}55` }}
+                  >
+                    {meta.label}
+                  </span>
+                </div>
+                <div className="shrink-0 space-y-1 p-2">
+                  <ScoreBar label="Fit" value={lead.fitScore} max={5} color="var(--color-state-ok)" />
+                  <ScoreBar label="Intención" value={lead.intentScore} max={5} color={meta.color} />
+                </div>
+              </>
+            );
+          }}
+          renderDetail={(lead) => {
+            const meta = TEMP_META[lead.temperatura] ?? TEMP_META.frio;
+            const mapQuery = lead.direccion || (lead.nombre ? `${lead.nombre} ${l.zona}` : "");
+            return (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <EntityLogo name={lead.nombre} web={lead.web} size={44} />
+                  <div className="min-w-0">
+                    <div className="truncate text-base font-bold">{lead.nombre || "(sin nombre)"}</div>
+                    <div className="truncate text-xs text-white/50">
+                      {lead.tipo}
+                      {lead.direccion && ` · ${lead.direccion}`}
+                    </div>
+                  </div>
+                  <span
+                    className="ml-auto shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium text-white"
+                    style={{ background: `${meta.color}55` }}
+                  >
+                    {meta.label}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <ScoreBar label="Fit" value={lead.fitScore} max={5} color="var(--color-state-ok)" />
+                  <ScoreBar label="Intención" value={lead.intentScore} max={5} color={meta.color} />
+                </div>
+                <div className="flex flex-wrap gap-3 text-xs text-white/60">
+                  {lead.telefono && <span>📞 {lead.telefono}</span>}
+                  {lead.email && <span>✉ {lead.email}</span>}
+                  {lead.web && (
+                    <a href={lead.web.startsWith("http") ? lead.web : `https://${lead.web}`} target="_blank" rel="noreferrer" className="text-[var(--color-accent-2)] hover:underline">
+                      {lead.web.replace(/^https?:\/\//, "")} ↗
+                    </a>
+                  )}
+                </div>
+                {lead.motivo && <DetailRow label="Por qué encaja" value={lead.motivo} />}
+                {lead.estrategia && <DetailRow label="Estrategia de captación" value={lead.estrategia} />}
+                {lead.borrador.cuerpo && (
+                  <DetailRow
+                    label={lead.canalRecomendado === "visita" ? "Guion de visita" : "Borrador de correo"}
+                    value={(lead.borrador.asunto ? `Asunto: ${lead.borrador.asunto}\n\n` : "") + lead.borrador.cuerpo}
+                  />
+                )}
+                {mapQuery && <MiniMap query={mapQuery} />}
+              </div>
+            );
+          }}
+        />
+      )}
+
+      <button
+        onClick={() => setShowEdit((s) => !s)}
+        className="self-start text-xs text-[var(--color-accent-2)] hover:underline"
+      >
+        {showEdit ? "Ocultar edición en detalle" : "✎ Editar en detalle"}
+      </button>
+
+      {showEdit && (
+      <>
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold text-white/60">Clientes potenciales ({l.leads.length})</div>
         <button onClick={addLead} className="text-xs text-[var(--color-accent-2)] hover:underline">
@@ -175,6 +275,17 @@ export function LeadsEditor({
         values={l.estrategiaGlobal}
         onChange={(v) => set("estrategiaGlobal", v)}
       />
+      </>
+      )}
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-xs text-white/50">{label}</div>
+      <div className="whitespace-pre-wrap text-sm text-white/80">{value}</div>
     </div>
   );
 }

@@ -8,8 +8,21 @@ import {
   type Viral,
   type Virales,
 } from "@/core/virales/types";
+import { ExpandableCarousel } from "@/components/ExpandableCarousel";
+import { ScoreBar } from "@/components/ScoreBar";
 
 const PLATAFORMAS: Plataforma[] = ["youtube", "tiktok", "instagram"];
+
+const PLAT_META: Record<string, { icon: string; color: string }> = {
+  youtube: { icon: "▶", color: "#ff0033" },
+  tiktok: { icon: "♪", color: "#22d3ee" },
+  instagram: { icon: "◎", color: "#f472b6" },
+};
+
+function youtubeId(url: string): string {
+  const m = url.match(/(?:v=|youtu\.be\/|shorts\/|embed\/)([\w-]{11})/);
+  return m ? m[1] : "";
+}
 
 export function ViralesEditor({
   initial,
@@ -27,6 +40,7 @@ export function ViralesEditor({
   regenerating: boolean;
 }) {
   const [v, setV] = useState<Virales>(initial);
+  const [showEdit, setShowEdit] = useState(false);
   const approved = status === "approved";
 
   const setViral = (i: number, patch: Partial<Viral>) =>
@@ -85,6 +99,135 @@ export function ViralesEditor({
         </div>
       </div>
 
+      {/* Vista visual: carrusel 360 + detalle desplegable */}
+      {v.virales.length > 0 && (
+        <ExpandableCarousel
+          items={v.virales}
+          getKey={(_, i) => `v-${i}`}
+          renderCard={(viral, isCenter) => {
+            const meta = PLAT_META[viral.plataforma] ?? PLAT_META.youtube;
+            const yid = viral.plataforma === "youtube" ? youtubeId(viral.url) : "";
+            return (
+              <>
+                <div
+                  className="relative flex-1 overflow-hidden"
+                  style={{ background: `linear-gradient(135deg, ${meta.color}33, #000a 70%)` }}
+                >
+                  {yid ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`https://img.youtube.com/vi/${yid}/hqdefault.jpg`}
+                      alt=""
+                      className="h-full w-full object-cover opacity-90"
+                    />
+                  ) : (
+                    <div
+                      className={`flex h-full items-center justify-center text-5xl ${isCenter ? "float" : ""}`}
+                      style={{ color: meta.color }}
+                    >
+                      {meta.icon}
+                    </div>
+                  )}
+                  <span
+                    className="absolute left-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize"
+                    style={{ background: `${meta.color}33`, color: "#fff" }}
+                  >
+                    {meta.icon} {viral.plataforma}
+                  </span>
+                </div>
+                <div className="shrink-0 space-y-1 p-2">
+                  <div className="line-clamp-2 text-xs font-semibold">{viral.titulo || "(sin título)"}</div>
+                  <ScoreBar label="Viral" value={viral.viralScore} max={100} color={meta.color} />
+                </div>
+              </>
+            );
+          }}
+          renderDetail={(viral) => {
+            const meta = PLAT_META[viral.plataforma] ?? PLAT_META.youtube;
+            return (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-base font-bold">{viral.titulo || "(sin título)"}</div>
+                    <div className="text-xs text-white/50">
+                      {viral.autor && `${viral.autor} · `}
+                      {viral.vistas && `${viral.vistas} · `}
+                      {viral.formato}
+                    </div>
+                  </div>
+                  {viral.url && (
+                    <a
+                      href={viral.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium"
+                      style={{ background: `${meta.color}22`, color: meta.color }}
+                    >
+                      Ver vídeo ↗
+                    </a>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <ScoreBar label="Viral score" value={viral.viralScore} max={100} color={meta.color} />
+                  <ScoreBar
+                    label="Ratio sobre el autor"
+                    value={Math.min(viral.ratioAutor, 10)}
+                    max={10}
+                    color="var(--color-accent)"
+                    suffix={`×${viral.ratioAutor}`}
+                  />
+                </div>
+                {viral.hook.texto && <DetailRow label={`Hook (${viral.hook.tipo})`} value={viral.hook.texto} />}
+                {viral.shareTrigger && <DetailRow label="Share trigger" value={viral.shareTrigger} />}
+                {viral.porQueFunciona && <DetailRow label="Por qué funciona" value={viral.porQueFunciona} />}
+                {viral.patronTransferible && (
+                  <DetailRow label="Patrón transferible (concepto, no copia)" value={viral.patronTransferible} />
+                )}
+                {viral.estructura.length > 0 && (
+                  <div>
+                    <div className="mb-1 text-xs text-white/50">Estructura</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {viral.estructura.map((b, k) => (
+                        <span key={k} className="rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-white/70">
+                          {b.desde}-{b.hasta}s · {b.bloque}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          }}
+        />
+      )}
+
+      {/* Patrones recurrentes (vista rápida) */}
+      {v.patronesRecurrentes.length > 0 && (
+        <div className="glass p-4">
+          <div className="mb-2 text-sm font-semibold text-white/60">
+            Patrones recurrentes ({v.patronesRecurrentes.length})
+          </div>
+          <div className="flex flex-col gap-2">
+            {v.patronesRecurrentes.map((p, i) => (
+              <div key={i} className="rounded-lg bg-white/5 p-2 text-xs">
+                <b className="text-[var(--color-accent-2)]">{p.patron}</b>
+                {p.frecuencia && <span className="text-white/40"> · {p.frecuencia}</span>}
+                {p.comoAplicar && <div className="mt-0.5 text-white/60">{p.comoAplicar}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <button
+        onClick={() => setShowEdit((s) => !s)}
+        className="self-start text-xs text-[var(--color-accent-2)] hover:underline"
+      >
+        {showEdit ? "Ocultar edición en detalle" : "✎ Editar en detalle"}
+      </button>
+
+      {showEdit && (
+      <>
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold text-white/60">Virales ({v.virales.length})</div>
         <button onClick={addViral} className="text-xs text-[var(--color-accent-2)] hover:underline">
@@ -183,6 +326,17 @@ export function ViralesEditor({
           </div>
         ))}
       </div>
+      </>
+      )}
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-xs text-white/50">{label}</div>
+      <div className="text-sm text-white/80">{value}</div>
     </div>
   );
 }

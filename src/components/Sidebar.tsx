@@ -29,10 +29,11 @@ export function Sidebar() {
 
   return (
     <aside className="w-60 shrink-0 border-r border-white/10 p-4 flex flex-col gap-6 bg-black/20 backdrop-blur">
-      <div className="px-2">
-        <div className="text-lg font-bold tracking-tight text-gradient">RRSS Studio</div>
-        <div className="text-xs text-white/40">Automatizacion de contenido</div>
-      </div>
+      <Link href="/" className="px-2 block">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/img/logo-lockup.png" alt="LeadView" className="w-full max-w-[180px]" />
+        <div className="mt-1 text-xs text-white/40">Automatización de contenido RRSS</div>
+      </Link>
 
       <nav className="flex flex-col gap-1">
         {NAV.map((item) => {

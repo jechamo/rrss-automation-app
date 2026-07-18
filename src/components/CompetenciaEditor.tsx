@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import type { Competencia, Competidor } from "@/core/competencia/types";
+import { ExpandableCarousel } from "@/components/ExpandableCarousel";
+import { ScoreBar } from "@/components/ScoreBar";
+import { EntityLogo } from "@/components/EntityLogo";
 
 const EMPTY_COMPETIDOR: Competidor = {
   nombre: "",
@@ -30,6 +33,7 @@ export function CompetenciaEditor({
   regenerating: boolean;
 }) {
   const [c, setC] = useState<Competencia>(initial);
+  const [showEdit, setShowEdit] = useState(false);
   const approved = status === "approved";
 
   const set = <K extends keyof Competencia>(k: K, v: Competencia[K]) =>
@@ -88,6 +92,79 @@ export function CompetenciaEditor({
 
       <TextField label="Resumen del panorama competitivo" value={c.resumen} onChange={(v) => set("resumen", v)} />
 
+      {/* Vista visual: carrusel 360 de competidores + detalle desplegable */}
+      {c.competidores.length > 0 && (
+        <ExpandableCarousel
+          items={c.competidores}
+          getKey={(_, i) => `c-${i}`}
+          renderCard={(comp, isCenter) => {
+            const total = comp.pros.length + comp.contras.length;
+            const score = total > 0 ? (comp.pros.length / total) * 5 : 2.5;
+            return (
+              <>
+                <div className="relative flex flex-1 flex-col items-center justify-center gap-2 bg-gradient-to-br from-[var(--color-accent)]/25 via-black/50 to-[var(--color-accent-2)]/20 p-3">
+                  <div className={isCenter ? "float" : ""}>
+                    <EntityLogo name={comp.nombre} web={comp.url} size={52} />
+                  </div>
+                  <div className="line-clamp-2 text-center text-xs font-semibold">{comp.nombre || "(sin nombre)"}</div>
+                </div>
+                <div className="shrink-0 space-y-1 p-2">
+                  <div className="line-clamp-2 text-[10px] text-white/50">{comp.propuestaValor}</div>
+                  <ScoreBar label="Fortaleza (pros/contras)" value={score} max={5} color="var(--color-accent-2)" />
+                </div>
+              </>
+            );
+          }}
+          renderDetail={(comp) => (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <EntityLogo name={comp.nombre} web={comp.url} size={44} />
+                <div className="min-w-0">
+                  <div className="truncate text-base font-bold">{comp.nombre || "(sin nombre)"}</div>
+                  {comp.url && (
+                    <a href={comp.url.startsWith("http") ? comp.url : `https://${comp.url}`} target="_blank" rel="noreferrer" className="truncate text-xs text-[var(--color-accent-2)] hover:underline">
+                      {comp.url.replace(/^https?:\/\//, "")} ↗
+                    </a>
+                  )}
+                </div>
+                {comp.precios && (
+                  <span className="ml-auto shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/70">{comp.precios}</span>
+                )}
+              </div>
+              {comp.propuestaValor && <DetailRow label="Propuesta de valor" value={comp.propuestaValor} />}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {comp.pros.length > 0 && (
+                  <div>
+                    <div className="mb-1 text-xs text-[var(--color-state-ok)]">Pros</div>
+                    <ul className="space-y-0.5 text-xs text-white/70">
+                      {comp.pros.map((x, k) => <li key={k}>+ {x}</li>)}
+                    </ul>
+                  </div>
+                )}
+                {comp.contras.length > 0 && (
+                  <div>
+                    <div className="mb-1 text-xs text-[var(--color-state-error)]">Contras</div>
+                    <ul className="space-y-0.5 text-xs text-white/70">
+                      {comp.contras.map((x, k) => <li key={k}>− {x}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              {comp.diferenciadores && <DetailRow label="Diferenciadores (vs. nuestro proyecto)" value={comp.diferenciadores} />}
+            </div>
+          )}
+        />
+      )}
+
+      <button
+        onClick={() => setShowEdit((s) => !s)}
+        className="self-start text-xs text-[var(--color-accent-2)] hover:underline"
+      >
+        {showEdit ? "Ocultar edición en detalle" : "✎ Editar en detalle"}
+      </button>
+
+      {showEdit && (
+      <>
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold text-white/60">Competidores ({c.competidores.length})</div>
         <button onClick={addCompetidor} className="text-xs text-[var(--color-accent-2)] hover:underline">
@@ -150,6 +227,17 @@ export function CompetenciaEditor({
         <ListField label="Amenazas" values={c.amenazas} onChange={(v) => set("amenazas", v)} />
         <ListField label="Oportunidades" values={c.oportunidades} onChange={(v) => set("oportunidades", v)} />
       </div>
+      </>
+      )}
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-xs text-white/50">{label}</div>
+      <div className="whitespace-pre-wrap text-sm text-white/80">{value}</div>
     </div>
   );
 }

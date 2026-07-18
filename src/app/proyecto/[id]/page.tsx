@@ -162,6 +162,17 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
         <PipelineGraph nodes={nodes} />
       </section>
 
+      <section className="mb-6">
+        <SourceEditor
+          projectId={id}
+          initialType={project.codeType ?? "none"}
+          initialPath={project.codePath ?? ""}
+          onSaved={(codeType, codePath) =>
+            setProject((p) => (p ? { ...p, codeType, codePath } : p))
+          }
+        />
+      </section>
+
       {(running || logs.length > 0) && (
         <section className="mb-6">
           <h2 className="mb-2 text-sm font-semibold text-white/60">Registro</h2>
@@ -226,6 +237,105 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
           <ContentTray projectId={id} ready={!!dossier} />
         </section>
       )}
+    </div>
+  );
+}
+
+const CODE_TYPES: { id: string; label: string }[] = [
+  { id: "local", label: "Ruta local" },
+  { id: "github_public", label: "GitHub público" },
+  { id: "github_private", label: "GitHub privado" },
+  { id: "none", label: "Sin código" },
+];
+
+// Editar la fuente de código de un proyecto ya creado (REQ-006 A4). La ruta se
+// fijaba solo al crearlo; aquí se puede ver/corregir sin recrear el proyecto.
+function SourceEditor({
+  projectId,
+  initialType,
+  initialPath,
+  onSaved,
+}: {
+  projectId: string;
+  initialType: string;
+  initialPath: string;
+  onSaved: (codeType: string, codePath: string | null) => void;
+}) {
+  const [codeType, setCodeType] = useState(initialType);
+  const [codePath, setCodePath] = useState(initialPath);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [err, setErr] = useState("");
+
+  const needsPath = codeType === "local" || codeType.startsWith("github");
+  const placeholder =
+    codeType === "local" ? "C:\\ruta\\a\\tu\\proyecto" : "https://github.com/usuario/repo";
+  const dirty = codeType !== initialType || codePath !== initialPath;
+
+  async function save() {
+    setSaving(true);
+    setErr("");
+    setSaved(false);
+    const r = await fetch(`/api/projects/${projectId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ codeType, codePath: needsPath ? codePath : undefined }),
+    });
+    setSaving(false);
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      setErr(d.error ?? `HTTP ${r.status}`);
+      return;
+    }
+    setSaved(true);
+    onSaved(codeType, needsPath ? codePath : null);
+    setTimeout(() => setSaved(false), 2500);
+  }
+
+  return (
+    <div className="glass p-4">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold text-white/60">Fuente de código (REQ-001 / REQ-006)</h2>
+        {saved && <span className="text-xs text-[var(--color-state-ok)]">Guardado ✓</span>}
+      </div>
+      <div className="mb-3 flex flex-wrap gap-2">
+        {CODE_TYPES.map((o) => (
+          <button
+            key={o.id}
+            onClick={() => setCodeType(o.id)}
+            className={[
+              "rounded-lg border px-3 py-1.5 text-xs",
+              codeType === o.id
+                ? "border-[var(--color-accent)] bg-[var(--color-accent)]/15"
+                : "border-white/15 hover:bg-white/5",
+            ].join(" ")}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      {needsPath && (
+        <input
+          className="input"
+          placeholder={placeholder}
+          value={codePath}
+          onChange={(e) => setCodePath(e.target.value)}
+        />
+      )}
+      <p className="mt-2 text-[11px] text-white/40">
+        Aquí va la <b>ruta del repo del PC</b> (tipo «Ruta local»). Afecta a las próximas
+        ejecuciones; vuelve a generar el dossier (REQ-001) para reanalizar con la nueva ruta.
+      </p>
+      {err && <div className="mt-2 text-xs text-[var(--color-state-error)]">{err}</div>}
+      <div className="mt-3">
+        <button
+          onClick={save}
+          disabled={saving || !dirty || (needsPath && !codePath.trim())}
+          className="rounded-lg bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium disabled:opacity-40"
+        >
+          {saving ? "Guardando…" : "Guardar fuente"}
+        </button>
+      </div>
     </div>
   );
 }

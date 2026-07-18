@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PipelineGraph, type GraphNode, type NodeState } from "@/components/PipelineGraph";
 import { LeadsEditor } from "@/components/LeadsEditor";
+import { CardArt } from "@/components/CardArt";
 import type { Leads } from "@/core/leads/types";
 
 type RunEvent =
@@ -93,7 +94,7 @@ export function LeadsPanel({
     };
   }, [runId, load]);
 
-  async function startRun() {
+  async function startRun(modo: "reemplazar" | "ampliar" = "reemplazar") {
     setStarting(true);
     setLogs([]);
     setNodes(initialNodes());
@@ -101,7 +102,7 @@ export function LeadsPanel({
     const r = await fetch(`/api/projects/${projectId}/leads/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ zona }),
+      body: JSON.stringify({ zona, modo }),
     });
     if (r.ok) {
       const d = await r.json();
@@ -129,10 +130,11 @@ export function LeadsPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-bold">Clientes potenciales (REQ-003)</h2>
-        {!leads && (
-          <div className="flex items-center gap-2">
+      <div className="relative flex items-center justify-between gap-3 overflow-hidden rounded-xl p-4">
+        <CardArt name="bg-leads.webp" fallback="linear-gradient(120deg, rgba(34,211,238,0.28), rgba(124,58,237,0.22))" />
+        <h2 className="relative text-lg font-bold">Clientes potenciales (REQ-003)</h2>
+        {!leads ? (
+          <div className="relative flex items-center gap-2">
             <input
               className="input w-48"
               placeholder="Zona (opcional)"
@@ -141,7 +143,7 @@ export function LeadsPanel({
               disabled={!dossierReady || running || starting}
             />
             <button
-              onClick={startRun}
+              onClick={() => startRun()}
               disabled={!dossierReady || running || starting}
               className="rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium disabled:opacity-40"
               title={dossierReady ? undefined : "Genera primero el dossier (REQ-001)."}
@@ -149,6 +151,15 @@ export function LeadsPanel({
               {running || starting ? "Buscando…" : "Buscar clientes potenciales"}
             </button>
           </div>
+        ) : (
+          <button
+            onClick={() => startRun("ampliar")}
+            disabled={running || starting}
+            className="relative rounded-lg border border-[var(--color-accent-2)]/50 bg-black/30 px-3 py-2 text-sm font-medium text-[var(--color-accent-2)] hover:bg-[var(--color-accent-2)]/10 disabled:opacity-40"
+            title="Busca clientes NUEVOS y los añade a los actuales"
+          >
+            {running || starting ? "Buscando…" : "+ Buscar más"}
+          </button>
         )}
       </div>
 
@@ -178,7 +189,7 @@ export function LeadsPanel({
           La búsqueda de clientes potenciales falló. Revisa el nodo en error y pulsa «Buscar» de nuevo.
           <div className="mt-3">
             <button
-              onClick={startRun}
+              onClick={() => startRun()}
               disabled={starting}
               className="rounded-lg border border-white/15 px-3 py-2 text-sm text-white hover:bg-white/5 disabled:opacity-40"
             >
@@ -193,7 +204,7 @@ export function LeadsPanel({
           initial={leads}
           status={status}
           onSave={saveLeads}
-          onRegenerate={startRun}
+          onRegenerate={() => startRun("reemplazar")}
           saving={saving}
           regenerating={running || starting}
         />

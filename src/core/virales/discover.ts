@@ -34,8 +34,13 @@ export async function discoverVirales(
   dossier: Dossier,
   criterio: CriterioViral,
   seed: ViralCandidato[] = [],
+  excluir: string[] = [],
 ): Promise<ViralCandidato[]> {
   const ventana = criterio.ventanaDias > 0 ? `${criterio.ventanaDias} dias` : "sin limite (historico)";
+  const exclusion = excluir.filter(Boolean).slice(0, 60);
+  const bloqueExcluir = exclusion.length
+    ? `\n## NO repitas (ya los tengo)\nEXCLUYE estos videos ya encontrados; busca OTROS distintos:\n${exclusion.map((u) => `- ${u}`).join("\n")}\n`
+    : "";
 
   const prompt = `Busca en la web hasta ${MAX_CANDIDATOS} VIDEOS VIRALES REALES del nicho, en
 YouTube, TikTok e Instagram/Reels (creadores del sector en general, no solo de una marca).
@@ -58,6 +63,7 @@ YouTube, TikTok e Instagram/Reels (creadores del sector en general, no solo de u
 - "viralScore": 0-100, tu estimacion de viralidad para ordenar.
 - Reparte entre las 3 plataformas si hay material.
 
+${bloqueExcluir}
 ## Instruccion (salida)
 Tras la busqueda, responde EXCLUSIVAMENTE con un objeto JSON con esta forma exacta:
 {

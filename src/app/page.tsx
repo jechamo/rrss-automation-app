@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { RecentProjects } from "@/components/RecentProjects";
+import { ProjectsCarousel } from "@/components/ProjectsCarousel";
+import { CardArt } from "@/components/CardArt";
 
 export const dynamic = "force-dynamic";
 
@@ -17,15 +18,23 @@ export default async function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-5xl">
-      <header className="hero glass-strong animate-in mb-8 p-8" style={{ animationDelay: "0ms" }}>
-        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-white/60">
+      <header className="hero glass-strong animate-in relative mb-8 overflow-hidden p-8" style={{ animationDelay: "0ms" }}>
+        <CardArt
+          name="hero-aurora.webp"
+          fallback="transparent"
+          overlay={false}
+        />
+        <span className="relative inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] text-white/60">
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-accent-2)]" style={{ animation: "pulse 2s infinite" }} />
           Estudio local de contenido para RRSS
         </span>
-        <h1 className="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">
-          Bienvenido a <span className="text-gradient">RRSS Studio</span>
-        </h1>
-        <p className="mt-3 max-w-xl text-white/60">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/img/logo-lockup.png"
+          alt="LeadView"
+          className="relative mt-4 w-full max-w-md drop-shadow-[0_8px_30px_rgba(34,211,238,0.35)]"
+        />
+        <p className="relative mt-3 max-w-xl text-white/70">
           Analiza tu appweb, estudia a la competencia y genera contenido para redes — todo en local.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
@@ -47,7 +56,7 @@ export default async function DashboardPage() {
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Stat label="Proyectos" value={projects} delay={60} />
         <Stat label="Piezas de contenido" value={pieces} delay={120} />
-        <Stat label="Fase actual" value="REQ-009" delay={180} />
+        <Stat label="Fase actual" value="REQ-010" delay={180} />
       </section>
 
       <section className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -69,8 +78,8 @@ export default async function DashboardPage() {
         />
       </section>
 
-      <RecentProjects
-        initial={recent.map((p) => ({
+      <ProjectsCarousel
+        projects={recent.map((p) => ({
           id: p.id,
           name: p.name,
           url: p.url,

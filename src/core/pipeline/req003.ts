@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { coerceDossier, type Dossier } from "@/core/dossier/types";
 import { coerceCompetencia, type Competencia } from "@/core/competencia/types";
-import { coerceLeads, type Lead } from "@/core/leads/types";
+import { coerceLeads, type Lead, type Leads } from "@/core/leads/types";
 import { researchTarget, type LeadResearch } from "@/core/leads/research";
 import { discoverLeads, type LeadDescubierto } from "@/core/leads/discover";
 import { generateStrategy, type StrategyLeadInput } from "@/core/leads/strategy";
@@ -27,8 +27,17 @@ function toDescubierto(l: Lead): LeadDescubierto {
   };
 }
 
+export type ReqMode = "reemplazar" | "ampliar";
+export interface Req003Opts {
+  zona?: string;
+  modo?: ReqMode;
+}
+
 /** REQ-003: leads (negocios locales reales via IA+web) + estrategia de captacion. */
-export function buildReq003Pipeline(zona = ""): PipelineDef {
+export function buildReq003Pipeline(opts: Req003Opts = {}): PipelineDef {
+  const zona = opts.zona ?? "";
+  const modo: ReqMode = opts.modo === "ampliar" ? "ampliar" : "reemplazar";
+
   const input: PipelineNode = {
     id: "input",
     label: "Entrada",
@@ -47,13 +56,18 @@ export function buildReq003Pipeline(zona = ""): PipelineDef {
         ? coerceCompetencia(JSON.parse(compRow.content))
         : null;
 
-      // Leads manuales previos: se conservan al regenerar.
       const prev = await prisma.leads.findUnique({ where: { projectId: ctx.project.id } });
-      const manual: Lead[] = prev
-        ? coerceLeads(JSON.parse(prev.content)).leads.filter((l) => l.origen === "manual")
-        : [];
+      const prevLeads = prev ? coerceLeads(JSON.parse(prev.content)) : null;
+      const todos: Lead[] = prevLeads?.leads ?? [];
+      const manual = todos.filter((l) => l.origen === "manual");
       ctx.artifacts.manual = manual;
-      ctx.log(`Dossier cargado. Competencia: ${compRow ? "si" : "no"}. Leads manuales: ${manual.length}.`);
+      ctx.artifacts.prevLeads = prevLeads;
+      ctx.artifacts.existentes = todos;
+      ctx.log(
+        modo === "ampliar"
+          ? `Modo ampliar: se conservan ${todos.length} leads y se buscan otros nuevos.`
+          : `Dossier cargado. Competencia: ${compRow ? "si" : "no"}. Leads manuales: ${manual.length}.`,
+      );
     },
   };
 
@@ -75,8 +89,14 @@ export function buildReq003Pipeline(zona = ""): PipelineDef {
     run: async (ctx) => {
       const perfil = ctx.artifacts.research as LeadResearch;
       const manual = (ctx.artifacts.manual as Lead[]) ?? [];
-      const seed = manual.map(toDescubierto);
-      const encontrados = await discoverLeads(perfil, seed);
+      const existentes = (ctx.artifacts.existentes as Lead[]) ?? [];
+      // ampliar: manual ya conservado → no re-sembrar; excluir TODO lo existente.
+      const seed = modo === "ampliar" ? [] : manual.map(toDescubierto);
+      const excluir =
+        modo === "ampliar"
+          ? existentes.map((l) => l.web || l.nombre).filter(Boolean)
+          : [];
+      const encontrados = await discoverLeads(perfil, seed, excluir);
       ctx.artifacts.descubiertos = encontrados;
       ctx.log(`Negocios localizados: ${encontrados.length}.`);
     },
@@ -90,14 +110,32 @@ export function buildReq003Pipeline(zona = ""): PipelineDef {
       const perfil = ctx.artifacts.research as LeadResearch;
       const descubiertos = (ctx.artifacts.descubiertos as LeadDescubierto[]) ?? [];
       const manual = (ctx.artifacts.manual as Lead[]) ?? [];
+      const existentes = (ctx.artifacts.existentes as Lead[]) ?? [];
       const manualKeys = new Set(manual.map((l) => keyOf(l.nombre, l.web)));
+      const existentesKeys = new Set(existentes.map((l) => keyOf(l.nombre, l.web)));
 
-      const inputs: StrategyLeadInput[] = descubiertos.map((d) => ({
+      // En ampliar, procesa sólo los negocios NUEVOS (no en lo existente).
+      const aProcesar =
+        modo === "ampliar"
+          ? descubiertos.filter((d) => !existentesKeys.has(keyOf(d.nombre, d.web)))
+          : descubiertos;
+      const inputs: StrategyLeadInput[] = aProcesar.map((d) => ({
         ...d,
         origen: manualKeys.has(keyOf(d.nombre, d.web)) ? "manual" : "ia",
       }));
 
-      const leads = await generateStrategy({ dossier, research: perfil, leads: inputs });
+      const generados = await generateStrategy({ dossier, research: perfil, leads: inputs });
+
+      let leads = generados;
+      if (modo === "ampliar") {
+        const prevLeads = ctx.artifacts.prevLeads as Leads | null;
+        if (prevLeads) {
+          const seen = new Set(prevLeads.leads.map((l) => keyOf(l.nombre, l.web)));
+          const nuevos = generados.leads.filter((l) => !seen.has(keyOf(l.nombre, l.web)));
+          leads = { ...prevLeads, leads: [...prevLeads.leads, ...nuevos] };
+        }
+      }
+
       await prisma.leads.upsert({
         where: { projectId: ctx.project.id },
         create: {

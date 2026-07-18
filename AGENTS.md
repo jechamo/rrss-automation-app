@@ -147,6 +147,8 @@ prisma/schema.prisma          Modelo de datos multiproyecto
   viral **relativo al autor** ≈5× mediana del canal, ventana 30d configurable, **Top 20**). Pipeline
   `req004.ts` (`input → discover(web) → rank → analyze`), cada viral descompuesto (hook/estructura/
   share-trigger/patrón transferible) para alimentar REQ-005. Apoyo: skill `rrss-viral-analysis`. En pruebas.
+  **Refinamiento (2026-07-18):** el análisis de patrones usa `timeoutMs=600_000` (no cortar por tiempo;
+  el default del motor era 180s).
 - **REQ-005** (generación de contenido — clonado de viral): **implementado** (DA-04 resuelta:
   **reinterpretación conceptual**, no copia). Cableado a **proveedores reales** (fal.ai/HeyGen/
   ElevenLabs/Gemini) con keys de Ajustes, **atributos auto/manual por pieza**, **rama fal|heygen
@@ -162,7 +164,9 @@ prisma/schema.prisma          Modelo de datos multiproyecto
   `ContentPiece` (`origin="own"`) y `ContentTray`. Pipeline `req006.ts` (`input → grabacion → guion →
   media → voz → montaje`; montaje = **stub**). UI `DemoContentModal` + `PieceCard` (player/upload de
   grabación). **Solo verificable con red+keys+`npx playwright install chromium` en la máquina del
-  usuario.**
+  usuario.** **Refinamiento UX (2026-07-18):** vídeo/voz del modal por **desplegable** (`SelectorAuto`
+  compartido); ayuda de modos de grabación + realce de la subida manual en `PieceCard`; **fuente de
+  código editable** tras crear el proyecto (`PUT /api/projects/:id` + editor en `/proyecto/[id]`).
 - **REQ-007** (skills): **pase de curación hecho** (DA-06 resuelta). 3 skills de proyecto en
   `.claude/skills/` + catálogo en `docs/05-skills.md`. Feature de UI aplazada.
 - **REQ-008** (Ajustes/APIs): **implementado**. Selector de motor + modelo, tarjeta por proveedor con
@@ -177,5 +181,11 @@ prisma/schema.prisma          Modelo de datos multiproyecto
   `core/content/publish.ts` (targets + `composeCaption`), descarga por `?download=1`, y persistencia
   de `publishedTo`/`publishedAt` en `assets`. Botón **«Publicar ↗»** en `PieceCard`. Subida automática
   por API oficial (OAuth por plataforma) queda **fuera de alcance**.
-- **Siguiente:** roadmap **REQ-001→010 implementado**. Queda el **visto bueno end-to-end del usuario**
-  (pruebas reales con red+keys+`npx playwright install chromium` en su máquina) para cerrar v1.
+- **Rediseño visual (2026-07-18):** componentes reutilizables `Carousel3D`/`ExpandableCarousel`/
+  `ScoreBar`/`EntityLogo`/`MiniMap`/`CardArt`/`ProjectsCarousel` (sin paquetes ni keys). Dashboard y
+  secciones competencia/leads/virales con **carrusel 360 + detalle desplegable**, scoring, logos por
+  dominio y mapa embebido en leads. **«Buscar más»** incremental en REQ-002/003/004 (`modo:"ampliar"`
+  + `discover(excluir[])` + merge sin duplicar) y **nº de virales** configurable. Arte opcional en
+  `public/img/` con fallback CSS.
+- **Siguiente:** roadmap **REQ-001→010 implementado** + pase visual. Queda el **visto bueno end-to-end
+  del usuario** (pruebas reales con red+keys+`npx playwright install chromium` en su máquina) para cerrar v1.

@@ -15,6 +15,9 @@ generar contenido propio SIN copiar (reinterpretar el concepto). Respondes SIEMP
 y SOLO con JSON valido, sin markdown.`;
 
 const MAX_ANALIZAR = 20;
+// Descomponer el Top 20 supera de largo el timeout por defecto del motor (180s):
+// no debe cortarse por tiempo. Margen amplio (10 min) para motores locales lentos.
+const TIMEOUT_MS = 600_000;
 
 function buildBlock(v: AnalyzeInput, i: number): string {
   const datos = [
@@ -80,7 +83,13 @@ No incluyas nada fuera del JSON.`;
 
   const settings = getSettings();
   const engine = getEngine(settings.aiEngine);
-  const result = await engine.run({ system: SYSTEM, prompt, json: true, model: settings.aiModel });
+  const result = await engine.run({
+    system: SYSTEM,
+    prompt,
+    json: true,
+    model: settings.aiModel,
+    timeoutMs: TIMEOUT_MS,
+  });
 
   const data = result.data ?? tryParse(result.text);
   if (!data) {

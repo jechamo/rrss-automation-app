@@ -5,8 +5,10 @@ import { executeRun, initialNodeStatus } from "@/core/pipeline/engine";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
+  const body = await req.json().catch(() => null);
+  const modo = (body as { modo?: unknown })?.modo === "ampliar" ? "ampliar" : "reemplazar";
   const project = await prisma.project.findUnique({
     where: { id },
     include: { dossier: true },
@@ -21,7 +23,7 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
     );
   }
 
-  const def = buildReq002Pipeline();
+  const def = buildReq002Pipeline({ modo });
   const run = await prisma.run.create({
     data: {
       projectId: project.id,

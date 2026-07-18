@@ -3,8 +3,8 @@ import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 
 export const metadata: Metadata = {
-  title: "RRSS Automation",
-  description: "Automatizacion de contenido para redes sociales",
+  title: "LeadView",
+  description: "LeadView — automatización de contenido para redes sociales",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

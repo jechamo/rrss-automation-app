@@ -284,7 +284,8 @@ porQueFunciona, patronTransferible, origen(ia|manual)}`.
   share-trigger, **patrón transferible** — concepto, no copia) en el contexto del dossier y extrae
   `patronesRecurrentes` del nicho. `upsert` de `Virales`. Definición de viralidad **relativa al
   autor** (≈5× la mediana del canal); ventana configurable (`ventanaDias`: 7/14/30/0=histórico).
-  Apoyo: skill `rrss-viral-analysis`.
+  Apoyo: skill `rrss-viral-analysis`. **Timeout 600s** (`TIMEOUT_MS`): descomponer el Top 20 supera
+  el timeout por defecto del motor (180s), así que no debe cortarse por tiempo.
 
 **Endpoints:** `POST /api/projects/:id/virales/run` (409 si no hay dossier; body opcional
 `{ ventanaDias }`), `GET/PUT /api/virales/:projectId` (GET incluye su `lastRun` de REQ-004; PUT
@@ -392,6 +393,13 @@ login cifrado, atributos vídeo/voz) lanzado desde el botón «+ Contenido propi
 `PieceCard` distingue piezas propias (chip «Propio · app»), reproduce la grabación (`recordingPath`)
 y ofrece subida/reemplazo manual de vídeo.
 
+**Refinamientos UX (2026-07-18):** el modelo de vídeo (fal) y la voz (ElevenLabs) del modal usan el
+componente compartido `SelectorAuto` (`src/components/SelectorAuto.tsx`, extraído de REQ-005; carga
+listas vía `GET /api/providers/:provider/options`). El modal explica los modos de grabación; en modo
+manual la zona de subida de `PieceCard` se resalta (borde de acento) cuando la pieza propia aún no
+tiene grabación. La **fuente de código** del proyecto es editable tras crearlo vía
+`PUT /api/projects/:id` (valida `codeType`/`codePath`) + editor «Fuente de código» en `/proyecto/[id]`.
+
 > Playwright con navegador real y las llamadas a proveedores solo se validan en la máquina del
 > usuario (la shell del agente no tiene red; requiere `npx playwright install chromium` + keys).
 
@@ -424,6 +432,29 @@ y ofrece subida/reemplazo manual de vídeo.
 - `components/PipelineGraph.tsx`: transición suave de borde/sombra al cambiar de estado un nodo.
 
 > Sin cambios de datos ni de API; es capa de presentación. Verificado con `tsc` + `next build`.
+
+---
+
+## 8.7. Rediseño visual + carruseles con expandir + «buscar más» (2026-07-18)
+
+**Enfoque:** sin paquetes ni keys. Componentes de presentación reutilizables + cambio incremental en
+los pipelines de descubrimiento.
+
+**Componentes** (`src/components/`): `Carousel3D` (cover-flow genérico; `PieceCarousel` lo reutiliza),
+`ExpandableCarousel` (carrusel + detalle desplegable del ítem activo), `ScoreBar`, `EntityLogo`
+(Clearbit → Google favicon → iniciales), `MiniMap` (iframe `maps.google.com/…&output=embed`, sin key),
+`CardArt` (imagen de `public/img/` con fallback CSS), `ProjectsCarousel`. CSS nuevo en `globals.css`
+(`.score-bar`, `.glow-hover`, `.float`, `.card-art`). Los `*Editor` (competencia/leads/virales) montan
+el `ExpandableCarousel` arriba y dejan el formulario completo tras un toggle.
+
+**«Buscar más» (incremental):** `buildReq00{2,3,4}Pipeline({ modo, cantidad })`. En `modo:"ampliar"`
+el nodo `input` conserva TODOS los ítems, `discover*(…, excluir[])` inyecta en el prompt la lista a no
+repetir, y el nodo final genera/analiza sólo los nuevos y los **añade** (dedupe por url/nombre/dominio),
+conservando los agregados previos (resumen, patrones…). En `reemplazar` se mantiene el comportamiento
+anterior. Endpoints `.../run` leen `{ modo, cantidad }`; virales expone `cantidad` (10/20/30/50).
+
+> Capa de presentación + descubrimiento incremental; sin cambios de esquema Prisma. Verificado con
+> `tsc` + `next build`. Logos/mapas/miniaturas YT dependen de la red del navegador del usuario.
 
 ---
 

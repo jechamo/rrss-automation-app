@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PipelineGraph, type GraphNode, type NodeState } from "@/components/PipelineGraph";
 import { ViralesEditor } from "@/components/ViralesEditor";
+import { CardArt } from "@/components/CardArt";
 import type { Virales } from "@/core/virales/types";
 
 type RunEvent =
@@ -46,6 +47,7 @@ export function ViralesPanel({
   const [saving, setSaving] = useState(false);
   const [starting, setStarting] = useState(false);
   const [ventanaDias, setVentanaDias] = useState(30);
+  const [cantidad, setCantidad] = useState(20);
   const esRef = useRef<EventSource | null>(null);
 
   const load = useCallback(async () => {
@@ -100,7 +102,7 @@ export function ViralesPanel({
     };
   }, [runId, load]);
 
-  async function startRun() {
+  async function startRun(modo: "reemplazar" | "ampliar" = "reemplazar") {
     setStarting(true);
     setLogs([]);
     setNodes(initialNodes());
@@ -108,7 +110,7 @@ export function ViralesPanel({
     const r = await fetch(`/api/projects/${projectId}/virales/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ventanaDias }),
+      body: JSON.stringify({ ventanaDias, modo, cantidad: modo === "ampliar" ? 10 : cantidad }),
     });
     if (r.ok) {
       const d = await r.json();
@@ -136,32 +138,58 @@ export function ViralesPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-bold">Virales del nicho (REQ-004)</h2>
-        {!virales && (
-          <div className="flex items-center gap-2">
-            <select
-              className="input w-32"
-              value={ventanaDias}
-              onChange={(e) => setVentanaDias(parseInt(e.target.value, 10))}
-              disabled={!dossierReady || running || starting}
-            >
-              {VENTANAS.map((v) => (
-                <option key={v.dias} value={v.dias}>
-                  {v.label}
-                </option>
-              ))}
-            </select>
+      <div className="relative flex items-center justify-between gap-3 overflow-hidden rounded-xl p-4">
+        <CardArt name="bg-virales.webp" fallback="linear-gradient(120deg, rgba(244,114,182,0.28), rgba(34,211,238,0.22))" />
+        <h2 className="relative text-lg font-bold">Virales del nicho (REQ-004)</h2>
+        <div className="relative flex items-center gap-2">
+          {!virales && (
+            <>
+              <select
+                className="input w-28"
+                value={ventanaDias}
+                onChange={(e) => setVentanaDias(parseInt(e.target.value, 10))}
+                disabled={!dossierReady || running || starting}
+              >
+                {VENTANAS.map((v) => (
+                  <option key={v.dias} value={v.dias}>
+                    {v.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="input w-28"
+                value={cantidad}
+                onChange={(e) => setCantidad(parseInt(e.target.value, 10))}
+                disabled={!dossierReady || running || starting}
+                title="Nº de virales a buscar"
+              >
+                {[10, 20, 30, 50].map((n) => (
+                  <option key={n} value={n}>
+                    {n} virales
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => startRun()}
+                disabled={!dossierReady || running || starting}
+                className="rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium disabled:opacity-40"
+                title={dossierReady ? undefined : "Genera primero el dossier (REQ-001)."}
+              >
+                {running || starting ? "Buscando…" : "Buscar virales"}
+              </button>
+            </>
+          )}
+          {virales && (
             <button
-              onClick={startRun}
-              disabled={!dossierReady || running || starting}
-              className="rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium disabled:opacity-40"
-              title={dossierReady ? undefined : "Genera primero el dossier (REQ-001)."}
+              onClick={() => startRun("ampliar")}
+              disabled={running || starting}
+              className="rounded-lg border border-[var(--color-accent-2)]/50 px-3 py-2 text-sm font-medium text-[var(--color-accent-2)] hover:bg-[var(--color-accent-2)]/10 disabled:opacity-40"
+              title="Busca 10 virales NUEVOS y los añade a los actuales"
             >
-              {running || starting ? "Buscando…" : "Buscar virales"}
+              {running || starting ? "Buscando…" : "+ Buscar más"}
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {!dossierReady && (
@@ -190,7 +218,7 @@ export function ViralesPanel({
           La búsqueda de virales falló. Revisa el nodo en error y pulsa «Buscar virales» de nuevo.
           <div className="mt-3">
             <button
-              onClick={startRun}
+              onClick={() => startRun()}
               disabled={starting}
               className="rounded-lg border border-white/15 px-3 py-2 text-sm text-white hover:bg-white/5 disabled:opacity-40"
             >
@@ -205,7 +233,7 @@ export function ViralesPanel({
           initial={virales}
           status={status}
           onSave={saveVirales}
-          onRegenerate={startRun}
+          onRegenerate={() => startRun("reemplazar")}
           saving={saving}
           regenerating={running || starting}
         />

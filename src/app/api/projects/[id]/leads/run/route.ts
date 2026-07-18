@@ -9,6 +9,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const { id } = await ctx.params;
   const body = await req.json().catch(() => null);
   const zona = typeof (body as { zona?: unknown })?.zona === "string" ? (body as { zona: string }).zona.trim() : "";
+  const modo = (body as { modo?: unknown })?.modo === "ampliar" ? "ampliar" : "reemplazar";
 
   const project = await prisma.project.findUnique({
     where: { id },
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     );
   }
 
-  const def = buildReq003Pipeline(zona);
+  const def = buildReq003Pipeline({ zona, modo });
   const run = await prisma.run.create({
     data: {
       projectId: project.id,

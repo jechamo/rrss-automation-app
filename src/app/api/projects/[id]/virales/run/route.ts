@@ -11,6 +11,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const body = await req.json().catch(() => null);
   const rawVentana = (body as { ventanaDias?: unknown })?.ventanaDias;
   const ventanaDias = typeof rawVentana === "number" && rawVentana >= 0 ? rawVentana : DEFAULT_CRITERIO.ventanaDias;
+  const modo = (body as { modo?: unknown })?.modo === "ampliar" ? "ampliar" : "reemplazar";
+  const rawCant = (body as { cantidad?: unknown })?.cantidad;
+  const cantidad = typeof rawCant === "number" && rawCant > 0 ? rawCant : undefined;
 
   const project = await prisma.project.findUnique({
     where: { id },
@@ -26,7 +29,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     );
   }
 
-  const def = buildReq004Pipeline(ventanaDias);
+  const def = buildReq004Pipeline({ ventanaDias, modo, cantidad });
   const run = await prisma.run.create({
     data: {
       projectId: project.id,

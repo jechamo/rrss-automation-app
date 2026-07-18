@@ -26,6 +26,65 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ## Historial
 
+### 2026-07-18 — Rediseño visual + carruseles con expandir + «buscar más» + mapas
+
+**Contexto:** el usuario pide una app **mucho más potente visualmente** y funciones por sección.
+Restricción: **sin paquetes npm nuevos ni API keys** (todo Tailwind + CSS/SVG + iframes/URLs públicas
+que resuelve el navegador del usuario).
+
+**Componentes nuevos reutilizables** (`src/components/`):
+- `Carousel3D` (cover-flow genérico, extraído de `PieceCarousel`, que ahora lo reutiliza),
+  `ExpandableCarousel` (carrusel siempre visible + detalle desplegable del ítem activo),
+  `ScoreBar` (barra de scoring animada), `EntityLogo` (logo por dominio: Clearbit → Google favicon →
+  iniciales), `MiniMap` (iframe Google `output=embed`, sin key), `CardArt` (arte de `public/img/` con
+  fallback CSS), `ProjectsCarousel` (dashboard).
+- CSS: `.score-bar`/`.score-fill` (+`score-grow`), `.glow-hover`, `.float`, `.card-art` en `globals.css`.
+
+**UI por sección:**
+- **Dashboard:** carrusel 360 de proyectos (logo + estado); la card central navega al proyecto.
+- **Competencia / Leads / Virales:** cada `*Editor` muestra arriba un `ExpandableCarousel` (cards con
+  logo/plataforma + `ScoreBar`); al clicar una card se despliega su detalle debajo (leads incluyen
+  `MiniMap` de la dirección; virales muestran miniatura de YouTube cuando aplica). El formulario de
+  edición completo queda tras un toggle «✎ Editar en detalle».
+
+**«Buscar más» (incremental) + nº configurable:**
+- Pipelines `req002/req003/req004` aceptan `{ modo: "reemplazar" | "ampliar", cantidad }`. En `ampliar`
+  se conservan **todos** los ítems, `discover*` recibe `excluir[]` (inyectado en el prompt: «no repitas
+  estos») y el nodo final **añade** sólo los nuevos (dedupe), conservando los agregados previos.
+- Endpoints `.../{competencia,leads,virales}/run` leen `{ modo, cantidad }`. Virales: `TOP_N` fijo →
+  `cantidad` (10/20/30/50) con selector en el panel. Botón **«+ Buscar más»** en los 3 paneles.
+
+**Arte generado (opcional):** `CardArt` usa `public/img/<name>` si existe; si no, gradiente CSS. Prompts
+y nombres entregados al usuario (hero-aurora, bg-competencia, bg-leads, bg-virales, empty-carousel).
+
+**Verificado:** `tsc --noEmit` EXIT=0; `next build` EXIT=0. Logos/mapas/discovery/miniaturas dependen
+de la red del navegador del usuario.
+
+### 2026-07-18 — Refinamientos UX (REQ-006) + fix timeout análisis virales (REQ-004)
+
+**Contexto:** feedback del usuario al probar la app.
+
+**A) Modal «Contenido propio» (REQ-006, `DemoContentModal`):**
+- **Selectores en lugar de texto libre:** modelo de vídeo (fal.ai) y voz (ElevenLabs) pasan a
+  **desplegables** con las listas reales, reutilizando el componente `SelectorAuto` de REQ-005
+  (extraído a `src/components/SelectorAuto.tsx` junto con `loadOptions`/`Option`; `GenerateContentModal`
+  ahora lo importa). Si falta la key, aviso a Ajustes y sigue disponible «Auto».
+- **Ayuda de grabación:** texto explicando **Automática (Playwright móvil)** vs **Manual (subir vídeo)**.
+- **Subida manual visible:** en modo Manual la pieza se crea sin grabar y el vídeo se sube **después**
+  en su tarjeta. Se aclara en el modal y se **resalta** la zona de subida en `ContentTray` (borde de
+  acento + botón «Subir vídeo de la app ↑») cuando la pieza propia aún no tiene grabación.
+- **«Analizar con IA»:** nota de que propone funciones de la app desde el dossier (REQ-001) y
+  autorrellena URL y pasos.
+- **Editar fuente de código (A4):** nuevo `PUT /api/projects/:id` + editor «Fuente de código» en la
+  página del proyecto (chips de tipo + ruta local/URL + Guardar). Antes solo se fijaba al crear el
+  proyecto; ahora se corrige sin recrearlo.
+
+**B) Virales (REQ-004):** el paso «análisis de patrones» se cortaba a los 180 s — era el **timeout
+por defecto del motor de IA**, no un corte por duración. `analyzeVirales` (`analyze.ts`) ahora pasa
+`timeoutMs = 600_000` (10 min) a `engine.run`, como ya hacía `discover`.
+
+**Verificado:** `tsc --noEmit` EXIT=0; `next build` EXIT=0.
+
 ### 2026-07-15 — REQ-010: Publicación asistida en redes (D-06, opción manual)
 
 **Contexto:** el usuario preguntó si la app puede "autosubir" a TikTok/Instagram/YouTube. No: la

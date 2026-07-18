@@ -29,7 +29,12 @@ de uso de las fuentes. Respondes SIEMPRE en espanol y, al final, SOLO con JSON v
 export async function discoverLeads(
   research: LeadResearch,
   seed: LeadDescubierto[] = [],
+  excluir: string[] = [],
 ): Promise<LeadDescubierto[]> {
+  const exclusion = excluir.filter(Boolean).slice(0, 60);
+  const bloqueExcluir = exclusion.length
+    ? `\n## NO repitas (ya los tengo)\nEXCLUYE estos negocios ya encontrados; busca OTROS distintos:\n${exclusion.map((u) => `- ${u}`).join("\n")}\n`
+    : "";
   const prompt = `Busca en la web hasta ${MAX_LEADS} NEGOCIOS LOCALES REALES que encajen con
 este perfil de cliente potencial. Usa la herramienta de busqueda web para encontrarlos y
 extraer sus datos PUBLICOS de empresa.
@@ -38,7 +43,7 @@ extraer sus datos PUBLICOS de empresa.
 - Tipo de negocio a buscar: ${research.perfilObjetivo}
 - Zona: ${research.zona}
 - Personas/decisores: ${research.personas.map((p) => p.rol).filter(Boolean).join(", ") || "n/d"}
-
+${bloqueExcluir}
 ## Reglas
 - Negocios REALES y verificables (no inventes). Si no encuentras el dato, dejalo vacio "".
 - SOLO datos publicos de empresa: nombre, tipo, direccion, web, telefono/email publicos.

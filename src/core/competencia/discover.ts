@@ -21,7 +21,12 @@ adicional ni markdown.`;
 export async function discoverCompetidores(
   dossier: Dossier,
   seedUrls: string[] = [],
+  excluir: string[] = [],
 ): Promise<CompetidorSemilla[]> {
+  const exclusion = excluir.filter(Boolean).slice(0, 60);
+  const bloqueExcluir = exclusion.length
+    ? `\n## NO repitas (ya los tengo)\nEXCLUYE estos competidores ya encontrados; propone OTROS distintos:\n${exclusion.map((u) => `- ${u}`).join("\n")}\n`
+    : "";
   const prompt = `A partir de este dossier de negocio, identifica hasta ${MAX_COMPETIDORES}
 COMPETIDORES DIRECTOS reales (empresas/productos que compiten por el mismo publico y nicho).
 
@@ -31,7 +36,7 @@ COMPETIDORES DIRECTOS reales (empresas/productos que compiten por el mismo publi
 - Nicho/sector: ${dossier.nicho}
 - Publico objetivo: ${dossier.publicoObjetivo}
 - Funcionalidades: ${dossier.funcionalidades.join(", ")}
-
+${bloqueExcluir}
 ## Instruccion
 Devuelve EXCLUSIVAMENTE un objeto JSON con esta forma exacta:
 {

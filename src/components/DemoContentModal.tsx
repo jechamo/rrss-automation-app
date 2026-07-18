@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { DemoConfig, MediaConfig } from "@/core/content/types";
+import { SelectorAuto, loadOptions, type Option } from "@/components/SelectorAuto";
 
 type AppFuncion = { nombre: string; descripcion: string; url: string; pasos: string[] };
 
@@ -35,6 +36,29 @@ export function DemoContentModal({
   const [videoModelo, setVideoModelo] = useState("");
   const [vozAuto, setVozAuto] = useState(true);
   const [vozId, setVozId] = useState("");
+
+  const [videoOpts, setVideoOpts] = useState<Option[]>([]);
+  const [vozOpts, setVozOpts] = useState<Option[]>([]);
+  const [optErr, setOptErr] = useState("");
+
+  // Cortes B-roll = fal.ai; locución = ElevenLabs (misma rama que REQ-006).
+  const refreshOptions = useCallback(async () => {
+    setOptErr("");
+    const v = await loadOptions("fal", "video");
+    setVideoOpts(v.options);
+    const voz = await loadOptions("elevenlabs", "voice");
+    setVozOpts(voz.options);
+    const err = v.error
+      ? `Modelos fal.ai: ${v.error}`
+      : voz.error
+        ? `Voces ElevenLabs: ${voz.error}`
+        : "";
+    if (err) setOptErr(`${err}. Configura la key en Ajustes (o deja "Auto").`);
+  }, []);
+
+  useEffect(() => {
+    refreshOptions();
+  }, [refreshOptions]);
 
   const loadLogin = useCallback(async () => {
     const r = await fetch(`/api/projects/${projectId}/login`);
@@ -126,6 +150,10 @@ export function DemoContentModal({
                 {loadingFuncs ? "Analizando…" : "Analizar con IA"}
               </button>
             </div>
+            <p className="mb-2 text-[11px] text-white/40">
+              «Analizar con IA» propone funciones de tu app a partir del dossier (REQ-001) y
+              autorrellena la URL y los pasos. También puedes escribirlos a mano.
+            </p>
             {funciones.length > 0 && (
               <div className="mb-2 flex flex-col gap-1">
                 {funciones.map((f, i) => (
@@ -191,6 +219,11 @@ export function DemoContentModal({
                 </button>
               ))}
             </div>
+            <p className="mt-1 text-[11px] text-white/40">
+              {grabacionModo === "auto"
+                ? "Playwright abre tu app en tamaño móvil, navega los pasos y graba sola (requiere que la app sea accesible + login si lo marcas)."
+                : "Se crea la pieza sin grabar; luego sube tu vídeo en su tarjeta con el botón «Subir vídeo de la app»."}
+            </p>
           </div>
 
           {grabacionModo === "auto" && (
@@ -231,35 +264,26 @@ export function DemoContentModal({
             </div>
           )}
 
-          <div className="flex gap-3">
-            <label className="flex items-center gap-1 text-xs">
-              <input type="checkbox" checked={videoAuto} onChange={(e) => setVideoAuto(e.target.checked)} />
-              Modelo de vídeo auto
-            </label>
-            {!videoAuto && (
-              <input
-                className="input flex-1"
-                placeholder="id de modelo fal"
-                value={videoModelo}
-                onChange={(e) => setVideoModelo(e.target.value)}
-              />
-            )}
-          </div>
-          <div className="flex gap-3">
-            <label className="flex items-center gap-1 text-xs">
-              <input type="checkbox" checked={vozAuto} onChange={(e) => setVozAuto(e.target.checked)} />
-              Voz auto (ElevenLabs)
-            </label>
-            {!vozAuto && (
-              <input
-                className="input flex-1"
-                placeholder="id de voz ElevenLabs"
-                value={vozId}
-                onChange={(e) => setVozId(e.target.value)}
-              />
-            )}
-          </div>
+          <SelectorAuto
+            label="Modelo de vídeo (fal.ai) — cortes B-roll"
+            auto={videoAuto}
+            setAuto={setVideoAuto}
+            value={videoModelo}
+            setValue={setVideoModelo}
+            options={videoOpts}
+            autoHint="La IA usa el modelo por defecto (LTX Video)"
+          />
+          <SelectorAuto
+            label="Voz (ElevenLabs)"
+            auto={vozAuto}
+            setAuto={setVozAuto}
+            value={vozId}
+            setValue={setVozId}
+            options={vozOpts}
+            autoHint="Voz por defecto del proveedor"
+          />
 
+          {optErr && <div className="text-xs text-[var(--color-state-pending)]">{optErr}</div>}
           {funcsErr && <div className="text-xs text-[var(--color-state-pending)]">{funcsErr}</div>}
 
           <div className="rounded-lg bg-white/5 p-3 text-xs text-white/50">

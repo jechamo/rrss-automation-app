@@ -456,11 +456,25 @@ function PieceCard({
 
       {/* Grabación real de la app (REQ-006) + subida manual */}
       {isOwn && (
-        <div className="mb-3 rounded-lg bg-white/5 p-3">
+        <div
+          className={[
+            "mb-3 rounded-lg p-3",
+            piece.assets.recordingPath
+              ? "bg-white/5"
+              : "border border-dashed border-[var(--color-accent)]/50 bg-[var(--color-accent)]/5",
+          ].join(" ")}
+        >
           <div className="mb-2 flex items-center justify-between gap-2">
             <span className="text-xs text-white/50">Grabación de la app</span>
-            <label className="cursor-pointer rounded-lg border border-white/15 px-2 py-1 text-xs hover:bg-white/5">
-              {piece.assets.recordingPath ? "Reemplazar vídeo" : "Subir vídeo"}
+            <label
+              className={[
+                "cursor-pointer rounded-lg px-2 py-1 text-xs",
+                piece.assets.recordingPath
+                  ? "border border-white/15 hover:bg-white/5"
+                  : "bg-[var(--color-accent)] font-medium",
+              ].join(" ")}
+            >
+              {piece.assets.recordingPath ? "Reemplazar vídeo" : "Subir vídeo de la app ↑"}
               <input
                 type="file"
                 accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov"
@@ -481,10 +495,10 @@ function PieceCard({
               src={asset(piece.assets.recordingPath)}
             />
           ) : (
-            <p className="text-[11px] text-white/40">
+            <p className="text-[11px] text-white/50">
               {piece.config.demo?.grabacionModo === "manual"
-                ? "Modo manual: sube el screencast de la app."
-                : "Sin grabación automática (Playwright). Puedes subir un vídeo manual."}
+                ? "Modo manual: graba tú la pantalla de tu app y súbela aquí con el botón de arriba."
+                : "Sin grabación automática (Playwright). Puedes subir un vídeo manual aquí."}
             </p>
           )}
         </div>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PipelineGraph, type GraphNode, type NodeState } from "@/components/PipelineGraph";
 import { CompetenciaEditor } from "@/components/CompetenciaEditor";
+import { CardArt } from "@/components/CardArt";
 import type { Competencia } from "@/core/competencia/types";
 
 type RunEvent =
@@ -91,12 +92,16 @@ export function CompetenciaPanel({
     };
   }, [runId, load]);
 
-  async function startRun() {
+  async function startRun(modo: "reemplazar" | "ampliar" = "reemplazar") {
     setStarting(true);
     setLogs([]);
     setNodes(initialNodes());
     setRunStatus("running");
-    const r = await fetch(`/api/projects/${projectId}/competencia/run`, { method: "POST" });
+    const r = await fetch(`/api/projects/${projectId}/competencia/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modo }),
+    });
     if (r.ok) {
       const d = await r.json();
       setRunId(d.runId);
@@ -123,16 +128,26 @@ export function CompetenciaPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold">Competencia (REQ-002)</h2>
-        {!competencia && (
+      <div className="relative flex items-center justify-between overflow-hidden rounded-xl p-4">
+        <CardArt name="bg-competencia.webp" fallback="linear-gradient(120deg, rgba(124,58,237,0.35), rgba(34,211,238,0.2))" />
+        <h2 className="relative text-lg font-bold">Competencia (REQ-002)</h2>
+        {!competencia ? (
           <button
-            onClick={startRun}
+            onClick={() => startRun()}
             disabled={!dossierReady || running || starting}
-            className="rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium disabled:opacity-40"
+            className="relative rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium disabled:opacity-40"
             title={dossierReady ? undefined : "Genera primero el dossier (REQ-001)."}
           >
             {running || starting ? "Analizando…" : "Analizar competencia"}
+          </button>
+        ) : (
+          <button
+            onClick={() => startRun("ampliar")}
+            disabled={running || starting}
+            className="relative rounded-lg border border-[var(--color-accent-2)]/50 bg-black/30 px-3 py-2 text-sm font-medium text-[var(--color-accent-2)] hover:bg-[var(--color-accent-2)]/10 disabled:opacity-40"
+            title="Busca competidores NUEVOS y los añade a los actuales"
+          >
+            {running || starting ? "Buscando…" : "+ Buscar más"}
           </button>
         )}
       </div>
@@ -163,7 +178,7 @@ export function CompetenciaPanel({
           El análisis de competencia falló. Revisa el nodo en error y pulsa «Analizar competencia» de nuevo.
           <div className="mt-3">
             <button
-              onClick={startRun}
+              onClick={() => startRun()}
               disabled={starting}
               className="rounded-lg border border-white/15 px-3 py-2 text-sm text-white hover:bg-white/5 disabled:opacity-40"
             >
@@ -178,7 +193,7 @@ export function CompetenciaPanel({
           initial={competencia}
           status={status}
           onSave={saveCompetencia}
-          onRegenerate={startRun}
+          onRegenerate={() => startRun("reemplazar")}
           saving={saving}
           regenerating={running || starting}
         />
