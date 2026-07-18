@@ -14,6 +14,9 @@ import {
   resolveFalDuration,
   retryDelayMs,
 } from "./contracts.js";
+import { buildVisualPlan, estimateNarrationSeconds, effectiveClipLimit } from "./planning.js";
+import { DEFAULT_CONFIG } from "../content/types.js";
+import { coerceMixRecipe, mixVideoCount, mixVisualDuration } from "./mix-contracts.js";
 
 test("fal.ai construye bodies verticales segun cada esquema", () => {
   assert.deepEqual(buildFalRequestBody(FAL_MODEL_IDS.kling, "demo", 9), {
@@ -168,4 +171,69 @@ test("la timeline de demo incluye todos los cortes fal.ai en orden", () => {
     [0, 1, 2, 3],
   );
   assert.equal(timeline.filter((slot) => slot.kind === "recording").length, 2);
+});
+
+test("el plan audiovisual calcula cortes antes de consumir fal.ai", () => {
+  const config = { ...DEFAULT_CONFIG, falClipMode: "auto" as const };
+  const plan = buildVisualPlan({
+    config,
+    origin: "own",
+    recordingSeconds: 13,
+    targetSeconds: 30,
+  });
+  assert.equal(plan.protectedDemoSeconds, 13);
+  assert.equal(plan.brollSeconds, 17);
+  assert.equal(plan.clipCount, 4);
+  assert.equal(plan.generatedSeconds, 20);
+  assert.equal(plan.estimated, true); // falta locucion real
+});
+
+test("el limite manual de cortes respeta 0-6 y no inventa recursos", () => {
+  assert.equal(effectiveClipLimit({ ...DEFAULT_CONFIG, falClipMode: "manual", falClipCount: 0 }), 0);
+  assert.equal(effectiveClipLimit({ ...DEFAULT_CONFIG, falClipMode: "manual", falClipCount: 6 }), 6);
+  assert.equal(
+    buildVisualPlan({
+      config: { ...DEFAULT_CONFIG, falClipMode: "manual", falClipCount: 2 },
+      origin: "viral",
+    }).clipCount,
+    2,
+  );
+  assert.ok(estimateNarrationSeconds("una locucion breve pero medible") > 0);
+});
+
+test("MIX v1 sigue siendo compatible y MIX v2 conserva recortes y bloqueos", () => {
+  const legacy = coerceMixRecipe({
+    videoAssetIds: ["a", "a", "b"],
+    subtitleText: "Texto",
+  });
+  assert.equal(legacy.version, 1);
+  assert.deepEqual(legacy.videoAssetIds, ["a", "b"]);
+  assert.equal(mixVideoCount(legacy), 2);
+
+  const timeline = coerceMixRecipe({
+    version: 2,
+    segments: [
+      { assetId: "demo", sourceStart: 2, sourceEnd: 6.5, label: "Resultado", locked: true },
+      { assetId: "clip", sourceStart: 0, sourceEnd: 3, label: "B-roll" },
+    ],
+    subtitleText: "Texto",
+  });
+  assert.equal(timeline.version, 2);
+  assert.equal(mixVideoCount(timeline), 2);
+  assert.equal(mixVisualDuration(timeline), 7.5);
+  assert.equal(timeline.segments[0].locked, true);
+});
+
+test("MIX v2 descarta segmentos imposibles de forma defensiva", () => {
+  const recipe = coerceMixRecipe({
+    version: 2,
+    segments: [
+      { assetId: "", sourceStart: 0, sourceEnd: 3 },
+      { assetId: "a", sourceStart: 4, sourceEnd: 2 },
+      { assetId: "ok", sourceStart: -2, sourceEnd: 2 },
+    ],
+  });
+  assert.equal(recipe.segments.length, 1);
+  assert.equal(recipe.segments[0].sourceStart, 0);
+  assert.equal(recipe.segments[0].sourceEnd, 2);
 });

@@ -582,6 +582,19 @@ quemar subtítulos.
 locución como pista maestra, mezcla música opcional, quema ASS y crea `mix-<id>.mp4`. No cambia
 `PieceAssets.videoPath` hasta la acción explícita `useAsFinal`.
 
+### REQ-012 — Plan audiovisual y receta MIX v2
+
+- `MediaConfig.falClipMode` (`auto | manual`) y `falClipCount` (0–6) son campos JSON aditivos y se
+  normalizan con valores por defecto para piezas anteriores.
+- `core/media/planning.ts` calcula duraciones, cantidad efectiva, segundos facturables y avisos sin
+  efectos laterales; los modales usan el mismo contrato que los pipelines.
+- `MixRecipe` es versionada. V1 conserva `videoAssetIds`; V2 contiene `segments[]` con `assetId`,
+  `sourceStart`, `sourceEnd`, `label`, `locked`, `kind` y `shotIndex` opcional.
+- Los marcadores reutilizables viven en `MediaAsset.metadata`; no se requiere migración Prisma.
+- `assembleMix()` mantiene la rama legacy y añade filtros `trim/setpts` por segmento. En v2 la
+  duración visual debe coincidir con la pista maestra dentro de 0,25 s; no se usa padding oculto.
+- La UI de `MixStudioPanel` prepara recetas v2 y el endpoint existente continúa aceptando v1.
+
 ---
 
 ## 9. Arquitectura concreta de REQ-001 (primer requisito)

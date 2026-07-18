@@ -5,6 +5,7 @@
 
 export type Rama = "fal" | "heygen";
 export type FalClipSeconds = 5 | 10 | 15; // duracion de corte fal que ofrece la UI
+export type FalClipMode = "auto" | "manual";
 export type Plataforma = "youtube" | "tiktok" | "instagram";
 export type PieceStatus = "borrador" | "generando" | "listo" | "publicado" | "error";
 export type VozProveedor = "elevenlabs" | "heygen";
@@ -111,6 +112,9 @@ export interface MediaConfig {
   vozId: string; // id de voz ("" si auto)
   // duracion del CORTE fal (no del montaje). 5/10/15; el modelo la ajusta a su esquema.
   falClipSeconds: FalClipSeconds;
+  // REQ-012: la IA calcula la cantidad o respeta exactamente el limite manual (0-6).
+  falClipMode: FalClipMode;
+  falClipCount: number;
   // comprension del viral fuente
   usarGemini: boolean; // true = analizar el video con Gemini; false = reusar datos REQ-004
   // rama="heygen": avatar/narracion. Opcional para compat con piezas antiguas.
@@ -159,6 +163,8 @@ export const DEFAULT_CONFIG: MediaConfig = {
   vozAuto: true,
   vozId: "",
   falClipSeconds: 5,
+  falClipMode: "auto",
+  falClipCount: 4,
   usarGemini: false,
 };
 
@@ -166,6 +172,11 @@ export const DEFAULT_CONFIG: MediaConfig = {
 export function coerceFalClipSeconds(v: unknown): FalClipSeconds {
   const n = typeof v === "number" ? v : parseInt(String(v ?? ""), 10);
   return n === 10 ? 10 : n === 15 ? 15 : 5;
+}
+
+export function coerceFalClipCount(v: unknown): number {
+  const parsed = typeof v === "number" ? v : parseInt(String(v ?? ""), 10);
+  return Number.isFinite(parsed) ? Math.min(6, Math.max(0, Math.round(parsed))) : 4;
 }
 
 export const EMPTY_HEYGEN: HeygenConfig = {
@@ -357,6 +368,8 @@ export function coerceConfig(raw: unknown): MediaConfig {
     vozAuto: bool(o.vozAuto, true),
     vozId: str(o.vozId),
     falClipSeconds: coerceFalClipSeconds(o.falClipSeconds),
+    falClipMode: str(o.falClipMode) === "manual" ? "manual" : "auto",
+    falClipCount: coerceFalClipCount(o.falClipCount),
     usarGemini: bool(o.usarGemini, false),
   };
   // Reconstruye la config HeyGen desde el objeto nuevo o desde los campos legacy.

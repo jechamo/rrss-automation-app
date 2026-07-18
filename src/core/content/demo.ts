@@ -265,8 +265,10 @@ export async function generateDemoGuion(args: {
   funcion: AppFuncion;
   plataforma: Plataforma;
   previousCount?: number;
+  clipCount?: number;
 }): Promise<PieceContent> {
   const { dossier, funcion, plataforma, previousCount = 0 } = args;
+  const clipCount = Math.min(6, Math.max(0, Math.round(args.clipCount ?? 4)));
 
   const prompt = `Crea un guion de video ORIGINAL que muestre esta funcionalidad de NUESTRA app.
 
@@ -305,7 +307,7 @@ generados por IA de video. Devuelve EXCLUSIVAMENTE un JSON con esta forma exacta
     { "n": 1, "descripcion": "que se ve (marca si es GRABACION de pantalla o CORTE b-roll)", "prompt": "prompt en INGLES para generar el corte b-roll con fal.ai (vacio si es grabacion de pantalla)", "texto": "texto en pantalla", "segundos": 3 }
   ]
 }
-Reglas: 4-8 planos; alterna grabacion de pantalla y cortes b-roll; los "prompt" de los cortes en
+Reglas: crea entre 4 y 10 planos y exactamente ${clipCount} planos CORTE b-roll con prompt${clipCount === 0 ? "; usa solo planos de GRABACION" : ""}; alterna grabacion de pantalla y cortes b-roll; los "prompt" de los cortes en
 ingles, visuales y concretos; los planos de grabacion llevan prompt vacio. No incluyas nada fuera del JSON.`;
 
   const settings = getSettings();

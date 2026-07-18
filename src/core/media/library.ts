@@ -18,9 +18,63 @@ export type MediaAssetDto = {
   mimeType: string;
   size: number;
   duration: number | null;
+  metadata: MediaAssetMetadata;
   createdAt: string;
   updatedAt: string;
 };
+
+export type MediaMarker = {
+  id: string;
+  label: string;
+  start: number;
+  end: number;
+  protected: boolean;
+  origin: "playwright" | "manual";
+};
+
+export type MediaAssetMetadata = { markers?: MediaMarker[] };
+
+function parseMetadata(raw: string): MediaAssetMetadata {
+  try {
+    const value = JSON.parse(raw || "{}");
+    return value && typeof value === "object" ? value as MediaAssetMetadata : {};
+  } catch {
+    return {};
+  }
+}
+
+function playwrightMarkers(rel: string): MediaMarker[] {
+  try {
+    const file = path.join(path.dirname(assetAbsPath(rel)), "nav_log.json");
+    if (!fs.existsSync(file)) return [];
+    const raw = JSON.parse(fs.readFileSync(file, "utf8")) as {
+      pasos?: Array<{ action?: string; t_inicio?: number; t_fin?: number }>;
+    };
+    const steps = raw.pasos ?? [];
+    return steps.flatMap((step, index) => {
+      if (step.action === "final" || !Number.isFinite(step.t_inicio) || !Number.isFinite(step.t_fin)) return [];
+      const start = Math.max(0, Number(step.t_inicio));
+      // El log cierra la accion antes de su pausa visual. El inicio del paso
+      // siguiente conserva ese resultado en pantalla y es un limite mejor.
+      const nextStart = Number(steps[index + 1]?.t_inicio);
+      const end = Math.max(
+        start,
+        Number.isFinite(nextStart) ? nextStart : Number(step.t_fin) + 1.5,
+      );
+      if (end - start < 0.05) return [];
+      return [{
+        id: `playwright-${index + 1}`,
+        label: `Paso ${index + 1} · ${step.action || "acción"}`,
+        start,
+        end,
+        protected: true,
+        origin: "playwright" as const,
+      }];
+    });
+  } catch {
+    return [];
+  }
+}
 
 export function mimeFromPath(rel: string): string {
   const ext = path.extname(rel).toLowerCase();
@@ -34,9 +88,10 @@ export function mimeFromPath(rel: string): string {
 
 export function mediaDto(row: {
   id: string; projectId: string; pieceId: string | null; kind: string; origin: string; name: string;
-  path: string; mimeType: string; size: number; duration: number | null; createdAt: Date; updatedAt: Date;
+  path: string; mimeType: string; size: number; duration: number | null; metadata: string; createdAt: Date; updatedAt: Date;
 }): MediaAssetDto {
-  return { ...row, createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() };
+  const { metadata, ...rest } = row;
+  return { ...rest, metadata: parseMetadata(metadata), createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() };
 }
 
 export async function registerMediaAsset(input: {
@@ -47,6 +102,7 @@ export async function registerMediaAsset(input: {
   name: string;
   path: string;
   mimeType?: string;
+  metadata?: MediaAssetMetadata;
 }) {
   let size = 0;
   let duration: number | null = null;
@@ -60,6 +116,10 @@ export async function registerMediaAsset(input: {
   } catch {
     // Los assets externos o legacy pueden no estar disponibles todavía.
   }
+  const detectedMarkers = input.kind === "recording" ? playwrightMarkers(input.path) : [];
+  const metadata = detectedMarkers.length
+    ? { ...(input.metadata ?? {}), markers: detectedMarkers }
+    : input.metadata;
   const existing = await prisma.mediaAsset.findUnique({
     where: { projectId_path: { projectId: input.projectId, path: input.path } },
   });
@@ -72,6 +132,7 @@ export async function registerMediaAsset(input: {
         mimeType: input.mimeType || mimeFromPath(input.path),
         size,
         duration,
+        ...(metadata ? { metadata: JSON.stringify(metadata) } : {}),
       },
     });
   }
@@ -86,6 +147,7 @@ export async function registerMediaAsset(input: {
       mimeType: input.mimeType || mimeFromPath(input.path),
       size,
       duration,
+      metadata: JSON.stringify(metadata ?? {}),
     },
   });
 }

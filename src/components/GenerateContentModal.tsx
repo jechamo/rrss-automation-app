@@ -6,6 +6,8 @@ import {
   MediaProviderConfigurator,
   mediaProviderError,
 } from "@/components/MediaProviderConfigurator";
+import { VisualPlanCard } from "@/components/VisualPlanCard";
+import { buildVisualPlan } from "@/core/media/planning";
 
 type ViralPick = { url: string; titulo: string; plataforma: string };
 
@@ -31,10 +33,15 @@ export function GenerateContentModal({
 
   function submit() {
     if (!sourceUrl) return;
-    onGenerate(sourceUrl, { ...mediaConfig, usarGemini });
+    const config = { ...mediaConfig, usarGemini };
+    const plan = buildVisualPlan({ config, origin: "viral" });
+    onGenerate(sourceUrl, { ...config, falClipCount: plan.clipCount });
   }
 
-  const providerError = mediaProviderError(mediaConfig);
+  const providerError = mediaProviderError(mediaConfig) ||
+    (mediaConfig.rama === "fal" && mediaConfig.falClipMode === "manual" && mediaConfig.falClipCount === 0
+      ? "Para reinterpretar un viral con fal.ai necesitas al menos un corte."
+      : "");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -66,6 +73,12 @@ export function GenerateContentModal({
             value={mediaConfig}
             onChange={setMediaConfig}
             disabled={busy}
+            usarGemini={usarGemini}
+          />
+
+          <VisualPlanCard
+            config={{ ...mediaConfig, usarGemini }}
+            origin="viral"
             usarGemini={usarGemini}
           />
 
@@ -105,7 +118,7 @@ export function GenerateContentModal({
               disabled={busy || !sourceUrl || Boolean(providerError)}
               className="rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium disabled:opacity-40"
             >
-              {busy ? "Lanzando…" : "Generar"}
+              {busy ? "Lanzando…" : "Aprobar plan y generar"}
             </button>
           </div>
         </div>
@@ -113,4 +126,3 @@ export function GenerateContentModal({
     </div>
   );
 }
-

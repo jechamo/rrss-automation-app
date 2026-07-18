@@ -16,6 +16,7 @@ import { assemble, assemblePresenterDemo, captionVideo } from "@/core/media/asse
 import { ffprobeDuration, hasFfmpeg } from "@/core/media/ffmpeg";
 import { assetAbsPath } from "@/core/media/storage";
 import { friendlyProviderFailure } from "@/core/media/contracts";
+import { effectiveClipLimit } from "@/core/media/planning";
 import type { PipelineDef, PipelineNode } from "./engine";
 
 export const REQ006_NODES = [
@@ -135,6 +136,7 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
     run: async (ctx) => {
       const dossier = ctx.artifacts.dossier as Dossier;
       const demo = ctx.artifacts.demo as DemoConfig;
+      const config = ctx.artifacts.config as MediaConfig;
       const funcion: AppFuncion = {
         nombre: demo.funcion,
         descripcion: demo.funcionDescripcion || demo.funcion,
@@ -154,6 +156,7 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
         funcion,
         plataforma: "youtube",
         previousCount: demo.videosPrevios,
+        clipCount: effectiveClipLimit(config),
       });
       ctx.artifacts.content = content;
       await prisma.contentPiece.update({
@@ -199,7 +202,9 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
         );
       } else {
         // Solo los planos con prompt se generan; los de grabacion de pantalla no.
-        const shots = content.escaleta.filter((s) => s.prompt.trim()).slice(0, MAX_CLIPS);
+        const shots = content.escaleta
+          .filter((s) => s.prompt.trim())
+          .slice(0, Math.min(MAX_CLIPS, effectiveClipLimit(config, content.escaleta)));
         if (shots.length === 0) {
           ctx.log("El guion no tiene cortes de apoyo; el video sera solo grabacion de pantalla.");
         } else {

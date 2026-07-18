@@ -20,12 +20,38 @@
 | REQ-009 | Experiencia visual | 🟡 Implementado (dashboard por vistas con carruseles 360, arte IA, tarjetas 3D, loaders, sidebar fija y transiciones de estado) — pendiente visto bueno del usuario |
 | REQ-010 | Publicación asistida en redes | 🟡 Implementado (D-06: descargar vídeo + copiar copy + abrir red; sin APIs/tokens; marca `publicado` con `publishedTo`/`publishedAt`) — pendiente pruebas del usuario |
 | REQ-011 | Estudio multimedia + REC/STOP + MIX + Guía | 🟡 Implementado — herramientas y subtítulos verificados; pendiente prueba manual del selector de captura |
+| REQ-012 | Plan audiovisual + cortes configurables + montador ligero | 🟡 Implementado — contratos/build correctos; pendiente prueba del usuario con un render MIX v2 real |
 
 Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ---
 
 ## Historial
+
+### 2026-07-18 — REQ-012: plan audiovisual y montador ligero
+
+**Plan y control de coste:**
+- Rama fal.ai con cantidad **Automática** o manual **0–6** (el clonado viral exige al menos uno),
+  duración por corte y coste calculado con la cantidad aprobada.
+- Tarjeta previa con objetivo, demo protegida/estimada, tiempo de B-roll, cortes, segundos solicitados
+  y CTA explícito «Aprobar plan y generar». El guion y ambos pipelines respetan el límite persistido.
+- Contrato puro `planning.ts`, coerción retrocompatible de `MediaConfig` y guía integrada actualizada.
+
+**Timeline y armonización:**
+- MIX v2 por segmentos con asset, entrada/salida, etiqueta, tipo, candado y plano opcional; MIX v1
+  conserva lectura y render sin migración Prisma.
+- Timeline visual con previsualización vertical, drag/reordenación, recorte, insertar/quitar, protección,
+  recursos usados/sin usar y comparación exacta vídeo/locución.
+- «Ajustar a locución» modifica solo bloques desbloqueados. El servidor rechaza diferencias mayores
+  de 0,25s y límites fuera del recurso: no congela ni trunca silenciosamente.
+- `nav_log` Playwright se indexa como marcadores protegidos incluyendo la pausa posterior a cada
+  acción. Las grabaciones reutilizadas se enlazan por ruta aunque sean assets libres (`pieceId=null`).
+
+**Verificación:** 15/15 contratos (incluye MIX v1/v2, planificación y libass real), TypeScript,
+`git diff --check` y build de producción correctos. Verificación visual local confirma la nueva
+pantalla, selección de pieza, cuatro clips, locución 27,45s, timeline armonizada y coste/estados.
+El navegador detectó que una grabación libre reutilizada no entraba por `pieceId`; quedó corregido
+mediante las rutas de `ContentPiece.assets`. No se consumieron créditos ni se creó un MIX de prueba.
 
 ### 2026-07-18 — Refinamiento REQ-004/005/006: recorridos dirigidos, pipeline y cortes fal.ai
 

@@ -15,6 +15,7 @@ import { assemble, captionVideo } from "@/core/media/assemble";
 import { ffprobeDuration, hasFfmpeg } from "@/core/media/ffmpeg";
 import { assetAbsPath } from "@/core/media/storage";
 import { friendlyProviderFailure } from "@/core/media/contracts";
+import { effectiveClipLimit } from "@/core/media/planning";
 import type { PipelineDef, PipelineNode } from "./engine";
 
 export const REQ005_NODES = [
@@ -93,7 +94,13 @@ export function buildReq005Pipeline(pieceId: string): PipelineDef {
       const dossier = ctx.artifacts.dossier as Dossier;
       const viral = ctx.artifacts.viral as Viral;
       const ex = ctx.artifacts.extract as ViralExtract;
-      const content = await generateGuion({ dossier, extract: ex, plataforma: viral.plataforma });
+      const config = ctx.artifacts.config as MediaConfig;
+      const content = await generateGuion({
+        dossier,
+        extract: ex,
+        plataforma: viral.plataforma,
+        clipCount: effectiveClipLimit(config),
+      });
       ctx.artifacts.content = content;
       // Persistir el guion cuanto antes: aunque el render falle, es revisable.
       await prisma.contentPiece.update({
@@ -138,8 +145,10 @@ export function buildReq005Pipeline(pieceId: string): PipelineDef {
         );
       } else {
         const model = config.videoAuto ? fal.autoModel() : config.videoModelo;
-        const shots = content.escaleta.slice(0, MAX_CLIPS);
-        if (shots.length === 0) throw new Error("El guion no tiene planos para generar video.");
+        const shots = content.escaleta.slice(0, Math.min(MAX_CLIPS, effectiveClipLimit(config, content.escaleta)));
+        if (shots.length === 0) {
+          ctx.log("Plan aprobado sin cortes fal.ai; conserva guion y locución para completar en Estudio.");
+        }
         for (const shot of shots) {
           const manifestIndex = assets.clipManifest.length;
           assets.clipManifest.push({

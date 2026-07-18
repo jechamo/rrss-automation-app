@@ -11,6 +11,16 @@ export type StudioAsset = SavedMediaAsset & {
   origin: string;
   size: number;
   duration: number | null;
+  metadata: {
+    markers?: Array<{
+      id: string;
+      label: string;
+      start: number;
+      end: number;
+      protected: boolean;
+      origin: "playwright" | "manual";
+    }>;
+  };
   createdAt: string;
   updatedAt: string;
 };

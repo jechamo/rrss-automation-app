@@ -50,7 +50,11 @@ export function MediaProviderConfigurator({
     [voiceOptions, heygen.voiceId],
   );
   const cost = useMemo(
-    () => estimatePieceCost(value, { usarGemini, clipSeconds: value.falClipSeconds }),
+    () => estimatePieceCost(value, {
+      usarGemini,
+      clipSeconds: value.falClipSeconds,
+      clipCount: value.falClipMode === "manual" ? value.falClipCount : value.falClipCount || 4,
+    }),
     [value, usarGemini],
   );
 
@@ -233,6 +237,61 @@ export function MediaProviderConfigurator({
             </div>
             <p className="mt-1 text-[10px] text-white/40">
               Este modelo enviará <span className="text-white/60">{falDurationLabel}</span> por corte.
+            </p>
+          </div>
+          <div>
+            <span className="mb-1 block text-xs text-white/50">Número de cortes</span>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => patch({ falClipMode: "auto" })}
+                className={[
+                  "rounded-lg border px-3 py-2 text-left text-sm transition",
+                  value.falClipMode !== "manual"
+                    ? "border-[var(--color-accent)] bg-[var(--color-accent)]/15"
+                    : "border-white/15 hover:bg-white/5",
+                ].join(" ")}
+              >
+                Automático
+                <span className="mt-0.5 block text-[10px] text-white/40">Según duración y escaleta</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => patch({ falClipMode: "manual" })}
+                className={[
+                  "rounded-lg border px-3 py-2 text-left text-sm transition",
+                  value.falClipMode === "manual"
+                    ? "border-[var(--color-accent)] bg-[var(--color-accent)]/15"
+                    : "border-white/15 hover:bg-white/5",
+                ].join(" ")}
+              >
+                Manual
+                <span className="mt-0.5 block text-[10px] text-white/40">Elige exactamente 0–6</span>
+              </button>
+            </div>
+            {value.falClipMode === "manual" && (
+              <div className="mt-2 grid grid-cols-7 gap-1">
+                {Array.from({ length: 7 }, (_, count) => (
+                  <button
+                    key={count}
+                    type="button"
+                    onClick={() => patch({ falClipCount: count })}
+                    className={[
+                      "rounded-lg border px-1 py-2 text-xs transition",
+                      value.falClipCount === count
+                        ? "border-cyan-400/60 bg-cyan-400/15 text-cyan-200"
+                        : "border-white/10 text-white/55 hover:bg-white/5",
+                    ].join(" ")}
+                  >
+                    {count}
+                  </button>
+                ))}
+              </div>
+            )}
+            <p className="mt-1 text-[10px] text-white/40">
+              {value.falClipMode === "manual"
+                ? `Se generarán como máximo ${value.falClipCount} cortes.`
+                : "La propuesta se calcula antes de lanzar y nunca supera 6 cortes."}
             </p>
           </div>
           <SelectorAuto

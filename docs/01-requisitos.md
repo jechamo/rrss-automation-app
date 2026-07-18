@@ -312,6 +312,44 @@ viral+fal, viral+HeyGen, Playwright, subida, REC/STOP, MIX y publicación asisti
 - Ajustes informa ruta y versión reales de yt-dlp/FFmpeg/ffprobe desde el proceso Next.
 - La guía recorre paso a paso todas las combinaciones soportadas.
 
+### REQ-012 — Planificación audiovisual y montador ligero
+
+**Objetivo:** decidir antes de consumir créditos cuántos cortes generativos necesita una pieza y
+armonizar grabación, locución y B-roll en una línea temporal visual, manteniendo intactos los
+montajes automáticos y las recetas MIX anteriores.
+
+**Plan previo a la generación:**
+- En rama fal.ai el usuario elige cortes en modo **Automático** o una cantidad manual de **0 a 6**.
+- Antes de lanzar la pieza se muestra duración objetivo, demostración disponible/estimada, tiempo de
+  apoyo visual, cortes que se generarán, segundos facturables y coste orientativo.
+- El botón final expresa la aprobación del plan. La IA recibe el límite elegido y no genera cortes
+  adicionales de forma silenciosa.
+- Playwright aporta marcadores desde sus pasos y `nav_log`; una grabación reutilizada aporta su
+  duración real. Cuando aún no existe grabación se presenta explícitamente una estimación.
+
+**Montador ligero:**
+- MIX admite una receta v2 por segmentos, con recurso, entrada/salida, etiqueta y bloqueo.
+- La UI muestra una línea temporal vertical-first con previsualización, reordenación, recorte,
+  inserción, eliminación y protección de momentos importantes.
+- Una acción de armonización ajusta los bloques no protegidos a la duración de la locución. Las
+  diferencias restantes se muestran como error accionable, nunca como truncado o congelado oculto.
+- La primera versión usa una pista visual secuencial, locución, música y subtítulos; overlays,
+  keyframes, filtros y edición cuadro a cuadro quedan fuera de alcance.
+
+**Compatibilidad:**
+- Las recetas MIX v1 se siguen leyendo y renderizando como antes.
+- `assemble()`, `assemblePresenterDemo()` y la generación automática continúan disponibles.
+- Cada render crea una versión nueva y solo **Usar como final** modifica la pieza asociada.
+
+**Criterios de aceptación:**
+- Automático y 0–6 cortes manuales funcionan y el coste usa la cantidad real.
+- Todos los cortes generados quedan visibles en la mediateca y los utilizados aparecen en la timeline.
+- Los segmentos protegidos no se eliminan ni recortan sin desbloqueo explícito.
+- Una receta v2 no renderiza si vídeo y pista maestra difieren más de 0,25 s.
+- No se vuelve a omitir ningún corte ni se trunca el último por una locución más corta.
+- Toda salida con voz conserva subtítulos inferiores en la zona segura.
+- Piezas y MIX anteriores continúan abriendo, renderizando y publicándose.
+
 ---
 
 ## 5. Requisitos no funcionales

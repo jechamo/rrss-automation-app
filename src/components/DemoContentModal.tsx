@@ -14,6 +14,8 @@ import {
   mediaProviderError,
 } from "@/components/MediaProviderConfigurator";
 import { SelfRecordModal, type SavedMediaAsset } from "@/components/SelfRecordModal";
+import { VisualPlanCard } from "@/components/VisualPlanCard";
+import { buildVisualPlan } from "@/core/media/planning";
 
 type AppFuncion = {
   nombre: string;
@@ -217,10 +219,19 @@ export function DemoContentModal({
   function submit() {
     if (!funcion.trim()) return;
     const demo = currentDemo();
-    onGenerate(demo, mediaConfig);
+    const plan = buildVisualPlan({
+      config: mediaConfig,
+      origin: "own",
+      recordingSeconds: selectedRecordingSeconds,
+      navSteps,
+    });
+    onGenerate(demo, { ...mediaConfig, falClipCount: plan.clipCount });
   }
 
   const providerError = mediaProviderError(mediaConfig);
+  const selectedRecordingSeconds = grabacionModo === "library"
+    ? recordings.find((asset) => asset.id === recordingAssetId)?.duration ?? null
+    : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -472,6 +483,13 @@ export function DemoContentModal({
             disabled={busy}
           />
 
+          <VisualPlanCard
+            config={mediaConfig}
+            origin="own"
+            recordingSeconds={selectedRecordingSeconds}
+            navSteps={navSteps}
+          />
+
           {providerError && (
             <div className="text-xs text-[var(--color-state-pending)]">{providerError}</div>
           )}
@@ -501,7 +519,7 @@ export function DemoContentModal({
               }
               className="rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium disabled:opacity-40"
             >
-              {busy ? "Lanzando…" : "Generar"}
+              {busy ? "Lanzando…" : "Aprobar plan y generar"}
             </button>
           </div>
         </div>

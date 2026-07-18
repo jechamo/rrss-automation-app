@@ -18,8 +18,10 @@ export async function generateGuion(args: {
   dossier: Dossier;
   extract: ViralExtract;
   plataforma: Plataforma;
+  clipCount?: number;
 }): Promise<PieceContent> {
   const { dossier, extract, plataforma } = args;
+  const clipCount = Math.min(6, Math.max(0, Math.round(args.clipCount ?? 4)));
 
   const prompt = `Crea un guion de video ORIGINAL para nuestra marca, reinterpretando el CONCEPTO de un
 viral del nicho (no lo copies: aplica su patron a nuestro producto).
@@ -62,7 +64,7 @@ Devuelve EXCLUSIVAMENTE un objeto JSON con esta forma exacta:
     { "n": 1, "descripcion": "que se ve en el plano", "prompt": "prompt en INGLES para generar este plano con IA de video (fal.ai)", "texto": "texto en pantalla del plano", "segundos": 3 }
   ]
 }
-Reglas: 4-8 planos en la escaleta; los "prompt" deben ser visuales, concretos y en ingles (para el
+Reglas: crea exactamente ${clipCount} planos en la escaleta${clipCount === 0 ? "; el usuario ha decidido no generar B-roll, devuelve una escaleta vacia" : "; cada plano corresponde a un corte fal.ai aprobado"}. Los "prompt" deben ser visuales, concretos y en ingles (para el
 generador de video); nada de texto del original. No incluyas nada fuera del JSON.`;
 
   const settings = getSettings();

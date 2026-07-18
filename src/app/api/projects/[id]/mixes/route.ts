@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { assembleMix, coerceMixRecipe } from "@/core/media/mix";
+import { assembleMix, coerceMixRecipe, mixVideoCount } from "@/core/media/mix";
 import { registerMediaAsset } from "@/core/media/library";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const name = typeof body?.name === "string" ? body.name.trim().slice(0, 120) : "";
   const recipe = coerceMixRecipe(body?.recipe);
   if (!name) return NextResponse.json({ error: "Pon un nombre al MIX." }, { status: 400 });
-  if (!recipe.videoAssetIds.length) return NextResponse.json({ error: "Selecciona al menos un vídeo." }, { status: 400 });
+  if (!mixVideoCount(recipe)) return NextResponse.json({ error: "Selecciona al menos un vídeo." }, { status: 400 });
   if (!recipe.subtitleText) return NextResponse.json({ error: "Escribe los subtítulos obligatorios." }, { status: 400 });
   const pieceId = typeof body?.pieceId === "string" && body.pieceId ? body.pieceId : null;
   if (pieceId && !(await prisma.contentPiece.findFirst({ where: { id: pieceId, projectId: id }, select: { id: true } }))) {

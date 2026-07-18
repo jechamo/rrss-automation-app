@@ -261,3 +261,26 @@ interruptor para desactivarlos cuando hay locución.
 `/guia` presenta índice, tarjetas numeradas, flujos, requisitos previos, pasos, resultados y solución
 de problemas para Dashboard, proyecto, dossier, competencia, leads, virales, contenido, estudio,
 ajustes y publicación.
+
+## 16. Plan audiovisual y timeline ligera (REQ-012)
+
+### 16.1 Aprobación antes de generar
+
+Los modales de contenido muestran una tarjeta **Plan de montaje**. En fal.ai incluye modo de cortes
+Automático/Manual, cantidad, duración por corte, duración objetivo, segundos de B-roll y coste. El
+CTA pasa a ser **Aprobar plan y generar** para dejar claro cuándo se consumirán créditos.
+
+### 16.2 Timeline
+
+MIX conserva sus resultados a la derecha y sustituye la lista de vídeos completos por una línea
+temporal proporcional. Cada bloque muestra miniatura/nombre, tipo, duración y candado. Se puede
+seleccionar, añadir, arrastrar/reordenar, recortar con entrada/salida, bloquear y eliminar. El
+reproductor superior previsualiza el recurso seleccionado; el resultado exacto se revisa después de
+renderizar.
+
+### 16.3 Armonización
+
+La cabecera compara duración visual y locución. **Ajustar a locución** reparte la diferencia entre
+segmentos no protegidos dentro de los límites de sus fuentes. Los avisos distinguen estimación,
+desajuste, recurso ausente y corte sin utilizar. Los marcadores Playwright se representan como
+segmentos de demo protegidos; los manuales pueden bloquearse desde el propio editor.
