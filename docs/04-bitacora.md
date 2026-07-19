@@ -32,6 +32,20 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ## Historial
 
+### 2026-07-19 — REQ-017: captura 9:16, tutoriales superpuestos y cierre de marca
+
+- La grabación Playwright usa el mismo viewport y tamaño de vídeo 390×693 (9:16). Se elimina la
+  franja gris que aparecía al encajar un viewport de iPhone más bajo dentro de un lienzo 390×844.
+- La reparación de navegación comprueba ahora que un control sea realmente accionable, no solo
+  visible. Descarta de forma segura tutoriales y avisos personalizados aunque no declaren
+  `role="dialog"`, incluidos «Omitir», «Entendido», «Ahora no» y equivalentes. Si no encuentra la
+  ruta, el error enumera los tabs/filtros intermedios que llegó a probar.
+- Todos los montajes REQ-005/006 y los remontajes sin créditos añaden, cuando existe logo del
+  proyecto, un cierre vertical animado local de 3 segundos. Conserva el logo exacto, no llama a
+  fal.ai/HeyGen/ElevenLabs y expone el clip separado en «Recursos generados».
+- Si falta logo, FFmpeg, ffprobe o el vídeo final, el montaje original se conserva y el registro
+  explica por qué se omitió el cierre. Verificado con 23/23 contratos y build de producción.
+
 ### 2026-07-19 — REQ-017: navegación autocorregible y remontaje sin créditos
 
 - El análisis dirigido deja de considerar ejecutable un recorrido por inferencia estática: cuando hay

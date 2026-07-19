@@ -19,6 +19,7 @@ import { resolveTapStep, resolveVisibleSelector } from "./navigation-repair";
  */
 
 const DATA_DIR = path.join(process.cwd(), "data");
+const MOBILE_VIDEO_SIZE = { width: 390, height: 693 } as const; // 9:16 sin letterbox gris
 
 export interface RecordArgs {
   projectId: string;
@@ -101,7 +102,9 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
     const sessionReady = Boolean(login) && fs.existsSync(sessionPath);
     const contextOptions: import("playwright").BrowserContextOptions = {
       ...device,
-      recordVideo: dryRun ? undefined : { dir, size: { width: 390, height: 844 } },
+      viewport: MOBILE_VIDEO_SIZE,
+      screen: MOBILE_VIDEO_SIZE,
+      recordVideo: dryRun ? undefined : { dir, size: MOBILE_VIDEO_SIZE },
       storageState: sessionReady ? sessionPath : undefined,
     };
     context = await browser.newContext(contextOptions);

@@ -68,6 +68,13 @@ const SAFE_DIALOG_DISMISSERS = [
   '[role="dialog"] button:has-text("Omitir")',
   '[role="dialog"] button[aria-label="Close" i]',
   '[role="dialog"] button[aria-label="Cerrar" i]',
+  // Tutoriales/onboarding personalizados que no declaran role="dialog".
+  'button:has-text("OMITIR")',
+  'button:has-text("¡ENTENDIDO!")',
+  'button:has-text("Entendido")',
+  'button:has-text("Ahora no")',
+  'button:has-text("Más tarde")',
+  'button:has-text("No, gracias")',
 ];
 
 async function firstVisible(scope: Scope, selectors: string[]) {

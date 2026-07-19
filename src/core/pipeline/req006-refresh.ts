@@ -13,6 +13,7 @@ import { remountOwnPiece } from "@/core/content/remount";
 import { recordDemo } from "@/core/media/recorder";
 import { pieceDir } from "@/core/media/storage";
 import { registerMediaAsset } from "@/core/media/library";
+import { applyBrandOutro } from "@/core/media/brand-outro";
 import { getLogin } from "@/core/secrets/login";
 import type { PipelineDef, PipelineNode } from "./engine";
 
@@ -143,6 +144,11 @@ export function buildReq006RefreshPipeline(
       const content = ctx.artifacts.content as PieceContent;
       const assets = ctx.artifacts.assets as PieceAssets;
       const result = remountOwnPiece({ pieceId, config, content, assets, log: ctx.log });
+      const logoPath = (await prisma.project.findUnique({
+        where: { id: ctx.project.id },
+        select: { logoPath: true },
+      }))?.logoPath;
+      applyBrandOutro({ pieceId, logoPath, assets: result.assets, log: ctx.log });
       await prisma.contentPiece.update({
         where: { id: pieceId },
         data: {
@@ -173,4 +179,3 @@ export function buildReq006RefreshPipeline(
 function demoTitle(config: MediaConfig): string {
   return config.demo?.funcion || "Contenido propio";
 }
-

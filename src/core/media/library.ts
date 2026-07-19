@@ -166,6 +166,7 @@ export async function indexProjectAssets(projectId: string): Promise<void> {
     }
     const entries: Array<{ rel: string; kind: MediaKind; label: string }> = [
       { rel: assets.recordingPath, kind: "recording", label: "Grabación" },
+      { rel: assets.brandOutroPath, kind: "video", label: "Cierre animado de marca" },
       { rel: assets.presenterPath, kind: "presenter", label: "Presentador HeyGen" },
       { rel: assets.audioPath, kind: "audio", label: "Locución" },
       { rel: assets.videoPath, kind: /(?:^|\/)final(?:-[^/]+)?\.mp4$/i.test(assets.videoPath) ? "final" : "video", label: "Vídeo" },

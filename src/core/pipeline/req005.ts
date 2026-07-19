@@ -13,6 +13,7 @@ import { generateGuion } from "@/core/content/guion";
 import { fal, heygen, elevenlabs } from "@/core/media";
 import { assemble, captionVideo } from "@/core/media/assemble";
 import { ffprobeDuration, hasFfmpeg } from "@/core/media/ffmpeg";
+import { applyBrandOutro } from "@/core/media/brand-outro";
 import { assetAbsPath } from "@/core/media/storage";
 import { friendlyProviderFailure } from "@/core/media/contracts";
 import { effectiveClipLimit } from "@/core/media/planning";
@@ -61,6 +62,10 @@ export function buildReq005Pipeline(pieceId: string): PipelineDef {
       ctx.artifacts.viral = viral;
       ctx.artifacts.config = config;
       ctx.artifacts.assets = { ...EMPTY_ASSETS, clips: [], clipManifest: [], logs: [] };
+      ctx.artifacts.logoPath = (await prisma.project.findUnique({
+        where: { id: ctx.project.id },
+        select: { logoPath: true },
+      }))?.logoPath;
 
       await prisma.contentPiece.update({
         where: { id: pieceId },
@@ -279,6 +284,12 @@ export function buildReq005Pipeline(pieceId: string): PipelineDef {
             assets.logs.push(message);
             if (result.qcFrames) assets.logs.push("Frames de control de calidad generados.");
             ctx.log(message);
+            applyBrandOutro({
+              pieceId,
+              logoPath: ctx.artifacts.logoPath as string | null | undefined,
+              assets,
+              log: ctx.log,
+            });
           } else {
             assets.logs.push("Montaje omitido: no hay video util o no se pudo medir su duracion.");
           }

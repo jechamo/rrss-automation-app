@@ -10,6 +10,7 @@ import {
   normalizeNavigationText,
   selectorTextHint,
 } from "./navigation-repair-rules";
+import { dismissTransientDialogs } from "./auth-session";
 
 const UNSAFE_ACTION = /\b(?:borrar|eliminar|guardar|enviar|generar|crear|pagar|comprar|publicar|confirmar|salir|cerrar sesi[oó]n|delete|remove|save|submit|send|generate|create|pay|purchase|publish|confirm|logout)\b/i;
 
@@ -83,6 +84,17 @@ async function locatorVisible(page: Page, selector: string, timeoutMs = 500): Pr
   }
 }
 
+async function locatorActionable(page: Page, selector: string, timeoutMs = 1200): Promise<boolean> {
+  if (!await locatorVisible(page, selector, Math.min(timeoutMs, 700))) return false;
+  try {
+    // Valida estabilidad y que ninguna capa intercepte el tap, sin ejecutar la accion.
+    await page.locator(selector).first().tap({ trial: true, timeout: timeoutMs });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export interface TapResolution {
   selector: string;
   inserted: NavStep[];
@@ -118,14 +130,18 @@ export async function resolveTapStep(args: {
   const { page, step, log } = args;
   const selector = step.selector ?? "";
   if (!selector) throw new Error("falta selector");
-  if (await locatorVisible(page, selector, Math.min(step.timeoutMs ?? 15000, 2500))) {
+  if (await locatorActionable(page, selector, Math.min(step.timeoutMs ?? 15000, 2500))) {
     return { selector, inserted: [], repaired: false };
   }
 
+  await dismissTransientDialogs(page, log);
+  if (await locatorActionable(page, selector)) {
+    return { selector, inserted: [], repaired: false };
+  }
   const hint = selectorTextHint(selector);
   let observed = await observeNavigationSurface(page);
   const directAlternative = findObservedTarget(observed, hint);
-  if (directAlternative && await locatorVisible(page, directAlternative.selector)) {
+  if (directAlternative && await locatorActionable(page, directAlternative.selector)) {
     log(`Selector reparado: ${selector} → ${directAlternative.selector}`);
     return { selector: directAlternative.selector, inserted: [], repaired: true };
   }
@@ -136,17 +152,33 @@ export async function resolveTapStep(args: {
   if (scoped && args.contextSelector) {
     candidateSurface = await observeNavigationSurface(page.locator(args.contextSelector).first(), 60);
   }
-  const candidates = safeStateCandidates(candidateSurface, hint, scoped).slice(0, args.maxExplorations ?? 10);
+  const scopedCandidates = safeStateCandidates(candidateSurface, hint, scoped);
+  // Un `wait` puede apuntar al texto de una tarjeta y no a su contenedor. En ese caso
+  // añadimos solo controles globales con semántica de estado (tab/expanded/pressed),
+  // sin relajar la protección contra enlaces, submit o acciones de negocio.
+  const globalCandidates = scoped ? safeStateCandidates(observed, hint, false) : [];
+  const seenCandidates = new Set<string>();
+  const candidates = [...scopedCandidates, ...globalCandidates]
+    .filter((candidate) => {
+      const key = selectorForObservedElement(candidate);
+      if (seenCandidates.has(key)) return false;
+      seenCandidates.add(key);
+      return true;
+    })
+    .slice(0, args.maxExplorations ?? 10);
+  const attempted: string[] = [];
   for (const candidate of candidates) {
     const candidateSelector = selectorForObservedElement(candidate);
+    attempted.push(candidate.text || candidateSelector);
     try {
+      await dismissTransientDialogs(page, log);
       await page.locator(candidateSelector).first().tap({ timeout: 2500 });
       await page.waitForTimeout(650);
       observed = await observeNavigationSurface(page);
       const target = (await locatorVisible(page, selector, 300))
         ? { selector }
         : findObservedTarget(observed, hint);
-      if (target && await locatorVisible(page, target.selector, 500)) {
+      if (target && await locatorActionable(page, target.selector)) {
         log(`Paso intermedio descubierto: ${candidate.text || candidateSelector}`);
         if (target.selector !== selector) log(`Selector reparado: ${selector} → ${target.selector}`);
         return {
@@ -164,5 +196,8 @@ export async function resolveTapStep(args: {
     }
   }
 
-  throw new Error(`No se encontro ni se pudo descubrir un control seguro para ${selector}`);
+  const detail = attempted.length
+    ? ` Controles intermedios comprobados: ${attempted.join(", ")}.`
+    : " No había tabs o filtros seguros dentro del último estado verificado.";
+  throw new Error(`No se encontro ni se pudo descubrir un control seguro para ${selector}.${detail}`);
 }

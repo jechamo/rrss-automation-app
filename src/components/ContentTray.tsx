@@ -539,6 +539,9 @@ function PieceCard({
         status: "ok" as const,
         error: undefined as string | undefined,
       }));
+  const generatedResourceCount = clipItems.filter((clip) => clip.status === "ok").length +
+    (piece.assets.brandOutroPath ? 1 : 0);
+  const generatedResourceTotal = clipItems.length + (piece.assets.brandOutroPath ? 1 : 0);
 
   return (
     <div className="glass card-lift p-4">
@@ -646,14 +649,14 @@ function PieceCard({
       {piece.assets.audioPath && (
         <audio key={piece.assets.audioPath} controls className="mb-3 w-full" src={asset(piece.assets.audioPath)} />
       )}
-      {clipItems.length > 0 && (
+      {generatedResourceTotal > 0 && (
         <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
           <button
             type="button"
             onClick={() => setShowClips((value) => !value)}
             className="flex w-full items-center justify-between text-left text-xs font-medium text-white/70"
           >
-            <span>Recursos generados ({clipItems.filter((clip) => clip.status === "ok").length}/{clipItems.length})</span>
+            <span>Recursos generados ({generatedResourceCount}/{generatedResourceTotal})</span>
             <span className="text-[var(--color-accent-2)]">{showClips ? "Ocultar" : "Ver todos"}</span>
           </button>
           {showClips && (
@@ -678,6 +681,18 @@ function PieceCard({
                   </div>
                 </div>
               ))}
+              {piece.assets.brandOutroPath && (
+                <div className="rounded-lg border border-cyan-400/20 bg-cyan-400/[0.04] p-2">
+                  <div className="mb-2 flex items-center justify-between gap-2 text-[11px]">
+                    <b>Cierre de marca · logo</b>
+                    <span className="text-[var(--color-state-ok)]">Generado</span>
+                  </div>
+                  <video controls preload="metadata" className="w-full rounded bg-black" src={asset(piece.assets.brandOutroPath)} />
+                  <div className="mt-2 text-[10px] text-white/45">
+                    Animación final de 3 segundos creada localmente, sin coste de proveedor.
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

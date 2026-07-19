@@ -58,6 +58,21 @@ export function ffprobeDuration(absPath: string): number | null {
   }
 }
 
+export function ffprobeHasAudio(absPath: string): boolean {
+  if (!hasFfprobe()) return false;
+  const binary = systemToolPath("ffprobe")!;
+  try {
+    const out = execFileSync(
+      binary,
+      ["-v", "error", "-select_streams", "a:0", "-show_entries", "stream=index", "-of", "csv=p=0", absPath],
+      { encoding: "utf8" },
+    );
+    return Boolean(out.trim());
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Ejecuta ffmpeg con un array de argumentos (nunca string de shell).
  * Pasa `cwd` para poder usar rutas relativas (imprescindible para el filtro subtitles en Windows).

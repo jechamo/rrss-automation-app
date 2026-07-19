@@ -145,6 +145,7 @@ export interface PieceAssets {
   clips: string[]; // cortes de fal por plano
   clipManifest: ClipManifestItem[]; // metadatos y estado de cada corte fal
   recordingPath: string; // screencast de la app (REQ-006: Playwright o subido a mano)
+  brandOutroPath: string; // cierre animado local a partir del logo del proyecto
   externalUrl: string; // url del proveedor si no se descargo
   logs: string[]; // trazas de generacion
   publishedTo: string; // REQ-010: red donde se marco publicado ("" si no)
@@ -226,6 +227,7 @@ export const EMPTY_ASSETS: PieceAssets = {
   clips: [],
   clipManifest: [],
   recordingPath: "",
+  brandOutroPath: "",
   externalUrl: "",
   logs: [],
   publishedTo: "",
@@ -474,6 +476,7 @@ export function coerceAssets(raw: unknown): PieceAssets {
     clips: strArr(o.clips),
     clipManifest,
     recordingPath: str(o.recordingPath),
+    brandOutroPath: str(o.brandOutroPath),
     externalUrl: str(o.externalUrl),
     logs: strArr(o.logs),
     publishedTo: str(o.publishedTo),
