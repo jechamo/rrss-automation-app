@@ -209,6 +209,10 @@ prisma/schema.prisma          Modelo de datos multiproyecto
 - **REQ-011** (estudio audiovisual): **implementado**. Detección WinGet de herramientas, subtítulos
   ASS obligatorios abajo, mediateca, grabador REC/STOP, `assembleMix()` aditivo y Guía detallada.
   Pendiente validación manual del selector de pantalla en el navegador del usuario.
+- **REQ-015** (mapa funcional): **implementado**. Nodo REQ-001 que extrae un árbol de hasta tres
+  niveles sin asumir un menú concreto (navbar, barra inferior, sidebar, drawer, tabs, tarjetas),
+  persiste evidencias y permite verificación segura de rutas con Playwright + login cifrado. Alimenta
+  dossier y análisis de funciones de contenido propio. Pendiente regeneración y validación privada real.
 - **Rediseño visual (2026-07-18):** componentes reutilizables `Carousel3D`/`ExpandableCarousel`/
   `ScoreBar`/`EntityLogo`/`MiniMap`/`CardArt`/`ProjectsCarousel` (sin paquetes ni keys). Dashboard y
   secciones competencia/leads/virales con **carrusel 360 + detalle desplegable**, scoring, logos por

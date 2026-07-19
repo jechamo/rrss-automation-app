@@ -28,6 +28,7 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ id: strin
     url: project.url,
     codeType: project.codeType,
     codePath: project.codePath,
+    context: project.context,
   }).catch(() => {
     /* el estado de error se persiste dentro de executeRun */
   });

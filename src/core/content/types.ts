@@ -57,6 +57,8 @@ export interface NavStep {
   url?: string;
   selector?: string;
   value?: string;
+  /** Acción que confirma una mutación (generar, guardar, enviar...). El dry-run no la pulsa. */
+  commit?: boolean;
   timeoutMs?: number;
   pixels?: number;
   pauseMs?: number;
@@ -74,6 +76,7 @@ export interface DemoConfig {
   funcionUrl: string; // ruta/URL concreta a navegar y grabar
   pasos: string[]; // pasos de navegacion (Playwright / guia manual)
   navSteps?: NavStep[]; // pasos ejecutables; opcional para compat con piezas antiguas
+  demoData?: string; // cliente/registro de ejemplo para resolver rutas dinámicas tras login
   videosPrevios?: number; // anti-repeticion: piezas anteriores de esta funcion
   usarLogin: boolean; // requiere login (credenciales cifradas por proyecto en el vault)
   grabacionModo: GrabacionModo;
@@ -274,6 +277,7 @@ export function coerceNavStep(raw: unknown): NavStep | null {
   if (url) step.url = url;
   if (selector) step.selector = selector;
   if (value) step.value = value;
+  if (bool(o.commit, false)) step.commit = true;
 
   const optionalNumber = (value: unknown): number | undefined => {
     const parsed = typeof value === "number" ? value : parseFloat(String(value ?? ""));
@@ -342,6 +346,8 @@ export function coerceDemo(raw: unknown): DemoConfig {
   }
   const recordingAssetId = str(o.recordingAssetId);
   if (recordingAssetId) demo.recordingAssetId = recordingAssetId;
+  const demoData = str(o.demoData ?? o.demo_data).trim();
+  if (demoData) demo.demoData = demoData.slice(0, 160);
   const navSteps = arr(o.navSteps ?? o.nav_steps)
     .map(coerceNavStep)
     .filter((step): step is NavStep => step !== null);

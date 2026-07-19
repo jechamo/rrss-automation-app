@@ -46,9 +46,11 @@ export function EntityLogo({
   const domain = domainOf(web ?? "");
   // step -1 = imagen manual, 0 = clearbit, 1 = favicon, 2 = iniciales
   const [step, setStep] = useState(customSrc ? -1 : domain ? 0 : 2);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     setStep(customSrc ? -1 : domain ? 0 : 2);
+    setLoaded(false);
   }, [customSrc, domain]);
 
   const imageSrc =
@@ -67,39 +69,53 @@ export function EntityLogo({
     borderRadius: size * 0.28,
   } as const;
 
+  const hue = hueOf(name || domain || "?");
+  const fallback = (
+    <div
+      className="absolute inset-0 flex items-center justify-center font-bold text-white"
+      style={{
+        fontSize: size * 0.36,
+        background: `linear-gradient(135deg, hsl(${hue} 70% 45%), hsl(${(hue + 40) % 360} 70% 35%))`,
+      }}
+      aria-hidden="true"
+    >
+      {initials(name)}
+    </div>
+  );
+
   if (step >= 2 || (step >= 0 && !domain)) {
-    const hue = hueOf(name || domain || "?");
     return (
       <div
-        className={`flex items-center justify-center font-bold text-white ${className}`}
-        style={{
-          ...box,
-          fontSize: size * 0.36,
-          background: `linear-gradient(135deg, hsl(${hue} 70% 45%), hsl(${(hue + 40) % 360} 70% 35%))`,
-        }}
+        className={`relative overflow-hidden ${className}`}
+        style={box}
         aria-label={name}
       >
-        {initials(name)}
+        {fallback}
       </div>
     );
   }
 
   return (
-    <img
-      src={imageSrc}
-      alt={name}
-      width={size}
-      height={size}
-      loading="lazy"
-      referrerPolicy="no-referrer"
-      onError={() =>
-        setStep((current) => {
-          if (current === -1) return domain ? 0 : 2;
-          return current < 1 ? current + 1 : 2;
-        })
-      }
-      className={`bg-white/90 object-contain p-1 ${className}`}
-      style={box}
-    />
+    <div className={`relative overflow-hidden ${className}`} style={box} aria-label={name}>
+      {fallback}
+      <img
+        src={imageSrc}
+        alt=""
+        width={size}
+        height={size}
+        loading={customSrc ? "eager" : "lazy"}
+        referrerPolicy="no-referrer"
+        onLoad={() => setLoaded(true)}
+        onError={() => {
+          setLoaded(false);
+          setStep((current) => {
+            if (current === -1) return domain ? 0 : 2;
+            return current < 1 ? current + 1 : 2;
+          });
+        }}
+        className="absolute inset-0 bg-white/90 object-contain p-1 transition-opacity duration-200"
+        style={{ width: size, height: size, opacity: loaded ? 1 : 0 }}
+      />
+    </div>
   );
 }

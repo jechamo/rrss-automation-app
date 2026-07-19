@@ -7,8 +7,11 @@ export const dynamic = "force-dynamic";
 // Editar la fuente de código de un proyecto ya creado (REQ-006 A4): permite
 // corregir/añadir la ruta local o el repo sin recrear el proyecto.
 const putSchema = z.object({
-  codeType: z.enum(["local", "github_public", "github_private", "none"]),
+  codeType: z.enum(["local", "github_public", "github_private", "none"]).optional(),
   codePath: z.string().optional(),
+  context: z.string().max(8000).optional(),
+}).refine((value) => value.codeType !== undefined || value.context !== undefined, {
+  message: "No hay cambios que guardar.",
 });
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -35,16 +38,21 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
   if (!parsed.success) {
     return NextResponse.json({ error: "Datos invalidos", issues: parsed.error.issues }, { status: 400 });
   }
-  const { codeType, codePath } = parsed.data;
-  const needsPath = codeType === "local" || codeType.startsWith("github");
-  if (needsPath && !codePath?.trim()) {
+  const { codeType, codePath, context } = parsed.data;
+  const needsPath = codeType === "local" || Boolean(codeType?.startsWith("github"));
+  if (codeType && needsPath && !codePath?.trim()) {
     return NextResponse.json({ error: "Falta la ruta/URL del codigo." }, { status: 400 });
   }
 
   try {
     const project = await prisma.project.update({
       where: { id },
-      data: { codeType, codePath: needsPath ? codePath!.trim() : null },
+      data: {
+        ...(codeType
+          ? { codeType, codePath: needsPath ? codePath!.trim() : null }
+          : {}),
+        ...(context !== undefined ? { context: context.trim() || null } : {}),
+      },
     });
     return NextResponse.json({ project });
   } catch {

@@ -373,6 +373,69 @@ nativo cuando existe esa opción, ya que la locución continua se monta aparte.
 son los que aparecen en el manifiesto de clips; las duraciones incompatibles se ajustan y explican;
 coste y modelo coinciden con el render autorizado; piezas antiguas y la rama HeyGen siguen funcionando.
 
+### REQ-014 — Confianza operativa: navegación autenticada, contexto y recuperación
+
+**Objetivo:** evitar resultados aparentemente completos que en realidad no son ejecutables o no están
+suficientemente justificados, sin romper los flujos existentes.
+
+**Contenido propio / Playwright:**
+- «Requiere login» autentica primero y la contraseña nunca se incluye en prompts, respuestas ni logs.
+- Si se solicita una función concreta, el análisis combina dossier, código y una inspección móvil de la
+  superficie privada ya autenticada para construir `navSteps` ejecutables.
+- El usuario puede indicar un cliente o dato de ejemplo. Si lo omite, la IA puede proponer el primer
+  elemento seguro visible, pero debe dejarlo explícito y permitir editarlo.
+- Rutas dinámicas (`/client/:clientId`) se alcanzan seleccionando una entidad tras login; no se inventan IDs.
+- Si no hay evidencia suficiente, la UI distingue claramente «guía humana» de «recorrido automático».
+- Los pasos que confirman una mutación se marcan; el dry-run comprueba el control pero se detiene antes
+  de ejecutarlo. La grabación real sí lo ejecuta al lanzar la pieza.
+
+**Resiliencia y confianza:**
+- Los catálogos de vídeo/voz se cargan de forma independiente y pueden reintentarse sin cerrar el modal.
+- Un 5xx/timeout no se presenta como credencial inválida; 401/403 y 429 se explican por separado.
+- Los scores de leads se recalibran con FIT+INTENT: sin señal pública explícita la intención no supera 3;
+  todo score necesita una justificación visible y los lotes antiguos se pueden recalibrar sin nueva búsqueda.
+- Los logos muestran iniciales inmediatamente y sustituyen el placeholder cuando llega la imagen.
+
+**Contexto inicial del proyecto:** texto opcional, persistente y editable que prioriza crawl y búsqueda
+en código, y se entrega al dossier como fuente declarada por el usuario. Nunca sustituye la evidencia:
+el dossier diferencia lo aportado de lo verificado en web/código.
+
+**Criterios de aceptación:** una función tras login puede producir JSON Playwright sin IDs inventados;
+el dry-run no confirma acciones mutantes; ElevenLabs se reintenta dentro del modal; un lote 5/5 sin
+señales se corrige; no hay huecos mientras cargan logos; el contexto se conserva en regeneraciones.
+
+### REQ-015 — Mapa funcional recursivo de la app
+
+**Objetivo:** producir automáticamente un inventario navegable de la experiencia de usuario hasta
+tres niveles, para que el usuario no tenga que redactar y pegar manualmente el mapa de cada proyecto.
+
+**Detección neutral de interfaz:** no se presupone una barra concreta. El análisis busca y relaciona
+simultáneamente navbar superior, barra inferior, sidebar izquierda/derecha, drawer/hamburguesa,
+pestañas, tarjetas enlazables, breadcrumbs y navegación programática (`navigate`, router, enlaces).
+
+**Mapa estático — siempre:**
+- Combina rutas, componentes de menú, layouts, guards, roles, feature flags y contenido de páginas.
+- Profundidad máxima predeterminada: 3; límites de ficheros/nodos para evitar árboles infinitos.
+- El contexto del proyecto puede indicar audiencia («cliente normal, no admin») y prioridades, pero
+  el mapa se obtiene de evidencias del código/web y conserva referencias `archivo:línea`.
+- Cada nodo incluye sección, descripción, ruta, superficie de navegación, botones/acciones seguras,
+  login/roles/condiciones, hijos y estado de verificación.
+
+**Verificación Playwright — posterior y opcional:**
+- Reutiliza las credenciales cifradas del proyecto y visita únicamente rutas same-origin conocidas.
+- No pulsa controles de negocio ni confirma mutaciones. Rutas dinámicas sin dato real quedan pendientes.
+- Marca cada pantalla como verificada, redirigida, condicional/no accesible o pendiente; registra la URL
+  final y puede añadir enlaces seguros observados que no estuvieran en el mapa estático.
+
+**Salida:** sección «Mapa de la aplicación» con árbol desplegable, filtros por superficie/estado,
+evidencias y exportación/copia a Markdown. El mapa alimenta dossier, funciones demostrables, pasos
+Playwright, guía e ideas de contenido.
+
+**Criterios de aceptación:** una app con bottom nav, otra con sidebar y otra con navbar producen el
+mismo contrato; se representan menús simultáneos; no aparece admin si el contexto lo excluye; el mapa
+llega a tres niveles sin ciclos; la verificación no ejecuta acciones mutantes y las rutas dinámicas no
+inventan IDs.
+
 ---
 
 ## 5. Requisitos no funcionales

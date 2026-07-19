@@ -607,6 +607,33 @@ locución como pista maestra, mezcla música opcional, quema ASS y crea `mix-<id
 - `contracts.ts` contiene IDs, enums de duración y bodies verticales por endpoint. El catálogo y
   `pricing.ts` comparten los IDs; el audio nativo se desactiva cuando el esquema lo permite.
 
+### REQ-014 — Navegación autenticada y señales de confianza
+
+- `Project.context` guarda el brief opcional. `NodeCtx.project.context` lo transporta a REQ-001;
+  crawler, resumen focalizado del repo y prompt del dossier lo tratan como contexto no verificado.
+- El inventario de navegación de REQ-006 incluye rutas React, `navigate`, textos de botones,
+  placeholders, roles y atributos estables. Una inspección Playwright móvil posterior al login aporta
+  selectores observados en runtime sin exponer credenciales.
+- `NavStep.commit` identifica acciones mutantes. `recordDemo(dryRun=true)` comprueba su visibilidad y
+  termina antes del clic; el run real mantiene el comportamiento completo.
+- La carga de opciones usa resultados independientes por proveedor, por lo que un fallo de voz no borra
+  los modelos de vídeo ya obtenidos.
+- La calibración de leads es una función pura y conservadora aplicada antes de persistir; existe un
+  endpoint específico para recalibrar datos guardados sin WebSearch.
+- `EntityLogo` renderiza un fallback inmediato y hace fade-in de la imagen cuando `onLoad` confirma éxito.
+
+### REQ-015 — Mapa funcional multimenú
+
+- Modelo `NavigationMap` 1:1 con `Project`: `content` JSON versionado, estado y fecha de verificación.
+- `RepoSummary.navigationFiles` conserva extractos acotados de componentes/rutas con patrones neutrales:
+  nav/menu/sidebar/drawer/tabs/layout/router, sin depender de nombres concretos.
+- Nodo REQ-001 `navigation`: fusiona crawl, árbol de repo y extractos mediante IA estructurada; aplica
+  coerción defensiva, profundidad ≤3, deduplicación/ciclos y límite de nodos.
+- `core/navigation/runtime.ts` verifica same-origin con Playwright y storage state cifrado ya existente;
+  solo usa `goto`, nunca clicks de negocio. Las rutas con parámetros quedan pendientes.
+- API `GET/PUT /api/navigation/:projectId` y `POST /api/projects/:id/navigation/verify`.
+- El dossier recibe un bloque resumido del mapa; REQ-006 puede reutilizar rutas/evidencias después.
+
 ---
 
 ## 9. Arquitectura concreta de REQ-001 (primer requisito)
@@ -645,6 +672,8 @@ locución como pista maestra, mezcla música opcional, quema ASS y crea `mix-<id
 | REQ-011 | media library, recorder, mix, subtitles, system tools |
 | REQ-012 | media planning, mix recipe v2, timeline editor |
 | REQ-013 | content preflight, fal contracts/pricing, prompt review UI |
+| REQ-014 | authenticated inspector, demo navigation, lead calibration, project context, resilient UI |
+| REQ-015 | navigation map, repo navigation evidence, Playwright route verifier, tree UI |
 
 ---
 

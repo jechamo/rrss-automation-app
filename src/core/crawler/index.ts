@@ -117,7 +117,11 @@ async function fetchPage(url: string): Promise<CrawledPage | null> {
   }
 }
 
-export async function crawlSite(baseUrl: string, maxPages = 4): Promise<CrawlResult> {
+export async function crawlSite(
+  baseUrl: string,
+  maxPages = 4,
+  context = "",
+): Promise<CrawlResult> {
   const base = new URL(baseUrl);
   const home = await fetchPage(base.href);
   const pages: CrawledPage[] = home ? [home] : [];
@@ -129,8 +133,18 @@ export async function crawlSite(baseUrl: string, maxPages = 4): Promise<CrawlRes
       .then((r) => r.text())
       .catch(() => "");
     const links = extractLinks(raw, base);
+    const contextTokens = context
+      .toLocaleLowerCase("es")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .split(/[^a-z0-9]+/)
+      .filter((token) => token.length >= 4)
+      .slice(0, 30);
     const key = links.filter((l) =>
-      KEY_KEYWORDS.some((k) => l.toLowerCase().includes(k)),
+      KEY_KEYWORDS.some((k) => l.toLowerCase().includes(k)) ||
+      contextTokens.some((token) =>
+        l.toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(token),
+      ),
     );
     for (const link of key.slice(0, maxPages - 1)) {
       const p = await fetchPage(link);

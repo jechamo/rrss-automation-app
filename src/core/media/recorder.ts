@@ -194,6 +194,7 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
     const navLog: Array<NavLogStep | FinalNavLogStep> = [];
 
     if (navSteps?.length) {
+      let stoppedBeforeCommit = false;
       for (let i = 0; i < navSteps.length; i++) {
         const step = navSteps[i];
         const started = now();
@@ -209,7 +210,16 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
               break;
             case "tap":
               if (!step.selector) throw new Error("falta selector");
-              await page.locator(step.selector).first().tap({ timeout: step.timeoutMs ?? 15000 });
+              if (dryRun && step.commit) {
+                await page
+                  .locator(step.selector)
+                  .first()
+                  .waitFor({ state: "visible", timeout: step.timeoutMs ?? 15000 });
+                stoppedBeforeCommit = true;
+                log(`Control final localizado; dry-run detenido antes de ejecutar: ${step.selector}`);
+              } else {
+                await page.locator(step.selector).first().tap({ timeout: step.timeoutMs ?? 15000 });
+              }
               break;
             case "fill":
               if (!step.selector) throw new Error("falta selector");
@@ -227,6 +237,7 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
               break;
           }
           navLog.push({ t_inicio: started, t_fin: now(), ...step });
+          if (stoppedBeforeCommit) break;
           await page.waitForTimeout(step.pauseMs ?? 1500);
         } catch (error) {
           await page.screenshot({ path: path.join(dir, "error.jpg"), fullPage: false }).catch(() => {});

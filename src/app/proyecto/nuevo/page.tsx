@@ -16,6 +16,7 @@ export default function NuevoProyectoPage() {
   const [url, setUrl] = useState("");
   const [codeType, setCodeType] = useState<CodeType>("none");
   const [codePath, setCodePath] = useState("");
+  const [context, setContext] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,6 +38,7 @@ export default function NuevoProyectoPage() {
           url,
           codeType,
           codePath: needsPath ? codePath : undefined,
+          context: context.trim() || undefined,
         }),
       });
       const d = await r.json();
@@ -120,6 +122,21 @@ export default function NuevoProyectoPage() {
             )}
           </Field>
         )}
+
+        <Field label="Contexto para el análisis (opcional)">
+          <textarea
+            value={context}
+            onChange={(event) => setContext(event.target.value)}
+            maxLength={8000}
+            placeholder="Ej.: La zona privada permite generar dietas con IA para clientes. Prioriza nutrición, seguimiento y automatizaciones aunque no aparezcan en la landing."
+            className="input min-h-28 resize-y"
+          />
+          <p className="mt-1 text-xs text-white/40">
+            Orienta el rastreo y la búsqueda en el código. El dossier distinguirá lo que indicas de
+            lo que pueda verificar en la web o el repositorio.
+          </p>
+          <div className="mt-1 text-right text-[10px] text-white/30">{context.length}/8000</div>
+        </Field>
 
         {error && (
           <div className="text-sm text-[var(--color-state-error)]">{error}</div>

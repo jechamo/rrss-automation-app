@@ -292,3 +292,28 @@ El estado vacío explica que aún no habrá consumo; «Preparar guion y prompts�
 tarjeta editable por corte. Cambios que alteren el plan muestran una advertencia de obsolescencia y
 bloquean el CTA. Un prompt vacío también bloquea la aprobación. El CTA final se denomina «Aprobar
 prompts y generar». El selector de modelo incluye versión, perfil y coste por segundo en cada opción.
+
+## 18. Confianza operativa (REQ-014)
+
+- **Nuevo proyecto:** textarea opcional «Contexto para el análisis», con ejemplos y aviso de que la IA
+  contrastará lo indicado con la web y el código. El mismo campo se puede editar en el proyecto.
+- **Contenido propio:** junto al login aparece «Cliente o dato de ejemplo». Tras analizar, una tarjeta
+  verde confirma que hay recorrido automático; una tarjeta ámbar avisa cuando solo hay pasos humanos.
+  La inspección autenticada usa estructura y textos visibles, nunca la contraseña.
+- **Validación:** los pasos de confirmación se verifican sin pulsarlos y el resultado lo indica expresamente.
+- **Proveedores:** cada error muestra proveedor y tipo; «Reintentar catálogos» recarga sin cerrar el modal
+  y conserva las opciones que ya funcionaron.
+- **Leads:** un aviso detecta scores antiguos/no justificados y ofrece «Recalibrar puntuaciones» sin repetir
+  la búsqueda de negocios.
+- **Logos:** las iniciales coloreadas siempre están presentes debajo de la imagen que carga.
+
+## 19. Mapa de la aplicación (REQ-015)
+
+- Panel propio dentro del proyecto, después del pipeline y antes del dossier, con resumen, audiencia,
+  profundidad y fecha de generación.
+- El árbol usa tarjetas indentadas por nivel. Cada tarjeta muestra nombre, descripción, ruta, superficie
+  (`navbar`, `sidebar`, `bottom nav`, `drawer`, `tabs`, página), login/rol y estado código/runtime.
+- Las evidencias y acciones se despliegan bajo demanda para mantener una lectura compacta.
+- «Verificar con Playwright» visita rutas seguras tras login y actualiza badges sin regenerar el dossier.
+- «Copiar Markdown» exporta la estructura Sección → Subsección → Descripción → Navegación.
+- Estado vacío y avisos explican cuándo no existe código, una ruta es dinámica o falta login.

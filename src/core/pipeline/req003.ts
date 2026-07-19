@@ -5,6 +5,7 @@ import { coerceLeads, type Lead, type Leads } from "@/core/leads/types";
 import { researchTarget, type LeadResearch } from "@/core/leads/research";
 import { discoverLeads, type LeadDescubierto } from "@/core/leads/discover";
 import { generateStrategy, type StrategyLeadInput } from "@/core/leads/strategy";
+import { calibrateLeads } from "@/core/leads/calibration";
 import type { PipelineDef, PipelineNode } from "./engine";
 
 export const REQ003_NODES = [
@@ -147,6 +148,7 @@ export function buildReq003Pipeline(opts: Req003Opts = {}): PipelineDef {
           leads = { ...prevLeads, leads: [...prevLeads.leads, ...nuevos] };
         }
       }
+      leads = calibrateLeads(leads);
 
       await prisma.leads.upsert({
         where: { projectId: ctx.project.id },

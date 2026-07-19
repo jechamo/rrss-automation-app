@@ -37,6 +37,7 @@ export function MediaProviderConfigurator({
   const [voiceOptions, setVoiceOptions] = useState<Option[]>([]);
   const [optionsError, setOptionsError] = useState("");
   const [loadingOptions, setLoadingOptions] = useState(false);
+  const [optionsReload, setOptionsReload] = useState(0);
   const [uploading, setUploading] = useState<"" | "photo" | "audio">("");
   const [uploadError, setUploadError] = useState("");
 
@@ -82,13 +83,18 @@ export function MediaProviderConfigurator({
       .then(([videoOrAvatar, voices]) => {
         if (!active) return;
         if (value.rama === "fal") {
-          setVideoOptions(videoOrAvatar.options);
+          if (!videoOrAvatar.error) setVideoOptions(videoOrAvatar.options);
         } else {
-          setAvatarOptions(videoOrAvatar.options);
+          if (!videoOrAvatar.error) setAvatarOptions(videoOrAvatar.options);
         }
-        setVoiceOptions(voices.options);
-        const error = videoOrAvatar.error || voices.error;
-        if (error) setOptionsError(`${error}. Revisa la clave del proveedor en Ajustes.`);
+        if (!voices.error) setVoiceOptions(voices.options);
+        const labels = value.rama === "fal"
+          ? (["fal.ai (modelos)", "ElevenLabs (voces)"] as const)
+          : (["HeyGen (avatares)", "HeyGen (voces)"] as const);
+        const errors = [videoOrAvatar.error, voices.error]
+          .map((error, index) => error ? providerOptionError(labels[index], error) : "")
+          .filter(Boolean);
+        setOptionsError(errors.join(" "));
       })
       .catch((error: unknown) => {
         if (active) setOptionsError(error instanceof Error ? error.message : String(error));
@@ -100,7 +106,7 @@ export function MediaProviderConfigurator({
     return () => {
       active = false;
     };
-  }, [value.rama]);
+  }, [value.rama, optionsReload]);
 
   function patch(patchValue: Partial<MediaConfig>) {
     onChange({ ...value, ...patchValue });
@@ -452,8 +458,34 @@ export function MediaProviderConfigurator({
         <p className="mt-2 text-[10px] text-white/30">{cost.note}</p>
       </div>
 
-      {optionsError && <p className="text-xs text-[var(--color-state-pending)]">{optionsError}</p>}
+      {optionsError && (
+        <div className="flex items-start justify-between gap-3 rounded-lg border border-amber-400/20 bg-amber-400/5 p-2.5">
+          <p className="text-xs text-[var(--color-state-pending)]">{optionsError}</p>
+          <button
+            type="button"
+            disabled={loadingOptions}
+            onClick={() => setOptionsReload((current) => current + 1)}
+            className="shrink-0 rounded-md border border-white/15 px-2 py-1 text-[11px] hover:bg-white/5 disabled:opacity-40"
+          >
+            {loadingOptions ? "Recargando…" : "Reintentar catálogos"}
+          </button>
+        </div>
+      )}
       {uploadError && <p className="text-xs text-[var(--color-state-error)]">{uploadError}</p>}
     </fieldset>
   );
+}
+
+function providerOptionError(provider: string, raw: string): string {
+  const message = raw.trim();
+  if (/\b(?:401|403)\b|unauthori[sz]ed|forbidden|invalid.*(?:key|token)/i.test(message)) {
+    return `${provider}: credencial inválida o sin permisos. Revísala en Ajustes.`;
+  }
+  if (/\b429\b|rate.?limit|too many/i.test(message)) {
+    return `${provider}: límite temporal alcanzado. Espera unos segundos y reintenta.`;
+  }
+  if (/\b5\d\d\b|timeout|timed out|fetch failed|network/i.test(message)) {
+    return `${provider}: fallo temporal del servicio o de red. Puedes reintentar aquí.`;
+  }
+  return `${provider}: ${message}`;
 }

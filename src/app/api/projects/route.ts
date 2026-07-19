@@ -9,6 +9,7 @@ const schema = z.object({
   url: z.string().url(),
   codeType: z.enum(["local", "github_public", "github_private", "none"]).default("none"),
   codePath: z.string().optional(),
+  context: z.string().max(8000).optional(),
 });
 
 export const dynamic = "force-dynamic";
@@ -27,14 +28,20 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Datos invalidos", issues: parsed.error.issues }, { status: 400 });
   }
-  const { name, url, codeType, codePath } = parsed.data;
+  const { name, url, codeType, codePath, context } = parsed.data;
 
   if ((codeType === "local" || codeType.startsWith("github")) && !codePath) {
     return NextResponse.json({ error: "Falta la ruta/URL del codigo." }, { status: 400 });
   }
 
   const project = await prisma.project.create({
-    data: { name, url, codeType, codePath: codePath ?? null },
+    data: {
+      name,
+      url,
+      codeType,
+      codePath: codePath ?? null,
+      context: context?.trim() || null,
+    },
   });
 
   const def = buildReq001Pipeline(project.codeType);
@@ -54,6 +61,7 @@ export async function POST(req: NextRequest) {
     url: project.url,
     codeType: project.codeType,
     codePath: project.codePath,
+    context: project.context,
   }).catch(() => {
     /* el estado de error ya se persiste dentro de executeRun */
   });

@@ -38,6 +38,7 @@ export function LeadsPanel({
   const [runId, setRunId] = useState<string | null>(null);
   const [runStatus, setRunStatus] = useState<string>("idle");
   const [saving, setSaving] = useState(false);
+  const [recalibrating, setRecalibrating] = useState(false);
   const [starting, setStarting] = useState(false);
   const [zona, setZona] = useState("");
   const esRef = useRef<EventSource | null>(null);
@@ -125,6 +126,20 @@ export function LeadsPanel({
     setSaving(false);
   }
 
+  async function recalibrate() {
+    setRecalibrating(true);
+    try {
+      const response = await fetch(`/api/leads/${projectId}/recalibrate`, { method: "POST" });
+      const data = (await response.json()) as { leads?: Leads; status?: string };
+      if (response.ok && data.leads) {
+        setLeads(data.leads);
+        setStatus(data.status ?? "draft");
+      }
+    } finally {
+      setRecalibrating(false);
+    }
+  }
+
   const running = runStatus === "running" || runStatus === "pending";
   const showGraph = nodes.length > 0;
 
@@ -205,8 +220,10 @@ export function LeadsPanel({
           status={status}
           onSave={saveLeads}
           onRegenerate={() => startRun("reemplazar")}
+          onRecalibrate={recalibrate}
           saving={saving}
           regenerating={running || starting}
+          recalibrating={recalibrating}
         />
       )}
     </div>

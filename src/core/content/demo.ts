@@ -10,6 +10,7 @@ import {
   type PieceContent,
   type Plataforma,
 } from "./types";
+import { flattenNavigation, type NavigationMap } from "@/core/navigation/types";
 
 // REQ-006 — Contenido propio de la app.
 // (1) analyzeFunctions: la IA propone funcionalidades demostrables (con URL y pasos)
@@ -71,7 +72,7 @@ const IGNORED_DIRS = new Set([
   "vendor",
 ]);
 const NAV_EVIDENCE =
-  /data-testid\s*=|(?:href|to|path)\s*=\s*["'`]|(?:id|name|aria-label)\s*=\s*["'`]|router\.(?:push|replace)\s*\(/i;
+  /data-(?:testid|tutorial)\s*=|placeholder\s*=|(?:href|to|path|value)\s*=\s*["'`]|(?:id|name|aria-label|role)\s*=\s*["'`]|(?:router\.(?:push|replace)|navigate)\s*\(|<Route\b|<(?:button|a|TabsTrigger)\b|cursor-pointer/i;
 
 /**
  * Inventario acotado del codigo local: rutas y selectores visibles para que la
@@ -186,11 +187,22 @@ export async function analyzeFunctions(args: {
   codePath?: string | null;
   objective?: string;
   loginConfigured?: boolean;
+  demoData?: string;
+  runtimeContext?: string;
+  navigationMap?: NavigationMap | null;
 }): Promise<AppFuncion[]> {
   const { dossier, appUrl } = args;
   const objective = args.objective?.trim() ?? "";
   const repoContext =
     args.codeType === "local" && args.codePath ? repoNavigationContext(args.codePath, objective) : "";
+  const navigationContext = args.navigationMap
+    ? flattenNavigation(args.navigationMap.roots)
+        .slice(0, 120)
+        .map((node) =>
+          `- ${node.label} | ruta=${node.route || "n/d"} | superficie=${node.surface} | evidencias=${node.evidence.join("; ")}`,
+        )
+        .join("\n")
+    : "";
 
   const prompt = `${objective
     ? `Analiza EXCLUSIVAMENTE como demostrar la funcionalidad solicitada \"${objective}\". Devuelve una sola funcion y conserva ese objetivo como nombre.`
@@ -203,8 +215,11 @@ export async function analyzeFunctions(args: {
 - Funcionalidades clave: ${dossier.funcionalidades.slice(0, 10).join(", ")}
 - URL base: ${appUrl}
 - Login previo al recorrido: ${args.loginConfigured ? "configurado; Playwright lo ejecutara antes de navSteps" : "no configurado"}
+${args.demoData ? `- Cliente/dato de ejemplo solicitado: ${args.demoData}` : "- Cliente/dato de ejemplo: no indicado; si hace falta una entidad dinámica, usa el primer elemento seguro observado y dilo en los pasos humanos"}
 
 ${repoContext}
+${args.runtimeContext ?? ""}
+${navigationContext ? `## Mapa funcional ya generado\n${navigationContext}` : ""}
 
 ## Instruccion
 Devuelve EXCLUSIVAMENTE un JSON con esta forma exacta:
@@ -219,7 +234,7 @@ Devuelve EXCLUSIVAMENTE un JSON con esta forma exacta:
       "confianza": "alta | media | baja",
       "navSteps": [
         { "action": "goto", "url": "URL concreta" },
-        { "action": "tap", "selector": "[data-testid='selector-real']" },
+        { "action": "tap", "selector": "[data-testid='selector-real']", "commit": false },
         { "action": "fill", "selector": "[data-testid='campo-real']", "value": "dato de demostracion" },
         { "action": "wait", "selector": "[data-testid='resultado-real']", "timeoutMs": 15000 },
         { "action": "scroll", "pixels": 500, "pauseMs": 1500 }
@@ -228,13 +243,18 @@ Devuelve EXCLUSIVAMENTE un JSON con esta forma exacta:
   ]
 }
 Reglas: ${objective ? "exactamente 1 funcion, la solicitada" : "3-6 funciones; prioriza las de mayor impacto visual"}; los pasos deben ser accionables.
-Si hay evidencia del repositorio, usa exclusivamente rutas y selectores que aparezcan en ella,
-prefiriendo data-testid. No inventes selectores. Si no hay evidencia suficiente, omite navSteps
+Si hay evidencia del repositorio o de Playwright runtime, usa exclusivamente rutas y selectores que
+aparezcan en ella, prefiriendo data-testid/data-tutorial y después id, name, placeholder, href o texto
+literal de botón. Puedes usar selectores Playwright observados como button:has-text("Texto") y
+"tag.cursor-pointer >> nth=0". No inventes selectores. Si no hay evidencia suficiente, omite navSteps
 y conserva los pasos humanos; la grabacion usara su modo compatible. navSteps puede contener varios
 goto si la funcionalidad atraviesa varias pantallas. No incluyas pasos ni valores de credenciales:
 el login cifrado ocurre antes de ejecutar este recorrido. Cuando haya navSteps, empieza por un goto
-a la primera pantalla funcional para que el recorrido sea determinista despues del login. Cada evidencia debe existir literalmente
-en el contexto proporcionado. No incluyas nada fuera del JSON.`;
+a la primera pantalla funcional para que el recorrido sea determinista despues del login. Para rutas
+dinamicas, navega seleccionando la entidad observada; nunca inventes IDs ni uses ":param" en una URL.
+Marca \`commit:true\` SOLO en el tap que confirma una mutacion (generar, guardar, enviar, eliminar o pagar),
+para que el dry-run se detenga antes de ejecutarla. Cada evidencia debe existir literalmente en el
+contexto proporcionado. No incluyas nada fuera del JSON.`;
 
   const settings = getSettings();
   const engine = getEngine(settings.aiEngine);
@@ -248,11 +268,40 @@ en el contexto proporcionado. No incluyas nada fuera del JSON.`;
 
   const data = (result.data ?? tryParse(result.text)) as { funciones?: unknown } | null;
   const list = Array.isArray(data?.funciones) ? data!.funciones : [];
-  const funciones = list.map(coerceFuncion).filter((f) => f.nombre);
+  const funciones = list
+    .map(coerceFuncion)
+    .filter((f) => f.nombre)
+    .map((funcion) => normalizeFunctionUrls(funcion, appUrl));
   if (funciones.length === 0) {
     throw new Error("El motor de IA no propuso funcionalidades. Revisa el motor en Ajustes.");
   }
   return funciones;
+}
+
+function normalizeFunctionUrls(funcion: AppFuncion, appUrl: string): AppFuncion {
+  const absolute = (value: string): string => {
+    if (!value) return appUrl;
+    try {
+      return new URL(value, appUrl).href;
+    } catch {
+      return appUrl;
+    }
+  };
+  const normalized: AppFuncion = { ...funcion, url: absolute(funcion.url) };
+  if (funcion.navSteps?.length) {
+    const invalidDynamicUrl = funcion.navSteps.some(
+      (step) => step.action === "goto" && Boolean(step.url?.match(/:\w+|\{[^}]+\}|\[[^\]]+\]/)),
+    );
+    if (!invalidDynamicUrl) {
+      normalized.navSteps = funcion.navSteps.map((step) =>
+        step.action === "goto" && step.url ? { ...step, url: absolute(step.url) } : step,
+      );
+    } else {
+      delete normalized.navSteps;
+      normalized.confianza = "baja";
+    }
+  }
+  return normalized;
 }
 
 const SYSTEM_GUION = `Eres un guionista experto en contenido corto para redes sociales que muestra

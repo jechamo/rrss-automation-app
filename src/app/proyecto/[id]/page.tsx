@@ -9,6 +9,7 @@ import { ViralesPanel } from "@/components/ViralesPanel";
 import { ContentTray } from "@/components/ContentTray";
 import { EntityLogo } from "@/components/EntityLogo";
 import { ProjectLoading } from "@/components/ProjectLoading";
+import { NavigationMapPanel } from "@/components/NavigationMapPanel";
 
 type RunEvent =
   | { type: "node"; nodeId: string; state: NodeState; detail?: string }
@@ -23,6 +24,7 @@ type ProjectResp = {
     url: string;
     codeType: string | null;
     codePath: string | null;
+    context: string | null;
     logoPath: string | null;
   };
   lastRun: { id: string; status: string; nodes: string } | null;
@@ -178,6 +180,10 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
         <PipelineGraph nodes={nodes} />
       </section>
 
+      <section id="mapa" className="mb-6 scroll-mt-6">
+        <NavigationMapPanel projectId={id} runStatus={runStatus} />
+      </section>
+
       <section className="mb-6 grid gap-4 md:grid-cols-[240px_1fr]">
         <ProjectLogoEditor
           projectId={id}
@@ -198,6 +204,15 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
             setProject((p) => (p ? { ...p, codeType, codePath } : p))
           }
         />
+        <div className="md:col-span-2">
+          <ContextEditor
+            projectId={id}
+            initialContext={project.context ?? ""}
+            onSaved={(context) =>
+              setProject((current) => (current ? { ...current, context } : current))
+            }
+          />
+        </div>
       </section>
 
       {(running || logs.length > 0) && (
@@ -457,6 +472,76 @@ function SourceEditor({
           {saving ? "Guardando…" : "Guardar fuente"}
         </button>
       </div>
+    </div>
+  );
+}
+
+function ContextEditor({
+  projectId,
+  initialContext,
+  onSaved,
+}: {
+  projectId: string;
+  initialContext: string;
+  onSaved: (context: string | null) => void;
+}) {
+  const [context, setContext] = useState(initialContext);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const dirty = context !== initialContext;
+
+  async function save() {
+    setSaving(true);
+    setSaved(false);
+    setError("");
+    const response = await fetch(`/api/projects/${projectId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ context }),
+    });
+    setSaving(false);
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      setError(data.error ?? `HTTP ${response.status}`);
+      return;
+    }
+    const normalized = context.trim();
+    onSaved(normalized || null);
+    setContext(normalized);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  }
+
+  return (
+    <div className="glass p-4">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h2 className="text-sm font-semibold text-white/60">Contexto para el análisis</h2>
+        {saved && <span className="text-xs text-[var(--color-state-ok)]">Guardado ✓</span>}
+      </div>
+      <textarea
+        className="input min-h-24 resize-y"
+        value={context}
+        maxLength={8000}
+        onChange={(event) => setContext(event.target.value)}
+        placeholder="Funcionalidades importantes, zonas privadas o aclaraciones que la IA debe priorizar…"
+      />
+      <div className="mt-1 flex items-start justify-between gap-4 text-[11px] text-white/40">
+        <p>
+          Se usa en próximas regeneraciones para priorizar web y código. Se trata como información
+          aportada por ti y se contrasta con las evidencias disponibles.
+        </p>
+        <span className="shrink-0 tabular-nums">{context.length}/8000</span>
+      </div>
+      {error && <div className="mt-2 text-xs text-[var(--color-state-error)]">{error}</div>}
+      <button
+        type="button"
+        onClick={save}
+        disabled={saving || !dirty}
+        className="mt-3 rounded-lg bg-[var(--color-accent)] px-3 py-1.5 text-sm font-medium disabled:opacity-40"
+      >
+        {saving ? "Guardando…" : "Guardar contexto"}
+      </button>
     </div>
   );
 }

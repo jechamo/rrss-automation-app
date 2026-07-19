@@ -11,22 +11,35 @@ datasource db {
 }
 
 model Project {
-  id        String         @id @default(cuid())
-  name      String
-  url       String
-  codeType  String? // local | github_public | github_private | none
-  codePath  String? // ruta local o URL de repo
-  logoPath  String? // ruta relativa en data/media/project-<id>/ (logo manual)
-  niche       String?
-  createdAt   DateTime       @default(now())
-  dossier     Dossier?
-  competencia Competencia?
-  leads       Leads?
-  virales     Virales?
-  runs        Run[]
-  pieces      ContentPiece[]
-  mediaAssets MediaAsset[]
-  mixes       MixComposition[]
+  id            String           @id @default(cuid())
+  name          String
+  url           String
+  codeType      String? // local | github_public | github_private | none
+  codePath      String? // ruta local o URL de repo
+  context       String? // brief opcional aportado por el usuario para orientar el analisis
+  logoPath      String? // ruta relativa en data/media/project-<id>/ (logo manual)
+  niche         String?
+  createdAt     DateTime         @default(now())
+  dossier       Dossier?
+  navigationMap NavigationMap?
+  competencia   Competencia?
+  leads         Leads?
+  virales       Virales?
+  runs          Run[]
+  pieces        ContentPiece[]
+  mediaAssets   MediaAsset[]
+  mixes         MixComposition[]
+}
+
+model NavigationMap {
+  id         String    @id @default(cuid())
+  projectId  String    @unique
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  content    String // JSON: arbol funcional hasta 3 niveles
+  status     String    @default("draft") // draft | verified
+  version    Int       @default(1)
+  verifiedAt DateTime?
+  updatedAt  DateTime  @updatedAt
 }
 
 model Dossier {
@@ -82,43 +95,43 @@ model Run {
 }
 
 model ContentPiece {
-  id         String   @id @default(cuid())
-  projectId  String
-  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  origin     String   @default("viral") // viral (REQ-005) | own (REQ-006)
-  sourceUrl  String? // URL del viral clonado (REQ-005)
-  titulo     String   @default("")
-  plataforma String? // youtube | tiktok | instagram
-  content    String   @default("{}") // JSON: guion + escaleta + patron aplicado
-  config     String   @default("{}") // JSON: rama (fal|heygen) + modelo video + voz
-  assets     String   @default("{}") // JSON: videoPath + audioPath + clips + logs
-  runId      String? // ultimo run de generacion (REQ-005) para restaurar el grafo
-  status     String   @default("borrador") // borrador | generando | listo | publicado | error
-  version    Int      @default(1)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String           @id @default(cuid())
+  projectId   String
+  project     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  origin      String           @default("viral") // viral (REQ-005) | own (REQ-006)
+  sourceUrl   String? // URL del viral clonado (REQ-005)
+  titulo      String           @default("")
+  plataforma  String? // youtube | tiktok | instagram
+  content     String           @default("{}") // JSON: guion + escaleta + patron aplicado
+  config      String           @default("{}") // JSON: rama (fal|heygen) + modelo video + voz
+  assets      String           @default("{}") // JSON: videoPath + audioPath + clips + logs
+  runId       String? // ultimo run de generacion (REQ-005) para restaurar el grafo
+  status      String           @default("borrador") // borrador | generando | listo | publicado | error
+  version     Int              @default(1)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
   mediaAssets MediaAsset[]
   mixes       MixComposition[]
 }
 
 model MediaAsset {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
   projectId String
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   pieceId   String?
   piece     ContentPiece? @relation(fields: [pieceId], references: [id], onDelete: SetNull)
-  kind      String   // recording | video | audio | music | presenter | clip | final
-  origin    String   // recorder | upload | playwright | fal | heygen | elevenlabs | indexed | mix
+  kind      String // recording | video | audio | music | presenter | clip | final
+  origin    String // recorder | upload | playwright | fal | heygen | elevenlabs | indexed | mix
   name      String
   path      String
-  mimeType  String   @default("application/octet-stream")
-  size      Int      @default(0)
+  mimeType  String        @default("application/octet-stream")
+  size      Int           @default(0)
   duration  Float?
   width     Int?
   height    Int?
-  metadata  String   @default("{}")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  metadata  String        @default("{}")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
   @@unique([projectId, path])
   @@index([projectId, kind])
@@ -126,18 +139,18 @@ model MediaAsset {
 }
 
 model MixComposition {
-  id         String   @id @default(cuid())
+  id         String        @id @default(cuid())
   projectId  String
-  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project    Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   pieceId    String?
   piece      ContentPiece? @relation(fields: [pieceId], references: [id], onDelete: SetNull)
   name       String
-  status     String   @default("draft") // draft | rendering | ready | error
-  recipe     String   @default("{}")
+  status     String        @default("draft") // draft | rendering | ready | error
+  recipe     String        @default("{}")
   outputPath String?
   error      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 
   @@index([projectId, status])
   @@index([pieceId])

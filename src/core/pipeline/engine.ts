@@ -4,7 +4,14 @@ import { sanitizeProviderMessage } from "@/core/media/contracts";
 
 export interface NodeCtx {
   runId: string;
-  project: { id: string; name: string; url: string; codeType: string | null; codePath: string | null };
+  project: {
+    id: string;
+    name: string;
+    url: string;
+    codeType: string | null;
+    codePath: string | null;
+    context?: string | null;
+  };
   artifacts: Record<string, unknown>;
   log: (message: string) => void;
 }

@@ -22,12 +22,51 @@
 | REQ-011 | Estudio multimedia + REC/STOP + MIX + Guía | 🟡 Implementado — herramientas y subtítulos verificados; pendiente prueba manual del selector de captura |
 | REQ-012 | Plan audiovisual + cortes configurables + montador ligero | 🟡 Implementado — contratos/build correctos; pendiente prueba del usuario con un render MIX v2 real |
 | REQ-013 | Revisión de prompts + catálogo fal.ai ampliado | 🟡 Implementado — pendiente prueba real con créditos fal.ai |
+| REQ-014 | Confianza operativa y navegación autenticada | 🟡 Implementado — pendiente validar recorrido real en ChaFit tras login |
+| REQ-015 | Mapa funcional multimenú de la app | 🟡 Implementado — pendiente regenerar un proyecto y validar sus rutas privadas con login real |
 
 Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ---
 
 ## Historial
+
+### 2026-07-19 — REQ-015: mapa funcional multimenú de hasta tres niveles
+
+- Nuevo nodo `Mapa funcional` en REQ-001. Analiza rutas, enlaces, `navigate`/router, layouts y
+  componentes de navegación sin asumir un diseño concreto: admite simultáneamente navbar, barra
+  inferior, sidebar izquierda/derecha, drawer, pestañas, breadcrumbs y cuadrículas de tarjetas.
+- Árbol tipado y defensivo con varias raíces, máximo tres niveles y 120 nodos; conserva rutas
+  dinámicas como `:id`, roles, login, condiciones, acciones y evidencias `fichero:línea` sin inventar
+  destinos. Si no hay código, crea un borrador desde el crawl y lo marca pendiente.
+- Persistencia aditiva `NavigationMap`, API de lectura/edición y panel visual con resumen, filtros por
+  superficie/estado y copia en Markdown. Los proyectos anteriores muestran un estado vacío claro
+  hasta que se regenere REQ-001. El panel comienza plegado para no ocupar la página y conserva el
+  resumen, métricas y un control accesible para desplegar o volver a plegar todo el detalle.
+- Verificación Playwright opcional y segura: reutiliza el login cifrado, visita únicamente rutas
+  conocidas del mismo origen, descubre enlaces visibles adicionales y nunca pulsa botones de negocio.
+  Las rutas dinámicas sin un ID real permanecen condicionales.
+- El mapa alimenta el dossier y el análisis dirigido de funcionalidades de contenido propio. La guía
+  explica que el contexto sirve para audiencia/exclusiones y que ya no hace falta pegar un mapa manual.
+- Migración SQLite aplicada. Verificado con TypeScript, 21/21 contratos, build de producción y navegador
+  local: enlace lateral, estado vacío retrocompatible y guía visibles, sin errores de consola.
+
+### 2026-07-19 — REQ-014: navegación autenticada, contexto y confianza operativa
+
+- El análisis dirigido de contenido propio amplía rutas/selectores de código y, con login guardado,
+  inspecciona en Playwright móvil la primera superficie privada. Puede usar un cliente/dato de ejemplo,
+  no inventa IDs dinámicos y avisa cuando solo existe guía humana sin JSON ejecutable.
+- `NavStep.commit` separa validación de mutación: el dry-run localiza el control final y se detiene;
+  la grabación real conserva el clic. Las credenciales no entran en prompts ni logs.
+- Catálogos de vídeo/voz independientes con reintento dentro del modal y mensajes distintos para
+  credencial, límite temporal y fallo 5xx/red.
+- Auditoría y recalibración FIT+INTENT sin WebSearch: intención máxima 3 sin señal explícita,
+  justificación obligatoria y límite de calientes. Los lotes antiguos muestran CTA de corrección.
+- Logos con iniciales inmediatas y fade-in de imagen; desaparece el hueco durante carga/fallback.
+- `Project.context` opcional, persistente y editable; orienta crawl, fragmentos focalizados de código
+  y dossier como fuente aportada, nunca como evidencia verificada por sí sola.
+- Migración SQLite aditiva aplicada. Verificado con TypeScript, 19/19 contratos, build de producción
+  y navegador local (nuevo proyecto, editor de contexto, aviso de leads y modal de contenido propio).
 
 ### 2026-07-19 — REQ-013: preflight de prompts y nuevos modelos fal.ai
 

@@ -67,6 +67,7 @@ export function DemoContentModal({
   const [recordings, setRecordings] = useState<RecordingAsset[]>([]);
   const [showRecorder, setShowRecorder] = useState(false);
   const [usarLogin, setUsarLogin] = useState(false);
+  const [demoData, setDemoData] = useState("");
   const [loginUser, setLoginUser] = useState("");
   const [loginPass, setLoginPass] = useState("");
   const [loginConfigured, setLoginConfigured] = useState(false);
@@ -110,17 +111,17 @@ export function DemoContentModal({
     const r = await fetch(`/api/projects/${projectId}/functions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ objetivo: objective, usarLogin }),
+      body: JSON.stringify({ objetivo: objective, usarLogin, demoData }),
     });
     setLoadingFuncs(false);
     if (!r.ok) {
       setFuncsErr(`HTTP ${r.status}`);
       return;
     }
-    const d = (await r.json()) as { funciones: AppFuncion[]; error?: string };
+    const d = (await r.json()) as { funciones: AppFuncion[]; error?: string; warning?: string };
     setFunciones(d.funciones);
     if (objective && d.funciones.length > 0) pick(d.funciones[0]);
-    if (d.error) setFuncsErr(d.error);
+    if (d.error || d.warning) setFuncsErr(d.error ?? d.warning ?? "");
   }
 
   function pick(f: AppFuncion) {
@@ -187,6 +188,7 @@ export function DemoContentModal({
         .map((s) => s.trim())
         .filter(Boolean),
       ...(navSteps?.length ? { navSteps } : {}),
+      ...(demoData.trim() ? { demoData: demoData.trim() } : {}),
       usarLogin,
       grabacionModo,
       ...(grabacionModo === "library" && recordingAssetId ? { recordingAssetId } : {}),
@@ -206,6 +208,7 @@ export function DemoContentModal({
         ok?: boolean;
         failedStep?: number;
         error?: string;
+        logs?: string[];
       };
       if (!r.ok || !data.ok) {
         setDryRunState("error");
@@ -217,7 +220,11 @@ export function DemoContentModal({
         return;
       }
       setDryRunState("ok");
-      setDryRunMessage("URL y pasos validados correctamente.");
+      setDryRunMessage(
+        data.logs?.some((log) => log.includes("dry-run detenido"))
+          ? "Recorrido validado hasta la acción final, que no se ejecutó."
+          : "URL y pasos validados correctamente.",
+      );
     } catch (error) {
       setDryRunState("error");
       setDryRunMessage(error instanceof Error ? error.message : String(error));
@@ -359,6 +366,17 @@ export function DemoContentModal({
                 setFuncionConfianza("");
               }}
             />
+            <input
+              className="input mt-2"
+              placeholder="Cliente o dato de ejemplo (opcional)"
+              value={demoData}
+              maxLength={160}
+              onChange={(event) => setDemoData(event.target.value)}
+            />
+            <p className="mt-1 text-[10px] text-white/35">
+              Para rutas dinámicas, indica por ejemplo «Juan García». Si lo dejas vacío, el análisis
+              puede proponer el primer elemento seguro observado después del login.
+            </p>
             {funcionConfianza && (
               <div className="mt-2 rounded-lg border border-white/10 bg-white/5 p-2 text-[11px] text-white/55">
                 Confianza del recorrido: <b className="text-white/75">{funcionConfianza}</b>
@@ -423,7 +441,7 @@ export function DemoContentModal({
           {grabacionModo === "auto" && (
             <label className="block">
               <span className="mb-1 block text-xs text-white/50">
-                Pasos automáticos Playwright (JSON opcional)
+                Pasos automáticos Playwright (JSON ejecutable)
               </span>
               <textarea
                 className="input min-h-32 font-mono text-[11px]"
@@ -433,8 +451,18 @@ export function DemoContentModal({
               />
               <span className="mt-1 block text-[10px] text-white/35">
                 La IA los rellena con selectores del repositorio y puede incluir varios cambios de
-                ruta. Vacío mantiene el recorrido compatible por scroll.
+                ruta. Los pasos con `commit:true` solo se ejecutan al grabar, nunca en la prueba.
               </span>
+              {navSteps?.length ? (
+                <span className="mt-2 block rounded-lg border border-emerald-400/30 bg-emerald-400/10 p-2 text-[11px] text-emerald-200">
+                  ✓ Recorrido automático construido: {navSteps.length} pasos ejecutables.
+                </span>
+              ) : (
+                <span className="mt-2 block rounded-lg border border-amber-400/30 bg-amber-400/10 p-2 text-[11px] text-amber-200">
+                  Solo hay una guía humana. Playwright no hará clic ni rellenará formularios hasta
+                  que se construya este JSON; el modo compatible únicamente desplaza la pantalla.
+                </span>
+              )}
               {navStepsError && (
                 <span className="mt-1 block text-xs text-[var(--color-state-error)]">
                   {navStepsError}
@@ -514,7 +542,8 @@ export function DemoContentModal({
                       {savingLogin ? "Guardando…" : "Guardar credenciales (cifradas)"}
                     </button>
                     <p className="text-[10px] text-white/30">
-                      Se cifran en local (AES-256-GCM) por proyecto. La contraseña nunca se muestra ni sale del PC.
+                      Se cifran en local (AES-256-GCM) por proyecto. La inspección usa la sesión y los
+                      textos visibles, pero nunca incluye la contraseña en el análisis ni en los logs.
                     </p>
                   </div>
                 )}
@@ -522,10 +551,19 @@ export function DemoContentModal({
               <div className="flex items-center gap-2">
                 <button
                   onClick={testSteps}
-                  disabled={dryRunState === "testing" || !funcionUrl.trim() || Boolean(navStepsError)}
+                  disabled={
+                    dryRunState === "testing" ||
+                    !funcionUrl.trim() ||
+                    !navSteps?.length ||
+                    Boolean(navStepsError)
+                  }
                   className="rounded-lg border border-[var(--color-accent)]/40 px-3 py-2 text-xs text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 disabled:opacity-40"
                 >
-                  {dryRunState === "testing" ? "Probando…" : "Probar pasos"}
+                  {dryRunState === "testing"
+                    ? "Probando…"
+                    : navSteps?.length
+                      ? "Probar pasos"
+                      : "Sin recorrido automático"}
                 </button>
                 {dryRunMessage && (
                   <span

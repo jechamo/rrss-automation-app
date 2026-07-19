@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   EMPTY_LEAD,
   type Canal,
@@ -12,6 +12,7 @@ import { ExpandableCarousel } from "@/components/ExpandableCarousel";
 import { ScoreBar } from "@/components/ScoreBar";
 import { EntityLogo } from "@/components/EntityLogo";
 import { MiniMap } from "@/components/MiniMap";
+import { auditLeadCalibration } from "@/core/leads/calibration";
 
 const TEMPERATURAS: Temperatura[] = ["caliente", "templado", "frio"];
 const CANALES: Canal[] = ["correo", "visita", "otro"];
@@ -27,19 +28,26 @@ export function LeadsEditor({
   status,
   onSave,
   onRegenerate,
+  onRecalibrate,
   saving,
   regenerating,
+  recalibrating,
 }: {
   initial: Leads;
   status: string;
   onSave: (l: Leads, approve: boolean) => Promise<void>;
   onRegenerate: () => void;
+  onRecalibrate: () => void;
   saving: boolean;
   regenerating: boolean;
+  recalibrating: boolean;
 }) {
   const [l, setL] = useState<Leads>(initial);
   const [showEdit, setShowEdit] = useState(false);
   const approved = status === "approved";
+  const calibrationWarnings = auditLeadCalibration(l);
+
+  useEffect(() => setL(initial), [initial]);
 
   const set = <K extends keyof Leads>(k: K, v: Leads[K]) => setL((p) => ({ ...p, [k]: v }));
 
@@ -89,6 +97,25 @@ export function LeadsEditor({
           </button>
         </div>
       </div>
+
+      {calibrationWarnings.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-100 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="font-semibold">Estas puntuaciones necesitan recalibración</div>
+            <ul className="mt-1 list-disc space-y-0.5 pl-4 text-amber-100/75">
+              {calibrationWarnings.map((warning) => <li key={warning}>{warning}</li>)}
+            </ul>
+          </div>
+          <button
+            type="button"
+            onClick={onRecalibrate}
+            disabled={recalibrating || regenerating}
+            className="shrink-0 rounded-lg border border-amber-300/40 px-3 py-2 font-medium hover:bg-amber-300/10 disabled:opacity-40"
+          >
+            {recalibrating ? "Recalibrando…" : "Recalibrar puntuaciones"}
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <div className="md:col-span-2">

@@ -14,6 +14,7 @@ const NAV: { href: string; label: string; icon: string }[] = [
 // Secciones dentro de un proyecto (anclas de la página /proyecto/[id]).
 const PROJECT_SECTIONS: { anchor: string; label: string }[] = [
   { anchor: "pipeline", label: "Pipeline" },
+  { anchor: "mapa", label: "Mapa de la app" },
   { anchor: "dossier", label: "Dossier" },
   { anchor: "competencia", label: "Competencia" },
   { anchor: "leads", label: "Leads" },
