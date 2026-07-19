@@ -40,7 +40,7 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
   visible. Descarta de forma segura tutoriales y avisos personalizados aunque no declaren
   `role="dialog"`, incluidos «Omitir», «Entendido», «Ahora no» y equivalentes. Si no encuentra la
   ruta, el error enumera los tabs/filtros intermedios que llegó a probar.
-- Todos los montajes REQ-005/006 y los remontajes sin créditos añaden, cuando existe logo del
+- Todos los montajes REQ-005/006, los remontajes sin créditos y las nuevas versiones MIX añaden, cuando existe logo del
   proyecto, un cierre vertical animado local de 3 segundos. Conserva el logo exacto, no llama a
   fal.ai/HeyGen/ElevenLabs y expone el clip separado en «Recursos generados».
 - Si falta logo, FFmpeg, ffprobe o el vídeo final, el montaje original se conserva y el registro
