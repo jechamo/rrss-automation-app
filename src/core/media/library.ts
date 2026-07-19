@@ -168,7 +168,7 @@ export async function indexProjectAssets(projectId: string): Promise<void> {
       { rel: assets.recordingPath, kind: "recording", label: "Grabación" },
       { rel: assets.presenterPath, kind: "presenter", label: "Presentador HeyGen" },
       { rel: assets.audioPath, kind: "audio", label: "Locución" },
-      { rel: assets.videoPath, kind: /(?:^|\/)final\.mp4$/i.test(assets.videoPath) ? "final" : "video", label: "Vídeo" },
+      { rel: assets.videoPath, kind: /(?:^|\/)final(?:-[^/]+)?\.mp4$/i.test(assets.videoPath) ? "final" : "video", label: "Vídeo" },
       ...assets.clips.map((rel, index) => ({ rel, kind: "clip" as const, label: `Clip ${index + 1}` })),
     ];
     for (const entry of entries) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { saveBytes } from "@/core/media/storage";
+import { resetNavigationTimeline, saveBytes } from "@/core/media/storage";
 import { coerceAssets } from "@/core/content/types";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +30,7 @@ export async function POST(
 
   const buf = Buffer.from(await file.arrayBuffer());
   const rel = saveBytes(pieceId, `screencast${ext}`, buf);
+  resetNavigationTimeline(pieceId, "manual");
 
   const assets = coerceAssets(JSON.parse(piece.assets || "{}"));
   assets.recordingPath = rel;

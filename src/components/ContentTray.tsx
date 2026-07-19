@@ -44,6 +44,12 @@ const REQ006_STEPS: { id: string; label: string }[] = [
   { id: "montaje", label: "Montaje" },
 ];
 
+const REQ006_REFRESH_STEPS: { id: string; label: string }[] = [
+  { id: "input", label: "Reutilizar recursos" },
+  { id: "navigation", label: "Navegación" },
+  { id: "montage", label: "Remontar sin créditos" },
+];
+
 const nodesFrom = (steps: { id: string; label: string }[]): GraphNode[] =>
   steps.map((s) => ({ id: s.id, label: s.label, state: "pending" as NodeState }));
 
@@ -116,7 +122,11 @@ export function ContentTray({
       try {
         nodesMap[runId] = JSON.parse(run.nodes) as GraphNode[];
       } catch {
-        nodesMap[runId] = run.requisito === "REQ-006" ? nodesFrom(REQ006_STEPS) : initialNodes();
+        nodesMap[runId] = run.requisito === "REQ-006"
+          ? nodesFrom(REQ006_STEPS)
+          : run.requisito === "REQ-006-NAV"
+            ? nodesFrom(REQ006_REFRESH_STEPS)
+            : initialNodes();
       }
       try {
         logsMap[runId] = run.logs ? JSON.parse(run.logs) as string[] : [];
@@ -269,6 +279,34 @@ export function ContentTray({
     await load();
   }
 
+  async function refreshOwnPiece(pieceId: string, mode: "auto" | "existing") {
+    const message = mode === "auto"
+      ? "Se validará y regrabará únicamente la navegación. Después se remontará reutilizando vídeos y voz existentes."
+      : "Se remontará con la grabación actual y los recursos existentes, sin llamar a fal.ai ni ElevenLabs.";
+    if (!window.confirm(`${message}\n\n¿Continuar?`)) return;
+    const response = await fetch(`/api/content/${projectId}/${pieceId}/remount`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode }),
+    });
+    const data = (await response.json().catch(() => ({}))) as {
+      error?: string;
+      runId?: string;
+      nodes?: GraphNode[];
+    };
+    if (!response.ok || !data.runId) {
+      window.alert(data.error || "No se pudo iniciar el remontaje.");
+      return;
+    }
+    setRunNodes((previous) => ({
+      ...previous,
+      [data.runId!]: data.nodes ?? nodesFrom(REQ006_REFRESH_STEPS),
+    }));
+    setRunLogs((previous) => ({ ...previous, [data.runId!]: [] }));
+    subscribe(data.runId);
+    await load();
+  }
+
   async function removePiece(pieceId: string) {
     if (!confirm("¿Eliminar esta pieza de contenido?")) return;
     await fetch(`/api/content/${projectId}/${pieceId}`, { method: "DELETE" });
@@ -374,6 +412,8 @@ export function ContentTray({
                 onUpload={(file) => uploadScreencast(focus.id, file)}
                 onRecord={() => setRecordingPieceId(focus.id)}
                 onClearRecording={() => clearRecording(focus.id)}
+                onRefreshNavigation={() => refreshOwnPiece(focus.id, "auto")}
+                onRemount={() => refreshOwnPiece(focus.id, "existing")}
                 onReload={load}
               />
             );
@@ -395,6 +435,8 @@ export function ContentTray({
                 onUpload={(file) => uploadScreencast(p.id, file)}
                 onRecord={() => setRecordingPieceId(p.id)}
                 onClearRecording={() => clearRecording(p.id)}
+                onRefreshNavigation={() => refreshOwnPiece(p.id, "auto")}
+                onRemount={() => refreshOwnPiece(p.id, "existing")}
                 onReload={load}
               />
             </div>
@@ -448,6 +490,8 @@ function PieceCard({
   onUpload,
   onRecord,
   onClearRecording,
+  onRefreshNavigation,
+  onRemount,
   onReload,
 }: {
   projectId: string;
@@ -461,6 +505,8 @@ function PieceCard({
   onUpload: (file: File) => void;
   onRecord: () => void;
   onClearRecording: () => void;
+  onRefreshNavigation: () => void;
+  onRemount: () => void;
   onReload: () => void;
 }) {
   const [showPublish, setShowPublish] = useState(false);
@@ -470,7 +516,7 @@ function PieceCard({
     `/api/content/${projectId}/${piece.id}/asset?path=${encodeURIComponent(rel)}`;
   const g = piece.content.guion;
   const isOwn = piece.origin === "own";
-  const isMounted = /(?:^|\/)final\.mp4$/i.test(piece.assets.videoPath);
+  const isMounted = /(?:^|\/)final(?:-[^/]+)?\.mp4$/i.test(piece.assets.videoPath);
   const allLogs = [...piece.assets.logs, ...(runLogs ?? [])].map(displayGenerationMessage).filter(
     (log, index, list) => list.indexOf(log) === index,
   );
@@ -673,6 +719,17 @@ function PieceCard({
             <span className="text-xs text-white/50">Grabación de la app</span>
             <div className="flex flex-wrap gap-2">
             <button type="button" onClick={onRecord} className="rounded-lg bg-red-500 px-2 py-1 text-xs font-semibold text-white hover:bg-red-400">● REC</button>
+            {piece.config.demo?.navSteps?.length ? (
+              <button
+                type="button"
+                onClick={onRefreshNavigation}
+                disabled={piece.status === "generando"}
+                className="rounded-lg border border-cyan-400/35 bg-cyan-400/10 px-2 py-1 text-xs text-cyan-200 hover:bg-cyan-400/15 disabled:opacity-40"
+                title="Valida y regraba Playwright; reutiliza los vídeos y la voz existentes"
+              >
+                Regrabar navegación
+              </button>
+            ) : null}
             <label
               className={[
                 "cursor-pointer rounded-lg px-2 py-1 text-xs",
@@ -694,8 +751,23 @@ function PieceCard({
               />
             </label>
             {piece.assets.recordingPath && <button type="button" onClick={onClearRecording} className="rounded-lg border border-red-400/20 px-2 py-1 text-xs text-red-300 hover:bg-red-500/10">Quitar</button>}
+            {piece.assets.recordingPath ? (
+              <button
+                type="button"
+                onClick={onRemount}
+                disabled={piece.status === "generando"}
+                className="rounded-lg border border-purple-400/35 bg-purple-400/10 px-2 py-1 text-xs font-medium text-purple-200 hover:bg-purple-400/15 disabled:opacity-40"
+                title="No solicita nuevos vídeos, voz ni avatar"
+              >
+                Remontar sin créditos
+              </button>
+            ) : null}
             </div>
           </div>
+          <p className="mb-2 text-[10px] leading-relaxed text-white/35">
+            Puedes reemplazar la navegación manualmente o regrabarla con Playwright y después remontar
+            reutilizando el vídeo, la voz y el guion ya generados.
+          </p>
           {piece.assets.recordingPath ? (
             <video
               key={piece.assets.recordingPath}

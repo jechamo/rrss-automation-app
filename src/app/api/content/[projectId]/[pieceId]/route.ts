@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { coerceContent, coerceAssets, rowToPiece, type PieceStatus } from "@/core/content/types";
+import { resetNavigationTimeline } from "@/core/media/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,7 @@ export async function PUT(
     if (!media) return NextResponse.json({ error: "Grabación de mediateca no encontrada." }, { status: 404 });
     const assets = coerceAssets(JSON.parse(existing.assets || "{}"));
     assets.recordingPath = media.path;
+    resetNavigationTimeline(pieceId, "library");
     data.assets = JSON.stringify(assets);
   }
   if ((body as { clearRecording?: unknown }).clearRecording === true) {

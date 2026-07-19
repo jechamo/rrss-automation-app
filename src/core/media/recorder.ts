@@ -5,6 +5,7 @@ import type { LoginCreds } from "@/core/secrets/login";
 import type { NavStep } from "@/core/content/types";
 import { hasFfmpeg, runFfmpeg } from "./ffmpeg";
 import { dismissTransientDialogs, prepareAuthenticatedSession } from "./auth-session";
+import { resolveTapStep, resolveVisibleSelector } from "./navigation-repair";
 
 /**
  * REQ-006 — Grabacion de la propia app con Playwright en modo movil.
@@ -28,6 +29,8 @@ export interface RecordArgs {
   login?: LoginCreds | null;
   log: (m: string) => void;
   dryRun?: boolean;
+  outputSuffix?: string;
+  onResolvedSteps?: (steps: NavStep[]) => void | Promise<void>;
 }
 
 export class RecordStepError extends Error {
@@ -119,6 +122,8 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
 
     if (navSteps?.length) {
       let stoppedBeforeCommit = false;
+      const resolvedSteps: NavStep[] = [];
+      let lastContextSelector = "";
       for (let i = 0; i < navSteps.length; i++) {
         const step = navSteps[i];
         const started = now();
@@ -132,37 +137,66 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
                 waitUntil: "networkidle",
                 timeout: step.timeoutMs ?? 30000,
               });
+              lastContextSelector = "";
               break;
             case "tap":
               if (!step.selector) throw new Error("falta selector");
+              const tap = await resolveTapStep({
+                page,
+                step,
+                log,
+                contextSelector: lastContextSelector || undefined,
+              });
+              for (const inserted of tap.inserted) {
+                resolvedSteps.push(inserted);
+                navLog.push({ t_inicio: started, t_fin: now(), ...inserted });
+              }
+              const resolvedTap = { ...step, selector: tap.selector };
+              resolvedSteps.push(resolvedTap);
               if (dryRun && step.commit) {
                 await page
-                  .locator(step.selector)
+                  .locator(tap.selector)
                   .first()
                   .waitFor({ state: "visible", timeout: step.timeoutMs ?? 15000 });
                 stoppedBeforeCommit = true;
-                log(`Control final localizado; dry-run detenido antes de ejecutar: ${step.selector}`);
+                log(`Control final localizado; dry-run detenido antes de ejecutar: ${tap.selector}`);
               } else {
-                await page.locator(step.selector).first().tap({ timeout: step.timeoutMs ?? 15000 });
+                await page.locator(tap.selector).first().tap({ timeout: step.timeoutMs ?? 15000 });
               }
               break;
             case "fill":
               if (!step.selector) throw new Error("falta selector");
+              const fillTarget = await resolveVisibleSelector(page, step.selector);
+              if (fillTarget.repaired) log(`Selector reparado: ${step.selector} → ${fillTarget.selector}`);
+              resolvedSteps.push({ ...step, selector: fillTarget.selector });
               await page
-                .locator(step.selector)
+                .locator(fillTarget.selector)
                 .first()
                 .fill(step.value ?? "", { timeout: step.timeoutMs ?? 15000 });
               break;
             case "wait":
               if (!step.selector) throw new Error("falta selector");
-              await page.waitForSelector(step.selector, { timeout: step.timeoutMs ?? 15000 });
+              const waitTarget = await resolveVisibleSelector(
+                page,
+                step.selector,
+                Math.min(step.timeoutMs ?? 15000, 5000),
+              );
+              if (waitTarget.repaired) log(`Selector reparado: ${step.selector} → ${waitTarget.selector}`);
+              resolvedSteps.push({ ...step, selector: waitTarget.selector });
+              await page.waitForSelector(waitTarget.selector, { timeout: step.timeoutMs ?? 15000 });
+              lastContextSelector = waitTarget.selector;
               break;
             case "scroll":
+              resolvedSteps.push(step);
               await page.mouse.wheel(0, step.pixels ?? 500);
               break;
           }
+          if (step.action === "goto") resolvedSteps.push(step);
           navLog.push({ t_inicio: started, t_fin: now(), ...step });
-          if (stoppedBeforeCommit) break;
+          if (stoppedBeforeCommit) {
+            resolvedSteps.push(...navSteps.slice(i + 1));
+            break;
+          }
           await page.waitForTimeout(step.pauseMs ?? 1500);
         } catch (error) {
           await page.screenshot({ path: path.join(dir, "error.jpg"), fullPage: false }).catch(() => {});
@@ -170,6 +204,8 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
           throw new RecordStepError(`Fallo en el paso ${i + 1} (${step.action}): ${detail}`, i + 1);
         }
       }
+      fs.writeFileSync(path.join(dir, "nav_plan.json"), JSON.stringify(resolvedSteps, null, 2), "utf8");
+      await args.onResolvedSteps?.(resolvedSteps);
     } else {
       // Compatibilidad con piezas antiguas: conserva el scroll guiado actual,
       // pero registra tiempos para que el montaje pueda recortar la grabacion.
@@ -208,9 +244,11 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
     }
 
     let rel = "";
+    const suffix = (args.outputSuffix ?? "").replace(/[^a-zA-Z0-9_-]/g, "");
+    const stem = suffix ? `screen-${suffix}` : "screen";
     if (video) {
       const src = await video.path();
-      const dest = path.join(dir, "screencast.webm");
+      const dest = path.join(dir, `${stem}.webm`);
       try {
         if (fs.existsSync(src) && src !== dest) fs.renameSync(src, dest);
         rel = path.relative(DATA_DIR, dest).replace(/\\/g, "/");
@@ -223,12 +261,12 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
     if (hasFfmpeg()) {
       try {
         runFfmpeg(
-          ["-y", "-i", "screencast.webm", "-r", "30", "-pix_fmt", "yuv420p", "screen.mp4"],
+          ["-y", "-i", `${stem}.webm`, "-r", "30", "-pix_fmt", "yuv420p", `${stem}.mp4`],
           dir,
         );
-        const normalized = path.join(dir, "screen.mp4");
+        const normalized = path.join(dir, `${stem}.mp4`);
         if (fs.existsSync(normalized)) {
-          const webm = path.join(dir, "screencast.webm");
+          const webm = path.join(dir, `${stem}.webm`);
           if (fs.existsSync(webm)) fs.unlinkSync(webm);
           rel = path.relative(DATA_DIR, normalized).replace(/\\/g, "/");
           log("Grabacion normalizada a MP4 (30 fps).");

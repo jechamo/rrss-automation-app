@@ -32,6 +32,25 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ## Historial
 
+### 2026-07-19 — REQ-017: navegación autocorregible y remontaje sin créditos
+
+- El análisis dirigido deja de considerar ejecutable un recorrido por inferencia estática: cuando hay
+  objetivo y pasos Playwright, realiza un dry-run autenticado automático antes de devolverlos a la UI.
+- El recorder inspecciona únicamente elementos visibles/habilitados, corrige tags/textos contra el DOM
+  real y puede descubrir de forma acotada tabs o filtros intermedios dentro del último contenedor
+  verificado. Nunca explora submit, enlaces ni acciones con semántica de mutación.
+- Los pasos reparados se devuelven al modal, se guardan como `nav_plan.json` y sustituyen el JSON
+  propuesto. Si el usuario edita URL, login o pasos, debe volver a probar antes de generar.
+- Nueva pipeline aditiva `REQ-006-NAV` (`Reutilizar recursos → Navegación → Remontar sin créditos`):
+  regraba Playwright o usa la grabación manual/mediateca actual, y conserva clips fal.ai, audio
+  ElevenLabs, presentador HeyGen, guion, prompts y subtítulos sin llamar a proveedores.
+- Los remontajes escriben un final versionado (`final-remount-<timestamp>.mp4`), por lo que un fallo no
+  pisa el montaje anterior. La tarjeta ofrece `Regrabar navegación` y `Remontar sin créditos`.
+- Al adjuntar REC, subida manual o mediateca se reinician solo las marcas temporales Playwright de la
+  pieza, evitando recortar una grabación nueva con los tiempos de una navegación anterior.
+- Guía actualizada para los flujos automático, subida manual y REC/STOP. Verificado con TypeScript,
+  23/23 contratos (incluido el caso PlayStation → PlayStation 5) y build de producción.
+
 ### 2026-07-19 — REQ-016: navegación compacta, SSE resiliente y login previo a grabación
 
 - PipelineGraph aumenta el aire real entre tarjetas y refuerza conectores; verificación visual a ancho

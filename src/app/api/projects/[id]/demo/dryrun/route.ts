@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { coerceDemo } from "@/core/content/types";
+import { coerceDemo, type NavStep } from "@/core/content/types";
 import { pieceDir } from "@/core/media/storage";
 import { recordDemo, RecordStepError } from "@/core/media/recorder";
 import { getLogin } from "@/core/secrets/login";
@@ -23,6 +23,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const pieceId = `dryrun-${id}-${Date.now()}`;
   const tempDir = pieceDir(pieceId);
   const logs: string[] = [];
+  let resolvedNavSteps: NavStep[] | undefined;
   const login = demo.usarLogin ? getLogin(id) : null;
   if (demo.usarLogin && !login) {
     fs.rmSync(tempDir, { recursive: true, force: true });
@@ -42,8 +43,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       login,
       log: (message) => logs.push(message),
       dryRun: true,
+      onResolvedSteps: (steps) => {
+        resolvedNavSteps = steps;
+      },
     });
-    return NextResponse.json({ ok: true, logs });
+    return NextResponse.json({ ok: true, logs, navSteps: resolvedNavSteps });
   } catch (error) {
     const failedStep = error instanceof RecordStepError ? error.failedStep : undefined;
     return NextResponse.json(
