@@ -438,6 +438,30 @@ inventan IDs.
 
 ---
 
+### REQ-016 — Pulido de navegación, pipelines y login Playwright
+
+**Objetivo:** reducir densidad visual y evitar que una pipeline o grabación parezca detenida cuando el
+servidor sigue trabajando.
+
+- Los nodos conservan separación legible en competencia, leads y virales.
+- Cursor propio únicamente con puntero preciso; campos de texto y dispositivos táctiles mantienen el
+  cursor nativo adecuado.
+- Scrollbars globales modernas y discretas. El menú lateral elimina textos redundantes y reduce altura.
+- Una interrupción transitoria del SSE no congela el grafo: el cliente permite la reconexión nativa y
+  recupera el estado persistido del run.
+- El login Playwright reconoce campos habituales y `identifier`, comprueba sesiones guardadas y vuelve
+  a autenticarse cuando caducan.
+- La autenticación ocurre en un contexto sin grabación. El vídeo comienza después de aplicar la sesión,
+  por lo que no captura el formulario ni la escritura de credenciales.
+- Si se marcó login pero no existen credenciales o no puede localizarse el formulario, no continúa de
+  forma anónima: deja un error concreto y mantiene el fallback de subida manual.
+
+**Criterios de aceptación:** ICG Vault reconoce `input[name="identifier"]`; una sesión caducada fuerza
+nuevo login; una caída SSE temporal no obliga a volver al dashboard; el menú no muestra los textos
+«Automatización de contenido RRSS» ni «Proyecto activo».
+
+---
+
 ## 5. Requisitos no funcionales
 
 - **RNF-01 — Local-first:** funciona en el PC del usuario; los datos y las keys no salen del equipo salvo llamadas explícitas a proveedores.

@@ -104,7 +104,11 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
       // se sigue con guion+cortes y se avisa para subir el video a mano.
       const login = demo.usarLogin ? getLogin(ctx.project.id) : null;
       if (demo.usarLogin && !login) {
-        ctx.log("Login requerido pero sin credenciales guardadas; se graba sin autenticar.");
+        const message = "Login requerido pero sin credenciales guardadas; no se intenta una grabación anónima.";
+        assets.logs.push(message);
+        ctx.log(`${message} Podrás subir el vídeo a mano.`);
+        ctx.artifacts.assets = assets;
+        return;
       }
       const url = demo.funcionUrl || ctx.project.url;
       try {

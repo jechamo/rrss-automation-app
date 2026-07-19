@@ -30,11 +30,10 @@ export function Sidebar() {
   const projectId = inProject ? pathname.split("/")[2] : null;
 
   return (
-    <aside className="flex h-full w-60 shrink-0 flex-col gap-6 overflow-y-auto border-r border-white/10 bg-black/20 p-4 backdrop-blur">
-      <Link href="/" className="px-2 block">
+    <aside className="app-scroll flex h-full w-56 shrink-0 flex-col gap-4 overflow-y-auto border-r border-white/10 bg-black/20 p-3 backdrop-blur">
+      <Link href="/" className="block px-2 py-1">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/img/logo-lockup.png" alt="LeadView" className="w-full max-w-[180px]" />
-        <div className="mt-1 text-xs text-white/40">Automatización de contenido RRSS</div>
+        <img src="/img/logo-lockup.png" alt="LeadView" className="w-full max-w-[150px]" />
       </Link>
 
       <nav className="flex flex-col gap-1">
@@ -90,12 +89,6 @@ export function Sidebar() {
         </div>
       )}
 
-      <div className="mt-auto px-2 text-[11px] text-white/30">
-        Proyecto activo
-        <div className="mt-1 truncate rounded-lg border border-white/10 px-2 py-1.5 text-white/60">
-          {inProject ? "En este proyecto" : "— sin proyecto —"}
-        </div>
-      </div>
     </aside>
   );
 }

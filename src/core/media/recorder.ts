@@ -4,6 +4,7 @@ import { pieceDir } from "./storage";
 import type { LoginCreds } from "@/core/secrets/login";
 import type { NavStep } from "@/core/content/types";
 import { hasFfmpeg, runFfmpeg } from "./ffmpeg";
+import { dismissTransientDialogs, prepareAuthenticatedSession } from "./auth-session";
 
 /**
  * REQ-006 — Grabacion de la propia app con Playwright en modo movil.
@@ -50,61 +51,6 @@ interface FinalNavLogStep {
   t_fin: number;
 }
 
-// Selectores habituales para un login generico.
-const USER_SELECTORS = [
-  'input[type="email"]',
-  'input[name="email"]',
-  'input[name="username"]',
-  'input[name="user"]',
-  'input[id*="email" i]',
-  'input[id*="user" i]',
-];
-const PASS_SELECTORS = ['input[type="password"]', 'input[name="password"]', 'input[id*="pass" i]'];
-const SUBMIT_SELECTORS = [
-  'button[type="submit"]',
-  'input[type="submit"]',
-  'button:has-text("Entrar")',
-  'button:has-text("Iniciar")',
-  'button:has-text("Log in")',
-  'button:has-text("Sign in")',
-];
-
-async function tryFill(page: unknown, selectors: string[], value: string): Promise<boolean> {
-  const p = page as {
-    locator: (s: string) => { first: () => { fill: (v: string) => Promise<void>; count: () => Promise<number> } };
-  };
-  for (const sel of selectors) {
-    try {
-      const loc = p.locator(sel).first();
-      if ((await loc.count()) > 0) {
-        await loc.fill(value);
-        return true;
-      }
-    } catch {
-      /* siguiente selector */
-    }
-  }
-  return false;
-}
-
-async function tryClick(page: unknown, selectors: string[]): Promise<boolean> {
-  const p = page as {
-    locator: (s: string) => { first: () => { click: () => Promise<void>; count: () => Promise<number> } };
-  };
-  for (const sel of selectors) {
-    try {
-      const loc = p.locator(sel).first();
-      if ((await loc.count()) > 0) {
-        await loc.click();
-        return true;
-      }
-    } catch {
-      /* siguiente selector */
-    }
-  }
-  return false;
-}
-
 export async function recordDemo(args: RecordArgs): Promise<string> {
   const { projectId, pieceId, url, pasos, navSteps, login, log, dryRun = false } = args;
 
@@ -126,8 +72,6 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
   const sessionsDir = path.join(DATA_DIR, "sessions");
   const safeProjectId = projectId.replace(/[^a-zA-Z0-9_-]/g, "_");
   const sessionPath = path.join(sessionsDir, `${safeProjectId}.json`);
-  const hasSession = fs.existsSync(sessionPath);
-  let sessionReused = hasSession;
 
   let browser: import("playwright").Browser | null = null;
   try {
@@ -141,22 +85,23 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
   let context: import("playwright").BrowserContext | null = null;
   let contextClosed = false;
   try {
+    if (login) {
+      await prepareAuthenticatedSession({
+        browser,
+        device,
+        sessionPath,
+        url,
+        login,
+        log,
+      });
+    }
+    const sessionReady = Boolean(login) && fs.existsSync(sessionPath);
     const contextOptions: import("playwright").BrowserContextOptions = {
       ...device,
       recordVideo: dryRun ? undefined : { dir, size: { width: 390, height: 844 } },
-      storageState: hasSession ? sessionPath : undefined,
+      storageState: sessionReady ? sessionPath : undefined,
     };
-    try {
-      context = await browser.newContext(contextOptions);
-    } catch (error) {
-      if (!hasSession) throw error;
-      sessionReused = false;
-      log("La sesion guardada no se pudo reutilizar; se inicia una sesion limpia.");
-      context = await browser.newContext({
-        ...device,
-        recordVideo: dryRun ? undefined : { dir, size: { width: 390, height: 844 } },
-      });
-    }
+    context = await browser.newContext(contextOptions);
     const page = await context.newPage();
 
     log(`Abriendo ${url} en modo movil…`);
@@ -167,27 +112,6 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
       log("La carga inicial no termino a tiempo; se intenta continuar con la pagina disponible.");
     }
     await page.waitForTimeout(1500);
-
-    if (sessionReused) {
-      log("Sesion guardada reutilizada.");
-    } else if (login) {
-      const okUser = await tryFill(page, USER_SELECTORS, login.user);
-      const okPass = await tryFill(page, PASS_SELECTORS, login.pass);
-      if (okUser && okPass) {
-        await tryClick(page, SUBMIT_SELECTORS);
-        await page.waitForTimeout(3000);
-        log("Login enviado (best-effort).");
-        try {
-          if (!fs.existsSync(sessionsDir)) fs.mkdirSync(sessionsDir, { recursive: true });
-          await context.storageState({ path: sessionPath });
-          log("Sesion guardada para futuras grabaciones.");
-        } catch {
-          log("No se pudo guardar la sesion; la grabacion continua.");
-        }
-      } else {
-        log("No se encontro el formulario de login; se graba sin autenticar.");
-      }
-    }
 
     const t0 = Date.now();
     const now = () => Math.round(((Date.now() - t0) / 1000) * 100) / 100;
@@ -200,6 +124,7 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
         const started = now();
         log(`Paso ${i + 1}: ${step.action}`);
         try {
+          await dismissTransientDialogs(page, log);
           switch (step.action) {
             case "goto":
               if (!step.url) throw new Error("falta url");

@@ -317,3 +317,15 @@ prompts y generar». El selector de modelo incluye versión, perfil y coste por 
 - «Verificar con Playwright» visita rutas seguras tras login y actualiza badges sin regenerar el dossier.
 - «Copiar Markdown» exporta la estructura Sección → Subsección → Descripción → Navegación.
 - Estado vacío y avisos explican cuándo no existe código, una ruta es dinámica o falta login.
+
+## 20. Pulido visual y confianza de ejecución (REQ-016)
+
+- Las tarjetas de pipeline tienen más aire horizontal y conectores visibles. El estado en curso conserva
+  el anillo animado; una reconexión no devuelve visualmente los nodos a pendiente.
+- Cursor de anillo cian/violeta en escritorio, con variante activa sobre controles. Inputs y textarea
+  conservan la forma de edición y en táctil no se fuerza ningún cursor.
+- Scrollbars finas con thumb degradado y hover luminoso; la barra lateral usa una versión aún más estrecha.
+- Sidebar compacta: solo lockup, navegación global y secciones del proyecto; se eliminan tagline y pie
+  redundante para evitar scroll en alturas normales.
+- La grabación automática muestra logs diferenciados para sesión validada, reautenticación, formulario
+  ausente y credenciales rechazadas. Nunca graba la pantalla donde se introducen usuario/contraseña.

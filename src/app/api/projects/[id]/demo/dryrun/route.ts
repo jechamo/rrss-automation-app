@@ -23,6 +23,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const pieceId = `dryrun-${id}-${Date.now()}`;
   const tempDir = pieceDir(pieceId);
   const logs: string[] = [];
+  const login = demo.usarLogin ? getLogin(id) : null;
+  if (demo.usarLogin && !login) {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+    return NextResponse.json(
+      { ok: false, error: "Marca el login después de guardar las credenciales cifradas del proyecto." },
+      { status: 409 },
+    );
+  }
 
   try {
     await recordDemo({
@@ -31,7 +39,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       url: demo.funcionUrl || project.url,
       pasos: demo.pasos,
       navSteps: demo.navSteps,
-      login: demo.usarLogin ? getLogin(id) : null,
+      login,
       log: (message) => logs.push(message),
       dryRun: true,
     });

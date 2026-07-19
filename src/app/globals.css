@@ -28,6 +28,53 @@ body {
   min-height: 100vh;
 }
 
+/* Scrollbars discretas y consistentes en la aplicación. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(124, 95, 220, 0.72) rgba(255, 255, 255, 0.025);
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+*::-webkit-scrollbar-thumb {
+  min-height: 40px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(124, 58, 237, 0.82), rgba(34, 211, 238, 0.62)) padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(167, 139, 250, 0.95), rgba(34, 211, 238, 0.9)) padding-box;
+}
+.app-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+/* Cursor propio solo donde existe un puntero preciso; táctil conserva el nativo. */
+@media (pointer: fine) {
+  html,
+  body {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='7' fill='%230a0a0f' fill-opacity='.72' stroke='%2322d3ee' stroke-width='2'/%3E%3Ccircle cx='12' cy='12' r='2.5' fill='%23f472b6'/%3E%3C/svg%3E") 12 12, auto;
+  }
+  a,
+  button,
+  select,
+  summary,
+  label[for],
+  [role="button"],
+  [draggable="true"] {
+    cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26' viewBox='0 0 26 26'%3E%3Ccircle cx='13' cy='13' r='10' fill='%2322d3ee' fill-opacity='.16' stroke='%23a78bfa' stroke-width='2'/%3E%3Ccircle cx='13' cy='13' r='3' fill='%2322d3ee'/%3E%3C/svg%3E") 13 13, pointer;
+  }
+  input,
+  textarea,
+  [contenteditable="true"] {
+    cursor: text;
+  }
+}
+
 body {
   background-image:
     radial-gradient(60rem 60rem at 10% -10%, rgba(124, 58, 237, 0.15), transparent 60%),

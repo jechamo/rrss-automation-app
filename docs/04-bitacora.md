@@ -24,12 +24,32 @@
 | REQ-013 | Revisión de prompts + catálogo fal.ai ampliado | 🟡 Implementado — pendiente prueba real con créditos fal.ai |
 | REQ-014 | Confianza operativa y navegación autenticada | 🟡 Implementado — pendiente validar recorrido real en ChaFit tras login |
 | REQ-015 | Mapa funcional multimenú de la app | 🟡 Implementado — pendiente regenerar un proyecto y validar sus rutas privadas con login real |
+| REQ-016 | Pulido visual, SSE y login Playwright | 🟡 Implementado — dry-run ICG Vault validado; pendiente prueba del usuario con grabación real |
 
 Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ---
 
 ## Historial
+
+### 2026-07-19 — REQ-016: navegación compacta, SSE resiliente y login previo a grabación
+
+- PipelineGraph aumenta el aire real entre tarjetas y refuerza conectores; verificación visual a ancho
+  de escritorio confirma unos 51 px visibles entre nodos frente a la compactación anterior.
+- Cursor propio de anillo cian/violeta en dispositivos con puntero fino; inputs mantienen I-beam y
+  táctil conserva comportamiento nativo. Scrollbars globales y sidebar compacta modernizadas.
+- Sidebar sin «Automatización de contenido RRSS» ni bloque «Proyecto activo / En este proyecto»;
+  todas las secciones caben en la altura de prueba sin scroll práctico.
+- Competencia, leads y virales ya no cierran EventSource ante un error transitorio. La reconexión nativa
+  recupera desde SQLite los nodos actuales, evitando que virales quede gris hasta volver del dashboard.
+- Nuevo preflight compartido `auth-session.ts`: valida/corrige storage state, reconoce campos de email,
+  usuario e `identifier`, puede abrir el acceso y autentica en un contexto sin grabación. El vídeo empieza
+  después de aplicar la sesión; credenciales y formulario quedan fuera de la captura.
+- Cierre seguro de avisos informativos dentro de diálogos (`Saltar`, `Cerrar`, `Entendido`, `Ahora no`,
+  `Omitir`) antes de cada paso; no toca confirmaciones ni acciones de negocio.
+- Causa real ICG Vault confirmada en código: su campo es `input[name="identifier"]`, ausente en el detector
+  antiguo. Primer dry-run autenticó pero detectó que “Best of the Week” interceptaba el tap; tras el cierre
+  seguro, el recorrido real `/my-list` `goto → wait → tap → scroll` terminó OK sin vídeo ni consumo fal.ai.
 
 ### 2026-07-19 — REQ-015: mapa funcional multimenú de hasta tres niveles
 

@@ -213,6 +213,9 @@ prisma/schema.prisma          Modelo de datos multiproyecto
   niveles sin asumir un menú concreto (navbar, barra inferior, sidebar, drawer, tabs, tarjetas),
   persiste evidencias y permite verificación segura de rutas con Playwright + login cifrado. Alimenta
   dossier y análisis de funciones de contenido propio. Pendiente regeneración y validación privada real.
+- **REQ-016** (pulido UX/ejecución): **implementado**. Pipelines con mayor separación y SSE reconectable,
+  cursor/scrollbars/sidebar compacta, y preflight de login compartido que reconoce `identifier`, valida
+  sesiones y autentica fuera del vídeo. Dry-run real de ICG Vault `/my-list` verificado; falta grabación real.
 - **Rediseño visual (2026-07-18):** componentes reutilizables `Carousel3D`/`ExpandableCarousel`/
   `ScoreBar`/`EntityLogo`/`MiniMap`/`CardArt`/`ProjectsCarousel` (sin paquetes ni keys). Dashboard y
   secciones competencia/leads/virales con **carrusel 360 + detalle desplegable**, scoring, logos por

@@ -1,26 +1,8 @@
-import fs from "node:fs";
 import path from "node:path";
 import type { LoginCreds } from "@/core/secrets/login";
+import { prepareAuthenticatedSession } from "./auth-session";
 
 const DATA_DIR = path.join(process.cwd(), "data");
-
-const USER_SELECTORS = [
-  'input[type="email"]',
-  'input[name="email"]',
-  'input[name="username"]',
-  'input[name="user"]',
-  'input[id*="email" i]',
-  'input[id*="user" i]',
-];
-const PASS_SELECTORS = ['input[type="password"]', 'input[name="password"]', 'input[id*="pass" i]'];
-const SUBMIT_SELECTORS = [
-  'button[type="submit"]',
-  'input[type="submit"]',
-  'button:has-text("Entrar")',
-  'button:has-text("Iniciar")',
-  'button:has-text("Log in")',
-  'button:has-text("Sign in")',
-];
 
 interface ObservedElement {
   tag: string;
@@ -65,19 +47,6 @@ function selectorFor(element: ObservedElement): string {
   return element.tag;
 }
 
-async function firstVisible(
-  page: import("playwright").Page,
-  selectors: string[],
-): Promise<import("playwright").Locator | null> {
-  for (const selector of selectors) {
-    const locator = page.locator(selector).first();
-    if ((await locator.count().catch(() => 0)) > 0 && (await locator.isVisible().catch(() => false))) {
-      return locator;
-    }
-  }
-  return null;
-}
-
 /**
  * Inspecciona únicamente la primera superficie privada tras autenticar. No hace clic en la
  * funcionalidad ni ejecuta acciones de negocio. La contraseña nunca forma parte del resultado.
@@ -94,7 +63,6 @@ export async function inspectNavigationSurface(args: {
   const safeProjectId = args.projectId.replace(/[^a-zA-Z0-9_-]/g, "_");
   const sessionsDir = path.join(DATA_DIR, "sessions");
   const sessionPath = path.join(sessionsDir, `${safeProjectId}.json`);
-  const hasSession = fs.existsSync(sessionPath);
   let browser: import("playwright").Browser;
   try {
     browser = await playwright.chromium.launch({ headless: true });
@@ -105,43 +73,21 @@ export async function inspectNavigationSurface(args: {
   }
 
   try {
-    let context: import("playwright").BrowserContext;
-    try {
-      context = await browser.newContext({
-        ...playwright.devices["iPhone 13"],
-        storageState: hasSession ? sessionPath : undefined,
-      });
-    } catch {
-      context = await browser.newContext({ ...playwright.devices["iPhone 13"] });
-      logs.push("La sesión anterior no era reutilizable; se inició una sesión limpia.");
-    }
+    const device = playwright.devices["iPhone 13"];
+    await prepareAuthenticatedSession({
+      browser,
+      device,
+      sessionPath,
+      url: args.url,
+      login: args.login,
+      log: (message) => logs.push(message),
+    });
+    const context = await browser.newContext({ ...device, storageState: sessionPath });
 
     try {
       const page = await context.newPage();
       await page.goto(args.url, { waitUntil: "domcontentloaded", timeout: 30000 });
       await page.waitForTimeout(1200);
-
-      const password = await firstVisible(page, PASS_SELECTORS);
-      if (password) {
-        const user = await firstVisible(page, USER_SELECTORS);
-        if (!user) throw new Error("Se detectó contraseña, pero no el campo de usuario/email.");
-        await user.fill(args.login.user);
-        await password.fill(args.login.pass);
-        const submit = await firstVisible(page, SUBMIT_SELECTORS);
-        if (!submit) throw new Error("No se encontró el botón para iniciar sesión.");
-        await submit.click();
-        await page.waitForLoadState("domcontentloaded", { timeout: 15000 }).catch(() => {});
-        await page.waitForTimeout(2500);
-        logs.push("Login completado para inspeccionar la superficie privada.");
-      } else {
-        logs.push(hasSession ? "Sesión cifrada reutilizada." : "La URL ya estaba autenticada.");
-      }
-
-      const stillAtLogin = Boolean(await firstVisible(page, PASS_SELECTORS));
-      if (stillAtLogin) throw new Error("El login no abrió la zona privada; revisa las credenciales.");
-
-      fs.mkdirSync(sessionsDir, { recursive: true });
-      await context.storageState({ path: sessionPath }).catch(() => {});
 
       const observed = await page.locator(
         'a[href], button, input:not([type="password"]), select, textarea, [role="button"], [data-testid], [data-tutorial], .cursor-pointer',
