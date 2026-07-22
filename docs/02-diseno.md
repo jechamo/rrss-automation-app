@@ -272,19 +272,31 @@ CTA pasa a ser **Aprobar plan y generar** para dejar claro cuándo se consumirá
 
 ### 16.2 Timeline
 
-MIX conserva sus resultados a la derecha y sustituye la lista de vídeos completos por una línea
-temporal proporcional. Cada bloque muestra miniatura/nombre, tipo, duración y candado. Se puede
-seleccionar, añadir, arrastrar/reordenar, recortar con entrada/salida, bloquear y eliminar. El
-reproductor superior previsualiza el recurso seleccionado; el resultado exacto se revisa después de
-renderizar.
+MIX adopta un editor ligero inspirado en herramientas como Clipchamp: un único lienzo temporal
+proporcional con regla, cabezal rojo y calles alineadas dentro de la misma zona. **Principal** contiene
+la secuencia que gobierna la duración y **Capas** contiene los apoyos que se superponen, pero no son
+dos editores distintos. Cada bloque muestra miniatura/nombre, tipo, duración y candado. Se puede
+seleccionar, añadir, arrastrar/reordenar, recortar con entrada/salida, bloquear y eliminar.
 
-La lectura se divide en cinco pasos numerados: configurar versión, elegir plan, construir timeline,
-explorar vídeos y revisar audio/subtítulos. La bandeja usa tarjetas con fotograma, play, duración,
-origen, número de usos y badges de tipo. Un monitor fijo en la columna derecha reproduce el recurso
-seleccionado o el MIX final; las versiones renderizadas quedan como tarjetas compactas debajo.
+La barra del editor reúne reproducir/pausar, detener, timecode y zoom. Al pulsar la regla o un bloque,
+el cabezal se desplaza y el visor compone en vivo el principal y las capas activas, respetando PIP,
+pantalla completa, posición y tamaño. La lectura se divide en cinco pasos numerados: configurar
+versión, elegir plan, construir timeline, explorar vídeos y revisar audio/subtítulos. La bandeja usa
+tarjetas con fotograma, play, duración, origen, número de usos y badges de tipo.
+
+El monitor fijo diferencia tres estados visibles: **Montaje vivo**, **Recurso aislado** y **Resultado
+renderizado**. Abrir un recurso no altera la receta y el botón **Monitor: montaje** siempre vuelve a la
+composición actual. Las versiones renderizadas quedan como tarjetas compactas debajo y se abren con
+**Ver resultado**; renderizar continúa siendo obligatorio solo para crear el fichero final exacto.
 
 La locución y la música disponen de reproductor independiente. Los bloques de ambas pistas de vídeo
 usan un fotograma aproximado como fondo con gradiente para conservar la legibilidad del texto.
+Seleccionar una locución enlazada a una pieza recupera su guion en **Subtítulos obligatorios**. Si el
+audio es libre y no tiene texto asociado, se conserva lo ya escrito y se muestra una explicación.
+
+La galería completa de **Mediateca** aparece plegada de inicio y monta sus previews solo al abrirla.
+El inventario ligero sigue alimentando MIX. La bandeja del editor ofrece filtros **Todos**,
+**Principal**, **Clips**, **Finales** y **MIX**, con recuento visible.
 
 ### 16.3 Armonización
 
@@ -295,10 +307,11 @@ segmentos de demo protegidos; los manuales pueden bloquearse desde el propio edi
 
 ### 16.4 Superposiciones
 
-La acción **Preparar en capas** coloca la grabación manual o Playwright en la pista base y distribuye
-los apoyos visuales en una pista superior. Cada recurso ofrece **Pista base** y **Superponer**. Al
+La acción **Preparar en capas** coloca la grabación manual o Playwright en la calle principal y
+distribuye los apoyos visuales en capas del mismo timeline. Cada recurso ofrece **+ Principal** y
+**+ Capa**. Al
 seleccionar una superposición se editan inicio temporal, entrada/salida, modo pantalla completa o
-picture-in-picture, esquina/centro y tamaño. La timeline superior es proporcional y avisa si el apoyo
+picture-in-picture, esquina/centro y tamaño. La timeline unificada es proporcional y avisa si el apoyo
 sale de la duración final o si una pantalla completa tapa un momento protegido. La locución permanece
 continua y los subtítulos se dibujan siempre por encima de ambas pistas. El cuerpo del bloque se
 arrastra para moverlo en el tiempo; sus asas laterales cambian entrada/salida y duración sin sustituir
@@ -306,7 +319,10 @@ los controles numéricos de precisión.
 
 La UI explica la diferencia antes de preparar: **Secuencial** alterna recursos a pantalla completa;
 **En capas** mantiene la navegación debajo de los apoyos. Los dos modos usan una única carga de
-locución/subtítulos desde la pieza destino.
+locución/subtítulos desde la pieza destino. Si ya existe una selección, ambos botones actúan como
+transformaciones: secuencial pasa las capas al principal y en capas mantiene como base las
+grabaciones —o el primer bloque— y convierte el resto. Repetir una acción no duplica recursos. Con
+timeline vacía se requiere una pieza destino para evitar importar todo el proyecto.
 
 ### 16.5 Captura y diálogos adaptativos
 
