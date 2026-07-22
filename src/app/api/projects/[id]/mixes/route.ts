@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { assembleMix, coerceMixRecipe, mixVideoCount } from "@/core/media/mix";
 import { registerMediaAsset } from "@/core/media/library";
+import { appendBrandOutro } from "@/core/media/brand-outro";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const body = (await req.json().catch(() => null)) as { name?: unknown; pieceId?: unknown; recipe?: unknown } | null;
-  const project = await prisma.project.findUnique({ where: { id }, select: { id: true } });
+  const project = await prisma.project.findUnique({ where: { id }, select: { id: true, logoPath: true } });
   if (!project) return NextResponse.json({ error: "Proyecto no encontrado." }, { status: 404 });
   const name = typeof body?.name === "string" ? body.name.trim().slice(0, 120) : "";
   const recipe = coerceMixRecipe(body?.recipe);
@@ -33,7 +34,29 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     data: { projectId: id, pieceId, name, status: "rendering", recipe: JSON.stringify(recipe) },
   });
   try {
-    const outputPath = await assembleMix(id, mix.id, recipe);
+    let outputPath = await assembleMix(id, mix.id, recipe);
+    if (project.logoPath) {
+      try {
+        const branded = appendBrandOutro({
+          pieceId: pieceId || `project-${id}`,
+          videoPath: outputPath,
+          logoPath: project.logoPath,
+        });
+        if (branded) {
+          outputPath = branded.path;
+          await registerMediaAsset({
+            projectId: id,
+            pieceId,
+            kind: "video",
+            origin: "mix",
+            name: `Cierre de marca · ${name}`,
+            path: branded.outroPath,
+          });
+        }
+      } catch {
+        // El cierre es aditivo: un fallo nunca invalida un MIX ya renderizado.
+      }
+    }
     const updated = await prisma.mixComposition.update({ where: { id: mix.id }, data: { status: "ready", outputPath } });
     await registerMediaAsset({ projectId: id, pieceId, kind: "final", origin: "mix", name: `MIX · ${name}`, path: outputPath });
     return NextResponse.json({ mix: dto(updated) }, { status: 201 });

@@ -24,12 +24,110 @@
 | REQ-013 | Revisión de prompts + catálogo fal.ai ampliado | 🟡 Implementado — pendiente prueba real con créditos fal.ai |
 | REQ-014 | Confianza operativa y navegación autenticada | 🟡 Implementado — pendiente validar recorrido real en ChaFit tras login |
 | REQ-015 | Mapa funcional multimenú de la app | 🟡 Implementado — pendiente regenerar un proyecto y validar sus rutas privadas con login real |
+| REQ-016 | Pulido visual, SSE y login Playwright | 🟡 Implementado — dry-run ICG Vault validado; pendiente prueba del usuario con grabación real |
 
 Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ---
 
 ## Historial
+
+### 2026-07-22 — MIX visual: biblioteca, monitor y previews
+
+- El editor se ordena en cinco pasos numerados y separa selección, planificación, timeline,
+  biblioteca y audio/subtítulos para reducir densidad y ambigüedad.
+- Bandeja sustituida por tarjetas con fotograma real, play, duración, origen, usos y badges para
+  Playwright, grabación manual, clip IA, presentador, vídeo/final y versión MIX.
+- Monitor único y sticky para reproducir cualquier recurso o el resultado renderizado. Las versiones
+  finales pasan a tarjetas compactas con `Previsualizar`, `Usar como final` y `Eliminar`.
+- Timeline base y superposiciones muestran fotogramas aproximados sin bloquear arrastre/recorte.
+  Locución y música seleccionadas incorporan reproductores nativos y volumen de música contextual.
+- Verificado en navegador con ICGVault: 14 recursos previsualizables, 6 fotogramas en timeline,
+  locución de 498 caracteres y cambio correcto entre Clip 4 y el resultado MIX. Build y 24/24
+  contratos correctos.
+
+### 2026-07-19 — UX de captura, edición directa y diálogos propios
+
+- Captura local queda limitada al viewport dinámico: cabecera/pasos/acciones no desaparecen y el
+  cuerpo central tiene scroll propio. Verificado a 900×560 con REC visible y contenido desplazable.
+- Las superposiciones MIX se mueven arrastrando su cuerpo y se recortan/amplían con asas laterales;
+  los campos `Empieza en`, `Entrada` y `Salida` continúan disponibles para precisión. Verificado en
+  navegador moviendo 4,0–9,0s a 6,5–11,5s y ampliando después hasta 13,4s.
+- Secuencial y capas comparten la carga de voz/subtítulos de la pieza. La ayuda visible explica que
+  solo cambia la composición visual; en la prueba ICGVault se recuperaron 498 caracteres.
+- Nuevo diálogo visual reutilizable para avisos, confirmaciones y texto. Sustituye todos los
+  `alert`/`confirm`/`prompt` de componentes y rutas cliente; el selector de captura permanece nativo
+  por seguridad del navegador.
+- Cada pieza propia incorpora ayuda plegable para REC, Regrabar navegación, Reemplazar vídeo,
+  Quitar y Remontar sin créditos. Verificado con build de producción y 24/24 contratos.
+
+### 2026-07-19 — REQ-012: MIX por capas sobre navegación
+
+- `MixRecipe` mantiene v1/v2 y añade `overlays[]` opcional, sin migración: recurso, recorte de fuente,
+  inicio en timeline, modo `cover|pip`, posición y tamaño. Las recetas anteriores normalizan a una
+  lista vacía y conservan su render.
+- `assembleMix()` concatena primero la pista base, desplaza y compone hasta 20 apoyos visuales, ignora
+  su audio y quema los subtítulos ASS al final para que siempre queden por encima. Pantalla completa
+  tapa visualmente la navegación mientras esta avanza debajo; PIP conserva ambas visibles.
+- El editor ofrece `Preparar secuencial` y `Preparar en capas`. Grabaciones manuales/Playwright sirven
+  como base; cada vídeo puede añadirse a la base o superponerse. Se editan inicio, entrada/salida,
+  presentación, posición y tamaño desde una timeline superior proporcional.
+- La UI avisa si una pantalla completa cruza un momento protegido, si una capa sale de la duración o
+  si la locución exige mantener el último frame de la base. La decisión nunca queda oculta.
+- Verificado con TypeScript, build, 24/24 contratos, filtro FFmpeg real con base+PIP y navegador local
+  sobre una pieza ICGVault; navegación, clips y controles por capas aparecen correctamente.
+
+### 2026-07-19 — REQ-017: captura 9:16, tutoriales superpuestos y cierre de marca
+
+- La grabación Playwright usa el mismo viewport y tamaño de vídeo 390×693 (9:16). Se elimina la
+  franja gris que aparecía al encajar un viewport de iPhone más bajo dentro de un lienzo 390×844.
+- La reparación de navegación comprueba ahora que un control sea realmente accionable, no solo
+  visible. Descarta de forma segura tutoriales y avisos personalizados aunque no declaren
+  `role="dialog"`, incluidos «Omitir», «Entendido», «Ahora no» y equivalentes. Si no encuentra la
+  ruta, el error enumera los tabs/filtros intermedios que llegó a probar.
+- Todos los montajes REQ-005/006, los remontajes sin créditos y las nuevas versiones MIX añaden, cuando existe logo del
+  proyecto, un cierre vertical animado local de 3 segundos. Conserva el logo exacto, no llama a
+  fal.ai/HeyGen/ElevenLabs y expone el clip separado en «Recursos generados».
+- Si falta logo, FFmpeg, ffprobe o el vídeo final, el montaje original se conserva y el registro
+  explica por qué se omitió el cierre. Verificado con 23/23 contratos y build de producción.
+
+### 2026-07-19 — REQ-017: navegación autocorregible y remontaje sin créditos
+
+- El análisis dirigido deja de considerar ejecutable un recorrido por inferencia estática: cuando hay
+  objetivo y pasos Playwright, realiza un dry-run autenticado automático antes de devolverlos a la UI.
+- El recorder inspecciona únicamente elementos visibles/habilitados, corrige tags/textos contra el DOM
+  real y puede descubrir de forma acotada tabs o filtros intermedios dentro del último contenedor
+  verificado. Nunca explora submit, enlaces ni acciones con semántica de mutación.
+- Los pasos reparados se devuelven al modal, se guardan como `nav_plan.json` y sustituyen el JSON
+  propuesto. Si el usuario edita URL, login o pasos, debe volver a probar antes de generar.
+- Nueva pipeline aditiva `REQ-006-NAV` (`Reutilizar recursos → Navegación → Remontar sin créditos`):
+  regraba Playwright o usa la grabación manual/mediateca actual, y conserva clips fal.ai, audio
+  ElevenLabs, presentador HeyGen, guion, prompts y subtítulos sin llamar a proveedores.
+- Los remontajes escriben un final versionado (`final-remount-<timestamp>.mp4`), por lo que un fallo no
+  pisa el montaje anterior. La tarjeta ofrece `Regrabar navegación` y `Remontar sin créditos`.
+- Al adjuntar REC, subida manual o mediateca se reinician solo las marcas temporales Playwright de la
+  pieza, evitando recortar una grabación nueva con los tiempos de una navegación anterior.
+- Guía actualizada para los flujos automático, subida manual y REC/STOP. Verificado con TypeScript,
+  23/23 contratos (incluido el caso PlayStation → PlayStation 5) y build de producción.
+
+### 2026-07-19 — REQ-016: navegación compacta, SSE resiliente y login previo a grabación
+
+- PipelineGraph aumenta el aire real entre tarjetas y refuerza conectores; verificación visual a ancho
+  de escritorio confirma unos 51 px visibles entre nodos frente a la compactación anterior.
+- Cursor propio de anillo cian/violeta en dispositivos con puntero fino; inputs mantienen I-beam y
+  táctil conserva comportamiento nativo. Scrollbars globales y sidebar compacta modernizadas.
+- Sidebar sin «Automatización de contenido RRSS» ni bloque «Proyecto activo / En este proyecto»;
+  todas las secciones caben en la altura de prueba sin scroll práctico.
+- Competencia, leads y virales ya no cierran EventSource ante un error transitorio. La reconexión nativa
+  recupera desde SQLite los nodos actuales, evitando que virales quede gris hasta volver del dashboard.
+- Nuevo preflight compartido `auth-session.ts`: valida/corrige storage state, reconoce campos de email,
+  usuario e `identifier`, puede abrir el acceso y autentica en un contexto sin grabación. El vídeo empieza
+  después de aplicar la sesión; credenciales y formulario quedan fuera de la captura.
+- Cierre seguro de avisos informativos dentro de diálogos (`Saltar`, `Cerrar`, `Entendido`, `Ahora no`,
+  `Omitir`) antes de cada paso; no toca confirmaciones ni acciones de negocio.
+- Causa real ICG Vault confirmada en código: su campo es `input[name="identifier"]`, ausente en el detector
+  antiguo. Primer dry-run autenticó pero detectó que “Best of the Week” interceptaba el tap; tras el cierre
+  seguro, el recorrido real `/my-list` `goto → wait → tap → scroll` terminó OK sin vídeo ni consumo fal.ai.
 
 ### 2026-07-19 — REQ-015: mapa funcional multimenú de hasta tres niveles
 

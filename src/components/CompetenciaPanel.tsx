@@ -83,8 +83,7 @@ export function CompetenciaPanel({
       }
     };
     es.onerror = () => {
-      es.close();
-      esRef.current = null;
+      // Conserva la reconexión nativa: el endpoint reenvía el estado persistido.
     };
     return () => {
       es.close();

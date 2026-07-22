@@ -9,10 +9,27 @@ export interface MixSegment {
   shotIndex?: number;
 }
 
+export type MixOverlayMode = "cover" | "pip";
+export type MixOverlayPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right" | "center";
+
+export interface MixOverlay {
+  id: string;
+  assetId: string;
+  sourceStart: number;
+  sourceEnd: number;
+  timelineStart: number;
+  label: string;
+  kind: string;
+  mode: MixOverlayMode;
+  position: MixOverlayPosition;
+  size: number;
+}
+
 export interface MixRecipe {
   version: 1 | 2;
   videoAssetIds: string[];
   segments: MixSegment[];
+  overlays: MixOverlay[];
   voiceAssetId: string;
   musicAssetId: string;
   subtitleText: string;
@@ -51,11 +68,38 @@ export function coerceMixRecipe(raw: unknown): MixRecipe {
         return [item];
       })
     : [];
+  const overlays = Array.isArray(value.overlays)
+    ? value.overlays.slice(0, 20).flatMap((rawOverlay, index) => {
+        if (!rawOverlay || typeof rawOverlay !== "object") return [];
+        const overlay = rawOverlay as Record<string, unknown>;
+        const assetId = typeof overlay.assetId === "string" ? overlay.assetId : "";
+        const sourceStart = Math.max(0, finiteNumber(overlay.sourceStart));
+        const sourceEnd = Math.max(sourceStart, finiteNumber(overlay.sourceEnd));
+        if (!assetId || sourceEnd - sourceStart < 0.05) return [];
+        const positions: MixOverlayPosition[] = ["top-left", "top-right", "bottom-left", "bottom-right", "center"];
+        const position = positions.includes(overlay.position as MixOverlayPosition)
+          ? overlay.position as MixOverlayPosition
+          : "top-right";
+        return [{
+          id: typeof overlay.id === "string" && overlay.id ? overlay.id : `overlay-${index + 1}`,
+          assetId,
+          sourceStart,
+          sourceEnd,
+          timelineStart: Math.max(0, finiteNumber(overlay.timelineStart)),
+          label: typeof overlay.label === "string" ? overlay.label.slice(0, 120) : `Superposición ${index + 1}`,
+          kind: typeof overlay.kind === "string" ? overlay.kind : "video",
+          mode: overlay.mode === "pip" ? "pip" as const : "cover" as const,
+          position,
+          size: Math.min(0.8, Math.max(0.2, finiteNumber(overlay.size, 0.36))),
+        }];
+      })
+    : [];
   const volume = Number(value.musicVolume);
   return {
-    version: segments.length > 0 || value.version === 2 ? 2 : 1,
+    version: segments.length > 0 || overlays.length > 0 || value.version === 2 ? 2 : 1,
     videoAssetIds: [...new Set(ids)].slice(0, 20),
     segments,
+    overlays,
     voiceAssetId: typeof value.voiceAssetId === "string" ? value.voiceAssetId : "",
     musicAssetId: typeof value.musicAssetId === "string" ? value.musicAssetId : "",
     subtitleText: typeof value.subtitleText === "string" ? value.subtitleText.trim() : "",

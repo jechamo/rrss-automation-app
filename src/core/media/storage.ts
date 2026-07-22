@@ -20,6 +20,15 @@ export function saveBytes(pieceId: string, name: string, bytes: Buffer): string 
   return path.relative(DATA_DIR, full).replace(/\\/g, "/");
 }
 
+/** Evita reutilizar marcas Playwright antiguas al adjuntar una grabacion manual o de mediateca. */
+export function resetNavigationTimeline(pieceId: string, source: "manual" | "library"): void {
+  fs.writeFileSync(
+    path.join(pieceDir(pieceId), "nav_log.json"),
+    JSON.stringify({ source, duracion: null, pasos: [] }, null, 2),
+    "utf8",
+  );
+}
+
 export function projectLibraryDir(projectId: string): string {
   const safeId = projectId.replace(/[^a-zA-Z0-9_-]/g, "");
   const dir = path.join(MEDIA_DIR, `project-${safeId}`, "library");

@@ -28,6 +28,8 @@ type AppFuncion = {
   navSteps?: NavStep[];
   evidencias?: string[];
   confianza?: "alta" | "media" | "baja";
+  navValidated?: boolean;
+  navValidationLogs?: string[];
 };
 
 type RecordingAsset = SavedMediaAsset & { kind: string; duration: number | null };
@@ -134,8 +136,14 @@ export function DemoContentModal({
     setNavSteps(f.navSteps);
     setNavStepsText(f.navSteps?.length ? JSON.stringify(f.navSteps, null, 2) : "");
     setNavStepsError("");
-    setDryRunState("idle");
-    setDryRunMessage("");
+    setDryRunState(f.navValidated ? "ok" : "idle");
+    setDryRunMessage(
+      f.navValidated
+        ? f.navValidationLogs?.some((log) => log.includes("reparado") || log.includes("descubierto"))
+          ? "Recorrido comprobado y autocorregido con Playwright."
+          : "Recorrido comprobado automáticamente con Playwright."
+        : "",
+    );
   }
 
   async function saveLogin() {
@@ -209,6 +217,7 @@ export function DemoContentModal({
         failedStep?: number;
         error?: string;
         logs?: string[];
+        navSteps?: NavStep[];
       };
       if (!r.ok || !data.ok) {
         setDryRunState("error");
@@ -220,6 +229,10 @@ export function DemoContentModal({
         return;
       }
       setDryRunState("ok");
+      if (data.navSteps?.length) {
+        setNavSteps(data.navSteps);
+        setNavStepsText(JSON.stringify(data.navSteps, null, 2));
+      }
       setDryRunMessage(
         data.logs?.some((log) => log.includes("dry-run detenido"))
           ? "Recorrido validado hasta la acción final, que no se ejecutó."
@@ -414,7 +427,11 @@ export function DemoContentModal({
                 className="input mt-2"
                 placeholder={projectUrl}
                 value={funcionUrl}
-                onChange={(e) => setFuncionUrl(e.target.value)}
+                onChange={(e) => {
+                  setFuncionUrl(e.target.value);
+                  setDryRunState("idle");
+                  setDryRunMessage("");
+                }}
               />
             )}
           </div>
@@ -514,7 +531,15 @@ export function DemoContentModal({
             <div className="flex flex-col gap-2">
               <div className="rounded-lg bg-white/5 p-3">
                 <label className="flex items-center gap-2">
-                  <input type="checkbox" checked={usarLogin} onChange={(e) => setUsarLogin(e.target.checked)} />
+                  <input
+                    type="checkbox"
+                    checked={usarLogin}
+                    onChange={(e) => {
+                      setUsarLogin(e.target.checked);
+                      setDryRunState("idle");
+                      setDryRunMessage("");
+                    }}
+                  />
                   <span className="text-xs text-white/70">
                     Requiere login {loginConfigured && <span className="text-[var(--color-state-ok)]">· credenciales guardadas</span>}
                   </span>
@@ -632,6 +657,7 @@ export function DemoContentModal({
                 promptLoading ||
                 !funcion.trim() ||
                 (grabacionModo === "auto" && Boolean(navStepsError)) ||
+                (grabacionModo === "auto" && Boolean(navSteps?.length) && dryRunState !== "ok") ||
                 (grabacionModo === "library" && !recordingAssetId) ||
                 Boolean(providerError) ||
                 !falReady

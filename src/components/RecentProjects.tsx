@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAppDialog } from "./AppDialog";
 
 export type RecentProject = {
   id: string;
@@ -16,13 +17,19 @@ export function RecentProjects({ initial }: { initial: RecentProject[] }) {
   const router = useRouter();
   const [projects, setProjects] = useState(initial);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const appDialog = useAppDialog();
 
   if (projects.length === 0) return null;
 
   async function remove(e: React.MouseEvent, id: string) {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm("¿Eliminar este analisis y su dossier?")) return;
+    if (!await appDialog.confirm({
+      title: "Eliminar análisis",
+      message: "Se eliminarán el proyecto y su dossier. Esta acción no se puede deshacer.",
+      confirmLabel: "Eliminar proyecto",
+      tone: "danger",
+    })) return;
     setDeleting(id);
     await fetch(`/api/projects/${id}`, { method: "DELETE" });
     setProjects((prev) => prev.filter((p) => p.id !== id));
@@ -67,6 +74,7 @@ export function RecentProjects({ initial }: { initial: RecentProject[] }) {
           </div>
         ))}
       </div>
+      {appDialog.dialog}
     </section>
   );
 }

@@ -7,6 +7,7 @@ import { DemoContentModal } from "@/components/DemoContentModal";
 import { PieceCarousel } from "@/components/PieceCarousel";
 import { PublishModal } from "@/components/PublishModal";
 import { SelfRecordModal } from "@/components/SelfRecordModal";
+import { useAppDialog } from "@/components/AppDialog";
 import type { ContentPiece, DemoConfig, MediaConfig } from "@/core/content/types";
 import { friendlyProviderFailure, sanitizeProviderMessage } from "@/core/media/contracts";
 
@@ -42,6 +43,12 @@ const REQ006_STEPS: { id: string; label: string }[] = [
   { id: "media", label: "Cortes" },
   { id: "voz", label: "Locución" },
   { id: "montaje", label: "Montaje" },
+];
+
+const REQ006_REFRESH_STEPS: { id: string; label: string }[] = [
+  { id: "input", label: "Reutilizar recursos" },
+  { id: "navigation", label: "Navegación" },
+  { id: "montage", label: "Remontar sin créditos" },
 ];
 
 const nodesFrom = (steps: { id: string; label: string }[]): GraphNode[] =>
@@ -97,6 +104,7 @@ export function ContentTray({
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const esRef = useRef<Map<string, EventSource>>(new Map());
+  const appDialog = useAppDialog();
 
   const load = useCallback(async () => {
     const r = await fetch(`/api/content/${projectId}`);
@@ -116,7 +124,11 @@ export function ContentTray({
       try {
         nodesMap[runId] = JSON.parse(run.nodes) as GraphNode[];
       } catch {
-        nodesMap[runId] = run.requisito === "REQ-006" ? nodesFrom(REQ006_STEPS) : initialNodes();
+        nodesMap[runId] = run.requisito === "REQ-006"
+          ? nodesFrom(REQ006_STEPS)
+          : run.requisito === "REQ-006-NAV"
+            ? nodesFrom(REQ006_REFRESH_STEPS)
+            : initialNodes();
       }
       try {
         logsMap[runId] = run.logs ? JSON.parse(run.logs) as string[] : [];
@@ -255,22 +267,72 @@ export function ContentTray({
     });
     if (!response.ok) {
       const data = (await response.json()) as { error?: string };
-      window.alert(data.error || "No se pudo adjuntar la grabación.");
+      await appDialog.alert({
+        title: "No se pudo adjuntar",
+        message: data.error || "No se pudo adjuntar la grabación.",
+        tone: "danger",
+      });
       return;
     }
     await load();
   }
 
   async function clearRecording(pieceId: string) {
-    if (!window.confirm("¿Quitar esta grabación de la pieza? El original de la mediateca se conserva.")) return;
+    if (!await appDialog.confirm({
+      title: "Quitar grabación de la pieza",
+      message: "La grabación dejará de estar asociada a esta pieza, pero el archivo original seguirá disponible en la mediateca.",
+      confirmLabel: "Quitar grabación",
+      tone: "danger",
+    })) return;
     await fetch(`/api/content/${projectId}/${pieceId}`, {
       method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clearRecording: true }),
     });
     await load();
   }
 
+  async function refreshOwnPiece(pieceId: string, mode: "auto" | "existing") {
+    const message = mode === "auto"
+      ? "Se validará y regrabará únicamente la navegación. Después se remontará reutilizando vídeos y voz existentes."
+      : "Se remontará con la grabación actual y los recursos existentes, sin llamar a fal.ai ni ElevenLabs.";
+    if (!await appDialog.confirm({
+      title: mode === "auto" ? "Regrabar navegación" : "Remontar sin créditos",
+      message,
+      confirmLabel: mode === "auto" ? "Validar y regrabar" : "Crear nuevo montaje",
+    })) return;
+    const response = await fetch(`/api/content/${projectId}/${pieceId}/remount`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode }),
+    });
+    const data = (await response.json().catch(() => ({}))) as {
+      error?: string;
+      runId?: string;
+      nodes?: GraphNode[];
+    };
+    if (!response.ok || !data.runId) {
+      await appDialog.alert({
+        title: "No se pudo iniciar",
+        message: data.error || "No se pudo iniciar el remontaje.",
+        tone: "danger",
+      });
+      return;
+    }
+    setRunNodes((previous) => ({
+      ...previous,
+      [data.runId!]: data.nodes ?? nodesFrom(REQ006_REFRESH_STEPS),
+    }));
+    setRunLogs((previous) => ({ ...previous, [data.runId!]: [] }));
+    subscribe(data.runId);
+    await load();
+  }
+
   async function removePiece(pieceId: string) {
-    if (!confirm("¿Eliminar esta pieza de contenido?")) return;
+    if (!await appDialog.confirm({
+      title: "Eliminar pieza de contenido",
+      message: "Se eliminará la pieza y dejará de aparecer en esta bandeja.",
+      confirmLabel: "Eliminar pieza",
+      tone: "danger",
+    })) return;
     await fetch(`/api/content/${projectId}/${pieceId}`, { method: "DELETE" });
     setPieces((prev) => prev.filter((p) => p.id !== pieceId));
   }
@@ -374,6 +436,8 @@ export function ContentTray({
                 onUpload={(file) => uploadScreencast(focus.id, file)}
                 onRecord={() => setRecordingPieceId(focus.id)}
                 onClearRecording={() => clearRecording(focus.id)}
+                onRefreshNavigation={() => refreshOwnPiece(focus.id, "auto")}
+                onRemount={() => refreshOwnPiece(focus.id, "existing")}
                 onReload={load}
               />
             );
@@ -395,6 +459,8 @@ export function ContentTray({
                 onUpload={(file) => uploadScreencast(p.id, file)}
                 onRecord={() => setRecordingPieceId(p.id)}
                 onClearRecording={() => clearRecording(p.id)}
+                onRefreshNavigation={() => refreshOwnPiece(p.id, "auto")}
+                onRemount={() => refreshOwnPiece(p.id, "existing")}
                 onReload={load}
               />
             </div>
@@ -432,6 +498,7 @@ export function ContentTray({
           }}
         />
       )}
+      {appDialog.dialog}
     </div>
   );
 }
@@ -448,6 +515,8 @@ function PieceCard({
   onUpload,
   onRecord,
   onClearRecording,
+  onRefreshNavigation,
+  onRemount,
   onReload,
 }: {
   projectId: string;
@@ -461,6 +530,8 @@ function PieceCard({
   onUpload: (file: File) => void;
   onRecord: () => void;
   onClearRecording: () => void;
+  onRefreshNavigation: () => void;
+  onRemount: () => void;
   onReload: () => void;
 }) {
   const [showPublish, setShowPublish] = useState(false);
@@ -470,7 +541,7 @@ function PieceCard({
     `/api/content/${projectId}/${piece.id}/asset?path=${encodeURIComponent(rel)}`;
   const g = piece.content.guion;
   const isOwn = piece.origin === "own";
-  const isMounted = /(?:^|\/)final\.mp4$/i.test(piece.assets.videoPath);
+  const isMounted = /(?:^|\/)final(?:-[^/]+)?\.mp4$/i.test(piece.assets.videoPath);
   const allLogs = [...piece.assets.logs, ...(runLogs ?? [])].map(displayGenerationMessage).filter(
     (log, index, list) => list.indexOf(log) === index,
   );
@@ -493,6 +564,9 @@ function PieceCard({
         status: "ok" as const,
         error: undefined as string | undefined,
       }));
+  const generatedResourceCount = clipItems.filter((clip) => clip.status === "ok").length +
+    (piece.assets.brandOutroPath ? 1 : 0);
+  const generatedResourceTotal = clipItems.length + (piece.assets.brandOutroPath ? 1 : 0);
 
   return (
     <div className="glass card-lift p-4">
@@ -600,14 +674,14 @@ function PieceCard({
       {piece.assets.audioPath && (
         <audio key={piece.assets.audioPath} controls className="mb-3 w-full" src={asset(piece.assets.audioPath)} />
       )}
-      {clipItems.length > 0 && (
+      {generatedResourceTotal > 0 && (
         <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
           <button
             type="button"
             onClick={() => setShowClips((value) => !value)}
             className="flex w-full items-center justify-between text-left text-xs font-medium text-white/70"
           >
-            <span>Recursos generados ({clipItems.filter((clip) => clip.status === "ok").length}/{clipItems.length})</span>
+            <span>Recursos generados ({generatedResourceCount}/{generatedResourceTotal})</span>
             <span className="text-[var(--color-accent-2)]">{showClips ? "Ocultar" : "Ver todos"}</span>
           </button>
           {showClips && (
@@ -632,6 +706,18 @@ function PieceCard({
                   </div>
                 </div>
               ))}
+              {piece.assets.brandOutroPath && (
+                <div className="rounded-lg border border-cyan-400/20 bg-cyan-400/[0.04] p-2">
+                  <div className="mb-2 flex items-center justify-between gap-2 text-[11px]">
+                    <b>Cierre de marca · logo</b>
+                    <span className="text-[var(--color-state-ok)]">Generado</span>
+                  </div>
+                  <video controls preload="metadata" className="w-full rounded bg-black" src={asset(piece.assets.brandOutroPath)} />
+                  <div className="mt-2 text-[10px] text-white/45">
+                    Animación final de 3 segundos creada localmente, sin coste de proveedor.
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -673,6 +759,17 @@ function PieceCard({
             <span className="text-xs text-white/50">Grabación de la app</span>
             <div className="flex flex-wrap gap-2">
             <button type="button" onClick={onRecord} className="rounded-lg bg-red-500 px-2 py-1 text-xs font-semibold text-white hover:bg-red-400">● REC</button>
+            {piece.config.demo?.navSteps?.length ? (
+              <button
+                type="button"
+                onClick={onRefreshNavigation}
+                disabled={piece.status === "generando"}
+                className="rounded-lg border border-cyan-400/35 bg-cyan-400/10 px-2 py-1 text-xs text-cyan-200 hover:bg-cyan-400/15 disabled:opacity-40"
+                title="Valida y regraba Playwright; reutiliza los vídeos y la voz existentes"
+              >
+                Regrabar navegación
+              </button>
+            ) : null}
             <label
               className={[
                 "cursor-pointer rounded-lg px-2 py-1 text-xs",
@@ -694,8 +791,29 @@ function PieceCard({
               />
             </label>
             {piece.assets.recordingPath && <button type="button" onClick={onClearRecording} className="rounded-lg border border-red-400/20 px-2 py-1 text-xs text-red-300 hover:bg-red-500/10">Quitar</button>}
+            {piece.assets.recordingPath ? (
+              <button
+                type="button"
+                onClick={onRemount}
+                disabled={piece.status === "generando"}
+                className="rounded-lg border border-purple-400/35 bg-purple-400/10 px-2 py-1 text-xs font-medium text-purple-200 hover:bg-purple-400/15 disabled:opacity-40"
+                title="No solicita nuevos vídeos, voz ni avatar"
+              >
+                Remontar sin créditos
+              </button>
+            ) : null}
             </div>
           </div>
+          <details className="mb-2 rounded-lg border border-white/8 bg-black/15 px-3 py-2 text-[10px] text-white/45">
+            <summary className="cursor-pointer font-medium text-white/60">¿Qué hace cada opción?</summary>
+            <dl className="mt-2 grid gap-2 leading-relaxed sm:grid-cols-2">
+              <div><dt className="font-semibold text-red-200">REC</dt><dd>Abre la captura manual. Navegas tú por la app y guardas el resultado en la mediateca y en esta pieza.</dd></div>
+              <div><dt className="font-semibold text-cyan-200">Regrabar navegación</dt><dd>Valida los pasos y vuelve a grabarlos con Playwright. Después remonta usando los vídeos y la voz ya existentes.</dd></div>
+              <div><dt className="font-semibold text-white/75">Reemplazar vídeo</dt><dd>Sube otro archivo como navegación de esta pieza. No genera ni monta nada hasta que pulses remontar.</dd></div>
+              <div><dt className="font-semibold text-red-200">Quitar</dt><dd>Desvincula la grabación de esta pieza. El original sigue guardado en la mediateca.</dd></div>
+              <div className="sm:col-span-2"><dt className="font-semibold text-purple-200">Remontar sin créditos</dt><dd>Crea de nuevo el vídeo final con la grabación actual, los cortes, la locución, el guion y los subtítulos existentes. No llama a fal.ai, ElevenLabs ni HeyGen.</dd></div>
+            </dl>
+          </details>
           {piece.assets.recordingPath ? (
             <video
               key={piece.assets.recordingPath}

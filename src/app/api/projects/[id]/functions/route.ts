@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { coerceDossier } from "@/core/dossier/types";
@@ -8,6 +9,8 @@ import {
   inspectNavigationSurface,
   runtimeSnapshotPrompt,
 } from "@/core/media/navigation-inspector";
+import { recordDemo } from "@/core/media/recorder";
+import { pieceDir } from "@/core/media/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +61,39 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         ? coerceNavigationMap(JSON.parse(project.navigationMap.content))
         : null,
     });
+    const candidate = objective ? funciones.find((funcion) => Boolean(funcion.navSteps?.length)) : null;
+    if (candidate && (!body?.usarLogin || login)) {
+      const validationId = `analyze-${id}-${Date.now()}`;
+      const validationDir = pieceDir(validationId);
+      const validationLogs: string[] = [];
+      try {
+        await recordDemo({
+          projectId: id,
+          pieceId: validationId,
+          url: candidate.url || project.url,
+          pasos: candidate.pasos,
+          navSteps: candidate.navSteps,
+          login,
+          log: (message) => validationLogs.push(message),
+          dryRun: true,
+          onResolvedSteps: (steps) => {
+            candidate.navSteps = steps;
+          },
+        });
+        candidate.navValidated = true;
+        candidate.navValidationLogs = validationLogs;
+      } catch (error) {
+        candidate.navValidated = false;
+        candidate.navValidationLogs = validationLogs;
+        candidate.confianza = "baja";
+        const detail = error instanceof Error ? error.message : String(error);
+        warning = [warning, `El recorrido propuesto no superó la validación automática: ${detail}`]
+          .filter(Boolean)
+          .join(" ");
+      } finally {
+        fs.rmSync(validationDir, { recursive: true, force: true });
+      }
+    }
     const automatic = funciones.some((funcion) => Boolean(funcion.navSteps?.length));
     if (objective && !automatic && !warning) {
       warning = "Se encontró la funcionalidad, pero no un recorrido automático seguro. Revisa los pasos humanos o añade un cliente/dato de ejemplo.";

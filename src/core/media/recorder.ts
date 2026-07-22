@@ -4,6 +4,8 @@ import { pieceDir } from "./storage";
 import type { LoginCreds } from "@/core/secrets/login";
 import type { NavStep } from "@/core/content/types";
 import { hasFfmpeg, runFfmpeg } from "./ffmpeg";
+import { dismissTransientDialogs, prepareAuthenticatedSession } from "./auth-session";
+import { resolveTapStep, resolveVisibleSelector } from "./navigation-repair";
 
 /**
  * REQ-006 — Grabacion de la propia app con Playwright en modo movil.
@@ -17,6 +19,7 @@ import { hasFfmpeg, runFfmpeg } from "./ffmpeg";
  */
 
 const DATA_DIR = path.join(process.cwd(), "data");
+const MOBILE_VIDEO_SIZE = { width: 390, height: 693 } as const; // 9:16 sin letterbox gris
 
 export interface RecordArgs {
   projectId: string;
@@ -27,6 +30,8 @@ export interface RecordArgs {
   login?: LoginCreds | null;
   log: (m: string) => void;
   dryRun?: boolean;
+  outputSuffix?: string;
+  onResolvedSteps?: (steps: NavStep[]) => void | Promise<void>;
 }
 
 export class RecordStepError extends Error {
@@ -50,61 +55,6 @@ interface FinalNavLogStep {
   t_fin: number;
 }
 
-// Selectores habituales para un login generico.
-const USER_SELECTORS = [
-  'input[type="email"]',
-  'input[name="email"]',
-  'input[name="username"]',
-  'input[name="user"]',
-  'input[id*="email" i]',
-  'input[id*="user" i]',
-];
-const PASS_SELECTORS = ['input[type="password"]', 'input[name="password"]', 'input[id*="pass" i]'];
-const SUBMIT_SELECTORS = [
-  'button[type="submit"]',
-  'input[type="submit"]',
-  'button:has-text("Entrar")',
-  'button:has-text("Iniciar")',
-  'button:has-text("Log in")',
-  'button:has-text("Sign in")',
-];
-
-async function tryFill(page: unknown, selectors: string[], value: string): Promise<boolean> {
-  const p = page as {
-    locator: (s: string) => { first: () => { fill: (v: string) => Promise<void>; count: () => Promise<number> } };
-  };
-  for (const sel of selectors) {
-    try {
-      const loc = p.locator(sel).first();
-      if ((await loc.count()) > 0) {
-        await loc.fill(value);
-        return true;
-      }
-    } catch {
-      /* siguiente selector */
-    }
-  }
-  return false;
-}
-
-async function tryClick(page: unknown, selectors: string[]): Promise<boolean> {
-  const p = page as {
-    locator: (s: string) => { first: () => { click: () => Promise<void>; count: () => Promise<number> } };
-  };
-  for (const sel of selectors) {
-    try {
-      const loc = p.locator(sel).first();
-      if ((await loc.count()) > 0) {
-        await loc.click();
-        return true;
-      }
-    } catch {
-      /* siguiente selector */
-    }
-  }
-  return false;
-}
-
 export async function recordDemo(args: RecordArgs): Promise<string> {
   const { projectId, pieceId, url, pasos, navSteps, login, log, dryRun = false } = args;
 
@@ -126,8 +76,6 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
   const sessionsDir = path.join(DATA_DIR, "sessions");
   const safeProjectId = projectId.replace(/[^a-zA-Z0-9_-]/g, "_");
   const sessionPath = path.join(sessionsDir, `${safeProjectId}.json`);
-  const hasSession = fs.existsSync(sessionPath);
-  let sessionReused = hasSession;
 
   let browser: import("playwright").Browser | null = null;
   try {
@@ -141,22 +89,25 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
   let context: import("playwright").BrowserContext | null = null;
   let contextClosed = false;
   try {
-    const contextOptions: import("playwright").BrowserContextOptions = {
-      ...device,
-      recordVideo: dryRun ? undefined : { dir, size: { width: 390, height: 844 } },
-      storageState: hasSession ? sessionPath : undefined,
-    };
-    try {
-      context = await browser.newContext(contextOptions);
-    } catch (error) {
-      if (!hasSession) throw error;
-      sessionReused = false;
-      log("La sesion guardada no se pudo reutilizar; se inicia una sesion limpia.");
-      context = await browser.newContext({
-        ...device,
-        recordVideo: dryRun ? undefined : { dir, size: { width: 390, height: 844 } },
+    if (login) {
+      await prepareAuthenticatedSession({
+        browser,
+        device,
+        sessionPath,
+        url,
+        login,
+        log,
       });
     }
+    const sessionReady = Boolean(login) && fs.existsSync(sessionPath);
+    const contextOptions: import("playwright").BrowserContextOptions = {
+      ...device,
+      viewport: MOBILE_VIDEO_SIZE,
+      screen: MOBILE_VIDEO_SIZE,
+      recordVideo: dryRun ? undefined : { dir, size: MOBILE_VIDEO_SIZE },
+      storageState: sessionReady ? sessionPath : undefined,
+    };
+    context = await browser.newContext(contextOptions);
     const page = await context.newPage();
 
     log(`Abriendo ${url} en modo movil…`);
@@ -168,38 +119,20 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
     }
     await page.waitForTimeout(1500);
 
-    if (sessionReused) {
-      log("Sesion guardada reutilizada.");
-    } else if (login) {
-      const okUser = await tryFill(page, USER_SELECTORS, login.user);
-      const okPass = await tryFill(page, PASS_SELECTORS, login.pass);
-      if (okUser && okPass) {
-        await tryClick(page, SUBMIT_SELECTORS);
-        await page.waitForTimeout(3000);
-        log("Login enviado (best-effort).");
-        try {
-          if (!fs.existsSync(sessionsDir)) fs.mkdirSync(sessionsDir, { recursive: true });
-          await context.storageState({ path: sessionPath });
-          log("Sesion guardada para futuras grabaciones.");
-        } catch {
-          log("No se pudo guardar la sesion; la grabacion continua.");
-        }
-      } else {
-        log("No se encontro el formulario de login; se graba sin autenticar.");
-      }
-    }
-
     const t0 = Date.now();
     const now = () => Math.round(((Date.now() - t0) / 1000) * 100) / 100;
     const navLog: Array<NavLogStep | FinalNavLogStep> = [];
 
     if (navSteps?.length) {
       let stoppedBeforeCommit = false;
+      const resolvedSteps: NavStep[] = [];
+      let lastContextSelector = "";
       for (let i = 0; i < navSteps.length; i++) {
         const step = navSteps[i];
         const started = now();
         log(`Paso ${i + 1}: ${step.action}`);
         try {
+          await dismissTransientDialogs(page, log);
           switch (step.action) {
             case "goto":
               if (!step.url) throw new Error("falta url");
@@ -207,37 +140,66 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
                 waitUntil: "networkidle",
                 timeout: step.timeoutMs ?? 30000,
               });
+              lastContextSelector = "";
               break;
             case "tap":
               if (!step.selector) throw new Error("falta selector");
+              const tap = await resolveTapStep({
+                page,
+                step,
+                log,
+                contextSelector: lastContextSelector || undefined,
+              });
+              for (const inserted of tap.inserted) {
+                resolvedSteps.push(inserted);
+                navLog.push({ t_inicio: started, t_fin: now(), ...inserted });
+              }
+              const resolvedTap = { ...step, selector: tap.selector };
+              resolvedSteps.push(resolvedTap);
               if (dryRun && step.commit) {
                 await page
-                  .locator(step.selector)
+                  .locator(tap.selector)
                   .first()
                   .waitFor({ state: "visible", timeout: step.timeoutMs ?? 15000 });
                 stoppedBeforeCommit = true;
-                log(`Control final localizado; dry-run detenido antes de ejecutar: ${step.selector}`);
+                log(`Control final localizado; dry-run detenido antes de ejecutar: ${tap.selector}`);
               } else {
-                await page.locator(step.selector).first().tap({ timeout: step.timeoutMs ?? 15000 });
+                await page.locator(tap.selector).first().tap({ timeout: step.timeoutMs ?? 15000 });
               }
               break;
             case "fill":
               if (!step.selector) throw new Error("falta selector");
+              const fillTarget = await resolveVisibleSelector(page, step.selector);
+              if (fillTarget.repaired) log(`Selector reparado: ${step.selector} → ${fillTarget.selector}`);
+              resolvedSteps.push({ ...step, selector: fillTarget.selector });
               await page
-                .locator(step.selector)
+                .locator(fillTarget.selector)
                 .first()
                 .fill(step.value ?? "", { timeout: step.timeoutMs ?? 15000 });
               break;
             case "wait":
               if (!step.selector) throw new Error("falta selector");
-              await page.waitForSelector(step.selector, { timeout: step.timeoutMs ?? 15000 });
+              const waitTarget = await resolveVisibleSelector(
+                page,
+                step.selector,
+                Math.min(step.timeoutMs ?? 15000, 5000),
+              );
+              if (waitTarget.repaired) log(`Selector reparado: ${step.selector} → ${waitTarget.selector}`);
+              resolvedSteps.push({ ...step, selector: waitTarget.selector });
+              await page.waitForSelector(waitTarget.selector, { timeout: step.timeoutMs ?? 15000 });
+              lastContextSelector = waitTarget.selector;
               break;
             case "scroll":
+              resolvedSteps.push(step);
               await page.mouse.wheel(0, step.pixels ?? 500);
               break;
           }
+          if (step.action === "goto") resolvedSteps.push(step);
           navLog.push({ t_inicio: started, t_fin: now(), ...step });
-          if (stoppedBeforeCommit) break;
+          if (stoppedBeforeCommit) {
+            resolvedSteps.push(...navSteps.slice(i + 1));
+            break;
+          }
           await page.waitForTimeout(step.pauseMs ?? 1500);
         } catch (error) {
           await page.screenshot({ path: path.join(dir, "error.jpg"), fullPage: false }).catch(() => {});
@@ -245,6 +207,8 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
           throw new RecordStepError(`Fallo en el paso ${i + 1} (${step.action}): ${detail}`, i + 1);
         }
       }
+      fs.writeFileSync(path.join(dir, "nav_plan.json"), JSON.stringify(resolvedSteps, null, 2), "utf8");
+      await args.onResolvedSteps?.(resolvedSteps);
     } else {
       // Compatibilidad con piezas antiguas: conserva el scroll guiado actual,
       // pero registra tiempos para que el montaje pueda recortar la grabacion.
@@ -283,9 +247,11 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
     }
 
     let rel = "";
+    const suffix = (args.outputSuffix ?? "").replace(/[^a-zA-Z0-9_-]/g, "");
+    const stem = suffix ? `screen-${suffix}` : "screen";
     if (video) {
       const src = await video.path();
-      const dest = path.join(dir, "screencast.webm");
+      const dest = path.join(dir, `${stem}.webm`);
       try {
         if (fs.existsSync(src) && src !== dest) fs.renameSync(src, dest);
         rel = path.relative(DATA_DIR, dest).replace(/\\/g, "/");
@@ -298,12 +264,12 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
     if (hasFfmpeg()) {
       try {
         runFfmpeg(
-          ["-y", "-i", "screencast.webm", "-r", "30", "-pix_fmt", "yuv420p", "screen.mp4"],
+          ["-y", "-i", `${stem}.webm`, "-r", "30", "-pix_fmt", "yuv420p", `${stem}.mp4`],
           dir,
         );
-        const normalized = path.join(dir, "screen.mp4");
+        const normalized = path.join(dir, `${stem}.mp4`);
         if (fs.existsSync(normalized)) {
-          const webm = path.join(dir, "screencast.webm");
+          const webm = path.join(dir, `${stem}.webm`);
           if (fs.existsSync(webm)) fs.unlinkSync(webm);
           rel = path.relative(DATA_DIR, normalized).replace(/\\/g, "/");
           log("Grabacion normalizada a MP4 (30 fps).");

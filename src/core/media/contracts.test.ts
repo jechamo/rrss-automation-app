@@ -267,12 +267,19 @@ test("MIX v1 sigue siendo compatible y MIX v2 conserva recortes y bloqueos", () 
       { assetId: "demo", sourceStart: 2, sourceEnd: 6.5, label: "Resultado", locked: true },
       { assetId: "clip", sourceStart: 0, sourceEnd: 3, label: "B-roll" },
     ],
+    overlays: [
+      { assetId: "overlay", sourceStart: 1, sourceEnd: 4, timelineStart: 2, mode: "pip", position: "bottom-right", size: 0.42 },
+    ],
     subtitleText: "Texto",
   });
   assert.equal(timeline.version, 2);
   assert.equal(mixVideoCount(timeline), 2);
   assert.equal(mixVisualDuration(timeline), 7.5);
   assert.equal(timeline.segments[0].locked, true);
+  assert.equal(timeline.overlays.length, 1);
+  assert.equal(timeline.overlays[0].mode, "pip");
+  assert.equal(timeline.overlays[0].position, "bottom-right");
+  assert.equal(timeline.overlays[0].timelineStart, 2);
 });
 
 test("MIX v2 descarta segmentos imposibles de forma defensiva", () => {
@@ -287,4 +294,22 @@ test("MIX v2 descarta segmentos imposibles de forma defensiva", () => {
   assert.equal(recipe.segments.length, 1);
   assert.equal(recipe.segments[0].sourceStart, 0);
   assert.equal(recipe.segments[0].sourceEnd, 2);
+  assert.deepEqual(recipe.overlays, []);
+});
+
+test("MIX v2 sanea superposiciones sin romper recetas anteriores", () => {
+  const recipe = coerceMixRecipe({
+    version: 2,
+    segments: [{ assetId: "base", sourceStart: 0, sourceEnd: 8 }],
+    overlays: [
+      { assetId: "", sourceStart: 0, sourceEnd: 3 },
+      { assetId: "bad", sourceStart: 4, sourceEnd: 2 },
+      { assetId: "ok", sourceStart: -2, sourceEnd: 3, timelineStart: -4, mode: "pip", position: "unknown", size: 9 },
+    ],
+  });
+  assert.equal(recipe.overlays.length, 1);
+  assert.equal(recipe.overlays[0].sourceStart, 0);
+  assert.equal(recipe.overlays[0].timelineStart, 0);
+  assert.equal(recipe.overlays[0].position, "top-right");
+  assert.equal(recipe.overlays[0].size, 0.8);
 });

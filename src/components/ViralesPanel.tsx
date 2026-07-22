@@ -99,8 +99,8 @@ export function ViralesPanel({
       }
     };
     es.onerror = () => {
-      es.close();
-      esRef.current = null;
+      // EventSource reconecta solo. Cerrar aquí dejaba el grafo congelado en gris
+      // mientras el run seguía avanzando en el servidor.
     };
     return () => {
       es.close();

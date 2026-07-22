@@ -27,6 +27,8 @@ export interface AppFuncion {
   navSteps?: NavStep[]; // acciones Playwright con selectores comprobados en el repo
   evidencias?: string[]; // fichero:linea que sustenta el recorrido propuesto
   confianza?: "alta" | "media" | "baja";
+  navValidated?: boolean; // confirmado contra el DOM real en un dry-run
+  navValidationLogs?: string[];
 }
 
 function str(v: unknown, def = ""): string {
@@ -252,6 +254,9 @@ goto si la funcionalidad atraviesa varias pantallas. No incluyas pasos ni valore
 el login cifrado ocurre antes de ejecutar este recorrido. Cuando haya navSteps, empieza por un goto
 a la primera pantalla funcional para que el recorrido sea determinista despues del login. Para rutas
 dinamicas, navega seleccionando la entidad observada; nunca inventes IDs ni uses ":param" en una URL.
+Incluye todos los estados intermedios necesarios (tabs, filtros, desplegables y modales) y no dependas
+de selecciones guardadas en sessionStorage. El tag del selector debe coincidir con el elemento real:
+no conviertas una tarjeta div clicable en button solo porque su texto parezca una accion.
 Marca \`commit:true\` SOLO en el tap que confirma una mutacion (generar, guardar, enviar, eliminar o pagar),
 para que el dry-run se detenga antes de ejecutarla. Cada evidencia debe existir literalmente en el
 contexto proporcionado. No incluyas nada fuera del JSON.`;

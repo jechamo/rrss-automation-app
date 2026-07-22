@@ -14,6 +14,7 @@ import { getLogin } from "@/core/secrets/login";
 import { fal, heygen, elevenlabs } from "@/core/media";
 import { assemble, assemblePresenterDemo, captionVideo } from "@/core/media/assemble";
 import { ffprobeDuration, hasFfmpeg } from "@/core/media/ffmpeg";
+import { applyBrandOutro } from "@/core/media/brand-outro";
 import { assetAbsPath } from "@/core/media/storage";
 import { friendlyProviderFailure } from "@/core/media/contracts";
 import { effectiveClipLimit } from "@/core/media/planning";
@@ -75,6 +76,10 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
       ctx.artifacts.config = config;
       ctx.artifacts.demo = config.demo;
       ctx.artifacts.assets = assets;
+      ctx.artifacts.logoPath = (await prisma.project.findUnique({
+        where: { id: ctx.project.id },
+        select: { logoPath: true },
+      }))?.logoPath;
 
       await prisma.contentPiece.update({
         where: { id: pieceId },
@@ -104,7 +109,11 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
       // se sigue con guion+cortes y se avisa para subir el video a mano.
       const login = demo.usarLogin ? getLogin(ctx.project.id) : null;
       if (demo.usarLogin && !login) {
-        ctx.log("Login requerido pero sin credenciales guardadas; se graba sin autenticar.");
+        const message = "Login requerido pero sin credenciales guardadas; no se intenta una grabación anónima.";
+        assets.logs.push(message);
+        ctx.log(`${message} Podrás subir el vídeo a mano.`);
+        ctx.artifacts.assets = assets;
+        return;
       }
       const url = demo.funcionUrl || ctx.project.url;
       try {
@@ -363,6 +372,12 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
             assets.logs.push(message);
             if (result.qcFrames) assets.logs.push("Frames de control de calidad generados.");
             ctx.log(message);
+            applyBrandOutro({
+              pieceId,
+              logoPath: ctx.artifacts.logoPath as string | null | undefined,
+              assets,
+              log: ctx.log,
+            });
           } else {
             assets.logs.push("Montaje omitido: se conserva el video actual.");
           }

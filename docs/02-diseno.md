@@ -278,12 +278,42 @@ seleccionar, añadir, arrastrar/reordenar, recortar con entrada/salida, bloquear
 reproductor superior previsualiza el recurso seleccionado; el resultado exacto se revisa después de
 renderizar.
 
+La lectura se divide en cinco pasos numerados: configurar versión, elegir plan, construir timeline,
+explorar vídeos y revisar audio/subtítulos. La bandeja usa tarjetas con fotograma, play, duración,
+origen, número de usos y badges de tipo. Un monitor fijo en la columna derecha reproduce el recurso
+seleccionado o el MIX final; las versiones renderizadas quedan como tarjetas compactas debajo.
+
+La locución y la música disponen de reproductor independiente. Los bloques de ambas pistas de vídeo
+usan un fotograma aproximado como fondo con gradiente para conservar la legibilidad del texto.
+
 ### 16.3 Armonización
 
 La cabecera compara duración visual y locución. **Ajustar a locución** reparte la diferencia entre
 segmentos no protegidos dentro de los límites de sus fuentes. Los avisos distinguen estimación,
 desajuste, recurso ausente y corte sin utilizar. Los marcadores Playwright se representan como
 segmentos de demo protegidos; los manuales pueden bloquearse desde el propio editor.
+
+### 16.4 Superposiciones
+
+La acción **Preparar en capas** coloca la grabación manual o Playwright en la pista base y distribuye
+los apoyos visuales en una pista superior. Cada recurso ofrece **Pista base** y **Superponer**. Al
+seleccionar una superposición se editan inicio temporal, entrada/salida, modo pantalla completa o
+picture-in-picture, esquina/centro y tamaño. La timeline superior es proporcional y avisa si el apoyo
+sale de la duración final o si una pantalla completa tapa un momento protegido. La locución permanece
+continua y los subtítulos se dibujan siempre por encima de ambas pistas. El cuerpo del bloque se
+arrastra para moverlo en el tiempo; sus asas laterales cambian entrada/salida y duración sin sustituir
+los controles numéricos de precisión.
+
+La UI explica la diferencia antes de preparar: **Secuencial** alterna recursos a pantalla completa;
+**En capas** mantiene la navegación debajo de los apoyos. Los dos modos usan una única carga de
+locución/subtítulos desde la pieza destino.
+
+### 16.5 Captura y diálogos adaptativos
+
+Captura local usa un contenedor limitado por `100dvh`, cuerpo con scroll y cabecera/acciones fijas,
+de modo que REC, STOP y Guardar siguen accesibles en portátiles y ventanas bajas. Confirmaciones,
+avisos y renombrados se muestran en un diálogo propio con tonos normal/peligro y foco de teclado; el
+único diálogo inevitable del navegador es el selector seguro para compartir pantalla.
 
 ## 17. Revisión previa de prompts fal.ai (REQ-013)
 
@@ -317,3 +347,15 @@ prompts y generar». El selector de modelo incluye versión, perfil y coste por 
 - «Verificar con Playwright» visita rutas seguras tras login y actualiza badges sin regenerar el dossier.
 - «Copiar Markdown» exporta la estructura Sección → Subsección → Descripción → Navegación.
 - Estado vacío y avisos explican cuándo no existe código, una ruta es dinámica o falta login.
+
+## 20. Pulido visual y confianza de ejecución (REQ-016)
+
+- Las tarjetas de pipeline tienen más aire horizontal y conectores visibles. El estado en curso conserva
+  el anillo animado; una reconexión no devuelve visualmente los nodos a pendiente.
+- Cursor de anillo cian/violeta en escritorio, con variante activa sobre controles. Inputs y textarea
+  conservan la forma de edición y en táctil no se fuerza ningún cursor.
+- Scrollbars finas con thumb degradado y hover luminoso; la barra lateral usa una versión aún más estrecha.
+- Sidebar compacta: solo lockup, navegación global y secciones del proyecto; se eliminan tagline y pie
+  redundante para evitar scroll en alturas normales.
+- La grabación automática muestra logs diferenciados para sesión validada, reautenticación, formulario
+  ausente y credenciales rechazadas. Nunca graba la pantalla donde se introducen usuario/contraseña.

@@ -39,6 +39,7 @@ export interface AssembleArgs {
   assets: PieceAssets;
   locucionText: string;
   shots: Shot[];
+  outputName?: string;
 }
 
 export interface PresenterDemoArgs {
@@ -47,6 +48,7 @@ export interface PresenterDemoArgs {
   recordingPath: string;
   locucionText: string;
   burnSubtitles: boolean;
+  outputName?: string;
 }
 
 export interface CaptionVideoArgs {
@@ -67,6 +69,10 @@ function existingAsset(rel: string): string | null {
 
 function inputPath(abs: string, cwd: string): string {
   return path.relative(cwd, abs).replace(/\\/g, "/");
+}
+
+function safeOutputName(value?: string): string {
+  return value && /^[a-zA-Z0-9_.-]+\.mp4$/.test(value) ? value : "final.mp4";
 }
 
 function readNavSegments(dir: string, recordingDuration: number | null): Segment[] {
@@ -161,6 +167,7 @@ export function assemble(args: AssembleArgs): AssembleResult | null {
   if (!hasFfmpeg()) return null;
 
   const dir = pieceDir(args.pieceId);
+  const outputName = safeOutputName(args.outputName);
   const clips = args.assets.clips.map(existingAsset).filter((clip): clip is string => Boolean(clip));
   const expectedClips = args.assets.clips.filter(Boolean).length;
   if (clips.length !== expectedClips) {
@@ -291,7 +298,7 @@ export function assemble(args: AssembleArgs): AssembleResult | null {
     ...(audioInput !== null ? ["-c:a", "aac"] : []),
     "-movflags",
     "+faststart",
-    "final.mp4",
+    outputName,
   ];
 
   try {
@@ -306,12 +313,12 @@ export function assemble(args: AssembleArgs): AssembleResult | null {
     throw error;
   }
 
-  const finalAbs = path.join(dir, "final.mp4");
-  if (!fs.existsSync(finalAbs)) throw new Error("FFmpeg no genero final.mp4.");
+  const finalAbs = path.join(dir, outputName);
+  if (!fs.existsSync(finalAbs)) throw new Error(`FFmpeg no genero ${outputName}.`);
 
   let qcFrames = false;
   try {
-    runFfmpeg(["-y", "-i", "final.mp4", "-vf", "fps=1/10", "qc_%d.jpg"], dir);
+    runFfmpeg(["-y", "-i", outputName, "-vf", "fps=1/10", "qc_%d.jpg"], dir);
     qcFrames = fs.readdirSync(dir).some((name) => /^qc_\d+\.jpg$/i.test(name));
   } catch {
     // QC es auxiliar: nunca invalida un montaje ya generado.
@@ -335,6 +342,7 @@ export function assemblePresenterDemo(args: PresenterDemoArgs): AssembleResult |
   if (!hasFfmpeg()) return null;
 
   const dir = pieceDir(args.pieceId);
+  const outputName = safeOutputName(args.outputName);
   const presenter = existingAsset(args.presenterPath);
   const recording = existingAsset(args.recordingPath);
   if (!presenter || !recording) return null;
@@ -410,7 +418,7 @@ export function assemblePresenterDemo(args: PresenterDemoArgs): AssembleResult |
     "aac",
     "-movflags",
     "+faststart",
-    "final.mp4",
+    outputName,
   ];
 
   try {
@@ -425,12 +433,12 @@ export function assemblePresenterDemo(args: PresenterDemoArgs): AssembleResult |
     throw error;
   }
 
-  const finalAbs = path.join(dir, "final.mp4");
-  if (!fs.existsSync(finalAbs)) throw new Error("FFmpeg no genero final.mp4.");
+  const finalAbs = path.join(dir, outputName);
+  if (!fs.existsSync(finalAbs)) throw new Error(`FFmpeg no genero ${outputName}.`);
 
   let qcFrames = false;
   try {
-    runFfmpeg(["-y", "-i", "final.mp4", "-vf", "fps=1/10", "qc_%d.jpg"], dir);
+    runFfmpeg(["-y", "-i", outputName, "-vf", "fps=1/10", "qc_%d.jpg"], dir);
     qcFrames = fs.readdirSync(dir).some((name) => /^qc_\d+\.jpg$/i.test(name));
   } catch {
     // El control visual no invalida un montaje ya generado.

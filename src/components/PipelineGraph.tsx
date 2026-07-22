@@ -59,7 +59,7 @@ function StepNode({ data }: NodeProps) {
     <div
       className="glass-strong px-3 py-3"
       style={{
-        minWidth: 200,
+        width: 196,
         border: `1px solid ${s.ring}`,
         boxShadow: d.state === "running" ? `0 0 18px ${s.ring}` : undefined,
         transition: "border-color 0.35s ease, box-shadow 0.35s ease",
@@ -127,7 +127,9 @@ export function PipelineGraph({ nodes }: { nodes: GraphNode[] }) {
       nodes.map((n, i) => ({
         id: n.id,
         type: "step",
-        position: { x: i * 230, y: 0 },
+        // 196 px de tarjeta + 76 px de aire. La separación anterior (30 px)
+        // hacía que algunas pipelines parecieran una única masa visual.
+        position: { x: i * 272, y: 0 },
         data: { iconId: n.id, label: n.label, state: n.state, detail: n.detail },
         draggable: false,
         connectable: false,
@@ -148,13 +150,13 @@ export function PipelineGraph({ nodes }: { nodes: GraphNode[] }) {
   );
 
   return (
-    <div className="glass" style={{ height: 180 }}>
+    <div className="pipeline-graph glass" style={{ height: 190 }}>
       <ReactFlow
         nodes={rfNodes}
         edges={rfEdges}
         nodeTypes={nodeTypes}
         fitView
-        fitViewOptions={{ padding: 0.2 }}
+        fitViewOptions={{ padding: 0.14, minZoom: 0.5, maxZoom: 1 }}
         proOptions={{ hideAttribution: true }}
         nodesDraggable={false}
         nodesConnectable={false}

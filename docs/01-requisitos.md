@@ -288,6 +288,9 @@ permitir crear un vídeo final combinándolos sin romper los montajes automátic
 
 El selector de `getDisplayMedia` siempre requiere una acción explícita: la aplicación no puede
 elegir una ventana ni ocultar el diálogo de seguridad del navegador.
+El modal debe caber en alturas reducidas: cabecera y acciones permanecen accesibles y el contenido
+central dispone de scroll propio. Las confirmaciones, avisos y cambios de nombre de la aplicación
+usan diálogos visuales de RRSS Studio, no `alert`/`confirm`/`prompt` del navegador.
 
 **Estudio MIX inteligente (v1, sin línea de tiempo):**
 - Panel visual de recursos + receta por bloques: hook, presentación, demo, B-roll y cierre.
@@ -307,6 +310,7 @@ viral+fal, viral+HeyGen, Playwright, subida, REC/STOP, MIX y publicación asisti
 **Criterios de aceptación:**
 - Las piezas anteriores a REQ-011 abren, se reproducen y se publican como antes.
 - Una grabación REC/STOP aparece en la mediateca y se puede reutilizar.
+- Captura local no se sale del viewport y permite llegar a REC/STOP/Guardar con scroll interno.
 - MIX combina vídeo, locución y música opcional sin sobrescribir el final anterior.
 - Toda salida final con voz muestra subtítulos legibles en la zona inferior segura.
 - Ajustes informa ruta y versión reales de yt-dlp/FFmpeg/ffprobe desde el proceso Next.
@@ -331,10 +335,19 @@ montajes automáticos y las recetas MIX anteriores.
 - MIX admite una receta v2 por segmentos, con recurso, entrada/salida, etiqueta y bloqueo.
 - La UI muestra una línea temporal vertical-first con previsualización, reordenación, recorte,
   inserción, eliminación y protección de momentos importantes.
+- La bandeja audiovisual usa miniaturas reproducibles y una etiqueta inequívoca por origen/tipo
+  (`Playwright`, grabación manual, clip IA, presentador, vídeo, final o versión MIX). Un monitor único
+  reproduce tanto recursos como resultados renderizados sin duplicar reproductores por toda la UI.
+- La timeline muestra fotogramas aproximados de pista base y superposiciones. Locución y música
+  seleccionadas tienen controles de audio propios antes de renderizar.
 - Una acción de armonización ajusta los bloques no protegidos a la duración de la locución. Las
   diferencias restantes se muestran como error accionable, nunca como truncado o congelado oculto.
-- La primera versión usa una pista visual secuencial, locución, música y subtítulos; overlays,
-  keyframes, filtros y edición cuadro a cuadro quedan fuera de alcance.
+- La receta v2 admite una pista superior opcional de superposiciones. Cada apoyo define recurso,
+  recorte, inicio en timeline, pantalla completa o picture-in-picture, posición y tamaño. La pista
+  base sigue avanzando y el audio de la superposición se ignora. El bloque puede desplazarse
+  directamente y sus dos asas permiten reducir o ampliar el recorte, además de los campos numéricos.
+- Los subtítulos se aplican después de todas las capas para permanecer siempre visibles. Keyframes,
+  filtros creativos y edición cuadro a cuadro continúan fuera de alcance.
 
 **Compatibilidad:**
 - Las recetas MIX v1 se siguen leyendo y renderizando como antes.
@@ -344,8 +357,16 @@ montajes automáticos y las recetas MIX anteriores.
 **Criterios de aceptación:**
 - Automático y 0–6 cortes manuales funcionan y el coste usa la cantidad real.
 - Todos los cortes generados quedan visibles en la mediateca y los utilizados aparecen en la timeline.
+- Cada vídeo puede previsualizarse desde la bandeja, la locución puede escucharse y toda versión MIX
+  lista puede reproducirse completa antes de marcarla como final.
 - Los segmentos protegidos no se eliminan ni recortan sin desbloqueo explícito.
-- Una receta v2 no renderiza si vídeo y pista maestra difieren más de 0,25 s.
+- Una receta v2 secuencial no renderiza si vídeo y pista maestra difieren más de 0,25 s. En modo por
+  capas, si la locución es más larga, se informa y se mantiene el último frame de la base bajo los
+  apoyos; nunca se oculta ese ajuste.
+- Grabaciones manuales y Playwright pueden actuar como pista base; cualquier vídeo reutilizable puede
+  añadirse como apoyo superior sin incorporar su audio.
+- Preparar secuencial y Preparar en capas recuperan la misma locución y los mismos subtítulos de la
+  pieza destino; solo cambia la composición visual.
 - No se vuelve a omitir ningún corte ni se trunca el último por una locución más corta.
 - Toda salida con voz conserva subtítulos inferiores en la zona segura.
 - Piezas y MIX anteriores continúan abriendo, renderizando y publicándose.
@@ -435,6 +456,30 @@ Playwright, guía e ideas de contenido.
 mismo contrato; se representan menús simultáneos; no aparece admin si el contexto lo excluye; el mapa
 llega a tres niveles sin ciclos; la verificación no ejecuta acciones mutantes y las rutas dinámicas no
 inventan IDs.
+
+---
+
+### REQ-016 — Pulido de navegación, pipelines y login Playwright
+
+**Objetivo:** reducir densidad visual y evitar que una pipeline o grabación parezca detenida cuando el
+servidor sigue trabajando.
+
+- Los nodos conservan separación legible en competencia, leads y virales.
+- Cursor propio únicamente con puntero preciso; campos de texto y dispositivos táctiles mantienen el
+  cursor nativo adecuado.
+- Scrollbars globales modernas y discretas. El menú lateral elimina textos redundantes y reduce altura.
+- Una interrupción transitoria del SSE no congela el grafo: el cliente permite la reconexión nativa y
+  recupera el estado persistido del run.
+- El login Playwright reconoce campos habituales y `identifier`, comprueba sesiones guardadas y vuelve
+  a autenticarse cuando caducan.
+- La autenticación ocurre en un contexto sin grabación. El vídeo comienza después de aplicar la sesión,
+  por lo que no captura el formulario ni la escritura de credenciales.
+- Si se marcó login pero no existen credenciales o no puede localizarse el formulario, no continúa de
+  forma anónima: deja un error concreto y mantiene el fallback de subida manual.
+
+**Criterios de aceptación:** ICG Vault reconoce `input[name="identifier"]`; una sesión caducada fuerza
+nuevo login; una caída SSE temporal no obliga a volver al dashboard; el menú no muestra los textos
+«Automatización de contenido RRSS» ni «Proyecto activo».
 
 ---
 
