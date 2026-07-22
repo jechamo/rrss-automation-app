@@ -335,6 +335,11 @@ montajes automáticos y las recetas MIX anteriores.
 - MIX admite una receta v2 por segmentos, con recurso, entrada/salida, etiqueta y bloqueo.
 - La UI muestra una línea temporal vertical-first con previsualización, reordenación, recorte,
   inserción, eliminación y protección de momentos importantes.
+- La bandeja audiovisual usa miniaturas reproducibles y una etiqueta inequívoca por origen/tipo
+  (`Playwright`, grabación manual, clip IA, presentador, vídeo, final o versión MIX). Un monitor único
+  reproduce tanto recursos como resultados renderizados sin duplicar reproductores por toda la UI.
+- La timeline muestra fotogramas aproximados de pista base y superposiciones. Locución y música
+  seleccionadas tienen controles de audio propios antes de renderizar.
 - Una acción de armonización ajusta los bloques no protegidos a la duración de la locución. Las
   diferencias restantes se muestran como error accionable, nunca como truncado o congelado oculto.
 - La receta v2 admite una pista superior opcional de superposiciones. Cada apoyo define recurso,
@@ -352,6 +357,8 @@ montajes automáticos y las recetas MIX anteriores.
 **Criterios de aceptación:**
 - Automático y 0–6 cortes manuales funcionan y el coste usa la cantidad real.
 - Todos los cortes generados quedan visibles en la mediateca y los utilizados aparecen en la timeline.
+- Cada vídeo puede previsualizarse desde la bandeja, la locución puede escucharse y toda versión MIX
+  lista puede reproducirse completa antes de marcarla como final.
 - Los segmentos protegidos no se eliminan ni recortan sin desbloqueo explícito.
 - Una receta v2 secuencial no renderiza si vídeo y pista maestra difieren más de 0,25 s. En modo por
   capas, si la locución es más larga, se informa y se mantiene el último frame de la base bajo los

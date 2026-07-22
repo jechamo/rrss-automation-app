@@ -32,6 +32,20 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ## Historial
 
+### 2026-07-22 — MIX visual: biblioteca, monitor y previews
+
+- El editor se ordena en cinco pasos numerados y separa selección, planificación, timeline,
+  biblioteca y audio/subtítulos para reducir densidad y ambigüedad.
+- Bandeja sustituida por tarjetas con fotograma real, play, duración, origen, usos y badges para
+  Playwright, grabación manual, clip IA, presentador, vídeo/final y versión MIX.
+- Monitor único y sticky para reproducir cualquier recurso o el resultado renderizado. Las versiones
+  finales pasan a tarjetas compactas con `Previsualizar`, `Usar como final` y `Eliminar`.
+- Timeline base y superposiciones muestran fotogramas aproximados sin bloquear arrastre/recorte.
+  Locución y música seleccionadas incorporan reproductores nativos y volumen de música contextual.
+- Verificado en navegador con ICGVault: 14 recursos previsualizables, 6 fotogramas en timeline,
+  locución de 498 caracteres y cambio correcto entre Clip 4 y el resultado MIX. Build y 24/24
+  contratos correctos.
+
 ### 2026-07-19 — UX de captura, edición directa y diálogos propios
 
 - Captura local queda limitada al viewport dinámico: cabecera/pasos/acciones no desaparecen y el

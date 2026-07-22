@@ -22,6 +22,21 @@ type MixDto = { id: string; pieceId: string | null; name: string; status: string
 const VIDEO_KINDS = ["recording", "video", "clip", "presenter", "final"];
 const MIN_SEGMENT_SECONDS = 0.25;
 
+const ASSET_META: Record<string, { label: string; icon: string; badge: string }> = {
+  recording: { label: "Navegación", icon: "▣", badge: "border-emerald-300/25 bg-emerald-300/15 text-emerald-100" },
+  clip: { label: "Clip IA", icon: "✦", badge: "border-purple-300/25 bg-purple-300/15 text-purple-100" },
+  presenter: { label: "Presentador", icon: "◉", badge: "border-pink-300/25 bg-pink-300/15 text-pink-100" },
+  final: { label: "Vídeo final", icon: "◆", badge: "border-amber-300/25 bg-amber-300/15 text-amber-100" },
+  video: { label: "Vídeo", icon: "▶", badge: "border-cyan-300/25 bg-cyan-300/15 text-cyan-100" },
+};
+
+function assetMeta(asset: Pick<StudioAsset, "kind" | "origin">) {
+  if (asset.origin === "mix") return { label: "Versión MIX", icon: "◇", badge: "border-cyan-300/25 bg-cyan-300/15 text-cyan-100" };
+  if (asset.kind === "recording" && asset.origin === "playwright") return { ...ASSET_META.recording, label: "Playwright" };
+  if (asset.kind === "recording" && asset.origin === "recorder") return { ...ASSET_META.recording, label: "Grabación manual" };
+  return ASSET_META[asset.kind] ?? ASSET_META.video;
+}
+
 type OverlayGesture = {
   overlayId: string;
   mode: "move" | "resize-start" | "resize-end";
@@ -129,6 +144,8 @@ export function MixStudioPanel({ projectId, assets, onMediaChanged }: { projectI
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [overlayGesture, setOverlayGesture] = useState<OverlayGesture | null>(null);
+  const [previewAssetId, setPreviewAssetId] = useState("");
+  const [previewMixId, setPreviewMixId] = useState("");
   const overlayTrackRef = useRef<HTMLDivElement>(null);
   const appDialog = useAppDialog();
 
@@ -138,7 +155,13 @@ export function MixStudioPanel({ projectId, assets, onMediaChanged }: { projectI
       fetch(`/api/projects/${projectId}/mixes`, { cache: "no-store" }),
     ]);
     if (pieceResponse.ok) setPieces(((await pieceResponse.json()) as { pieces?: PiecePick[] }).pieces ?? []);
-    if (mixResponse.ok) setMixes(((await mixResponse.json()) as { mixes?: MixDto[] }).mixes ?? []);
+    if (mixResponse.ok) {
+      const nextMixes = ((await mixResponse.json()) as { mixes?: MixDto[] }).mixes ?? [];
+      setMixes(nextMixes);
+      setPreviewMixId((current) => current && nextMixes.some((mix) => mix.id === current)
+        ? current
+        : nextMixes.find((mix) => mix.status === "ready")?.id ?? "");
+    }
   }, [projectId]);
 
   useEffect(() => { load(); }, [load]);
@@ -151,6 +174,16 @@ export function MixStudioPanel({ projectId, assets, onMediaChanged }: { projectI
   const selectedOverlay = overlays.find((overlay) => overlay.id === selectedOverlayId) ?? null;
   const selectedOverlayAsset = selectedOverlay ? byId.get(selectedOverlay.assetId) ?? null : null;
   const selectedVoice = voiceId ? byId.get(voiceId) ?? null : null;
+  const selectedMusic = musicId ? byId.get(musicId) ?? null : null;
+  const previewAsset = previewAssetId ? byId.get(previewAssetId) ?? null : null;
+  const previewMix = previewMixId ? mixes.find((mix) => mix.id === previewMixId) ?? null : null;
+  const monitorAsset = previewMix ? null : previewAsset ?? selectedOverlayAsset ?? selectedAsset ?? videos[0] ?? null;
+  const monitorMeta = monitorAsset ? assetMeta(monitorAsset) : null;
+  const monitorSource = previewMix
+    ? `/api/projects/${projectId}/mixes/${previewMix.id}/file`
+    : monitorAsset
+      ? `/api/projects/${projectId}/media/${monitorAsset.id}/file`
+      : "";
   const visualDuration = segments.reduce((sum, segment) => sum + segmentDuration(segment), 0);
   const voiceDuration = selectedVoice?.duration ?? null;
   const durationDelta = voiceDuration === null ? 0 : voiceDuration - visualDuration;
@@ -249,6 +282,8 @@ export function MixStudioPanel({ projectId, assets, onMediaChanged }: { projectI
     const segment = newSegment(asset, locked ?? asset.kind === "recording");
     setSegments((current) => [...current, segment]);
     setSelectedSegmentId(segment.id);
+    setPreviewAssetId(asset.id);
+    setPreviewMixId("");
   }
 
   function addOverlay(asset: StudioAsset) {
@@ -264,6 +299,8 @@ export function MixStudioPanel({ projectId, assets, onMediaChanged }: { projectI
     setOverlays((current) => [...current, probe]);
     setSelectedOverlayId(probe.id);
     setSelectedSegmentId("");
+    setPreviewAssetId(asset.id);
+    setPreviewMixId("");
   }
 
   function prepareAutomatic() {
@@ -297,9 +334,9 @@ export function MixStudioPanel({ projectId, assets, onMediaChanged }: { projectI
     setOverlays([]);
     setSelectedSegmentId(next[0]?.id ?? "");
     setSelectedOverlayId("");
-    if (pieceVoice) setVoiceId(pieceVoice.id);
-    const locucion = piece?.content?.guion?.locucion?.trim();
-    if (locucion) setSubtitleText(locucion);
+    if (next[0]) setPreviewAssetId(next[0].assetId);
+    setPreviewMixId("");
+    applyPieceNarration(piece, pieceVoice);
     setMessage(next.length
       ? Math.abs(fitted.remaining) <= 0.25
         ? "Propuesta armonizada. Las grabaciones quedan protegidas; revisa duración y recortes."
@@ -339,6 +376,8 @@ export function MixStudioPanel({ projectId, assets, onMediaChanged }: { projectI
     setOverlays(proposedOverlays);
     setSelectedSegmentId(base[0]?.id ?? "");
     setSelectedOverlayId("");
+    if (base[0]) setPreviewAssetId(base[0].assetId);
+    setPreviewMixId("");
     applyPieceNarration(piece, pieceVoice);
     setMessage(proposedOverlays.length
       ? pieceVoice?.duration && pieceVoice.duration > baseDuration + 0.25
@@ -425,6 +464,7 @@ export function MixStudioPanel({ projectId, assets, onMediaChanged }: { projectI
     const data = (await response.json()) as { error?: string };
     setMessage(response.ok ? "MIX terminado. Revisa el resultado antes de usarlo como final." : data.error || "El MIX falló.");
     setBusy(false);
+    if (response.ok) setPreviewMixId("");
     await Promise.all([load(), onMediaChanged()]);
   }
 
@@ -461,14 +501,17 @@ export function MixStudioPanel({ projectId, assets, onMediaChanged }: { projectI
 
       <div className="grid gap-5 p-5 xl:grid-cols-[1.25fr_.75fr]">
         <div className="min-w-0 space-y-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-xs text-white/50">Nombre<input className="input mt-1" value={name} onChange={(event) => setName(event.target.value)} /></label>
-            <label className="text-xs text-white/50">Pieza destino (opcional)<select className="input mt-1" value={pieceId} onChange={(event) => setPieceId(event.target.value)}><option value="">Solo mediateca</option>{pieces.map((piece) => <option key={piece.id} value={piece.id}>{piece.titulo || "Sin título"} · {piece.origin}</option>)}</select></label>
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <div className="mb-3 flex items-center gap-2"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/10 text-[10px] font-bold">1</span><div><div className="text-xs font-semibold text-white/75">Configura la versión</div><div className="text-[10px] text-white/35">Ponle nombre y, si existe, vincúlala a una pieza.</div></div></div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="text-xs text-white/50">Nombre<input className="input mt-1" value={name} onChange={(event) => setName(event.target.value)} /></label>
+              <label className="text-xs text-white/50">Pieza destino (opcional)<select className="input mt-1" value={pieceId} onChange={(event) => setPieceId(event.target.value)}><option value="">Solo mediateca</option>{pieces.map((piece) => <option key={piece.id} value={piece.id}>{piece.titulo || "Sin título"} · {piece.origin}</option>)}</select></label>
+            </div>
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div><div className="text-xs font-semibold text-white/70">Plan visual</div><div className="mt-1 text-[10px] text-white/35">Las grabaciones se protegen automáticamente; puedes desbloquearlas.</div></div>
+              <div className="flex items-center gap-2"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-purple-400/15 text-[10px] font-bold text-purple-100">2</span><div><div className="text-xs font-semibold text-white/70">Elige el plan visual</div><div className="mt-1 text-[10px] text-white/35">Las grabaciones se protegen automáticamente; puedes desbloquearlas.</div></div></div>
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={prepareAutomatic} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/65">Preparar secuencial</button>
                 <button type="button" onClick={prepareLayered} className="rounded-lg border border-cyan-400/25 bg-cyan-400/10 px-3 py-2 text-xs text-cyan-200">Preparar en capas</button>
@@ -489,10 +532,9 @@ export function MixStudioPanel({ projectId, assets, onMediaChanged }: { projectI
           </div>
 
           {selectedAsset && selectedSegment && (
-            <div className="grid gap-3 rounded-2xl border border-white/10 bg-black/20 p-3 sm:grid-cols-[180px_1fr]">
-              <video controls preload="metadata" src={`/api/projects/${projectId}/media/${selectedAsset.id}/file#t=${selectedSegment.sourceStart}`} className="aspect-[9/16] max-h-64 w-full rounded-xl bg-black object-contain" />
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
               <div className="space-y-3">
-                <div><div className="text-sm font-semibold">{selectedSegment.label}</div><div className="text-[10px] text-white/35">Fuente: {selectedAsset.duration?.toFixed(2) ?? "?"}s · bloque: {segmentDuration(selectedSegment).toFixed(2)}s</div></div>
+                <div className="flex flex-wrap items-start justify-between gap-2"><div><div className="flex items-center gap-2"><AssetBadge asset={selectedAsset} /><span className="text-sm font-semibold">{selectedSegment.label}</span></div><div className="mt-1 text-[10px] text-white/35">Fuente: {selectedAsset.duration?.toFixed(2) ?? "?"}s · bloque: {segmentDuration(selectedSegment).toFixed(2)}s</div></div><button type="button" onClick={() => { setPreviewAssetId(selectedAsset.id); setPreviewMixId(""); }} className="rounded-lg border border-white/12 px-3 py-1.5 text-[10px] hover:bg-white/5">▶ Ver en monitor</button></div>
                 <div className="grid grid-cols-2 gap-2">
                   <label className="text-[10px] text-white/45">Entrada<input type="number" min="0" max={selectedAsset.duration ?? undefined} step="0.1" className="input mt-1" value={selectedSegment.sourceStart} disabled={selectedSegment.locked} onChange={(event) => updateSegment(selectedSegment.id, { sourceStart: Number(event.target.value) })} /></label>
                   <label className="text-[10px] text-white/45">Salida<input type="number" min="0.25" max={selectedAsset.duration ?? undefined} step="0.1" className="input mt-1" value={selectedSegment.sourceEnd} disabled={selectedSegment.locked} onChange={(event) => updateSegment(selectedSegment.id, { sourceEnd: Number(event.target.value) })} /></label>
@@ -503,13 +545,12 @@ export function MixStudioPanel({ projectId, assets, onMediaChanged }: { projectI
           )}
 
           {selectedOverlayAsset && selectedOverlay && (
-            <div className="grid gap-3 rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.04] p-3 sm:grid-cols-[180px_1fr]">
-              <video controls muted preload="metadata" src={`/api/projects/${projectId}/media/${selectedOverlayAsset.id}/file#t=${selectedOverlay.sourceStart}`} className="aspect-[9/16] max-h-64 w-full rounded-xl bg-black object-contain" />
+            <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/[0.04] p-3">
               <div className="space-y-3">
-                <div>
-                  <div className="text-sm font-semibold">{selectedOverlay.label}</div>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div><div className="flex items-center gap-2"><AssetBadge asset={selectedOverlayAsset} /><span className="text-sm font-semibold">{selectedOverlay.label}</span></div>
                   <div className="text-[10px] text-white/35">Pista superior · {overlayDuration(selectedOverlay).toFixed(2)}s · audio silenciado</div>
-                </div>
+                  </div><button type="button" onClick={() => { setPreviewAssetId(selectedOverlayAsset.id); setPreviewMixId(""); }} className="rounded-lg border border-cyan-300/20 px-3 py-1.5 text-[10px] text-cyan-100 hover:bg-cyan-300/5">▶ Ver en monitor</button></div>
                 <div className="grid grid-cols-3 gap-2">
                   <label className="text-[10px] text-white/45">Empieza en<input type="number" min="0" max={Math.max(0, timelineDuration - overlayDuration(selectedOverlay))} step="0.1" className="input mt-1" value={selectedOverlay.timelineStart} onChange={(event) => updateOverlay(selectedOverlay.id, { timelineStart: Number(event.target.value) })} /></label>
                   <label className="text-[10px] text-white/45">Entrada<input type="number" min="0" max={selectedOverlayAsset.duration ?? undefined} step="0.1" className="input mt-1" value={selectedOverlay.sourceStart} onChange={(event) => updateOverlay(selectedOverlay.id, { sourceStart: Number(event.target.value) })} /></label>
@@ -527,16 +568,22 @@ export function MixStudioPanel({ projectId, assets, onMediaChanged }: { projectI
           )}
 
           <div>
-            <div className="mb-2 flex items-center justify-between"><span className="text-xs font-semibold text-white/65">Línea temporal · pista de vídeo</span><span className="text-[10px] text-white/30">Arrastra o usa las flechas</span></div>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-cyan-400/15 text-[10px] font-bold text-cyan-100">3</span><div><span className="block text-xs font-semibold text-white/65">Construye la timeline</span><span className="text-[10px] text-white/30">Las imágenes son fotogramas aproximados de cada recurso.</span></div></div><span className="text-[10px] text-white/30">Arrastra o usa las flechas</span></div>
             {segments.length === 0 ? <div className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-xs text-white/35">Prepara una propuesta o añade recursos desde la bandeja.</div> : (
-              <div className="flex min-h-24 gap-1 overflow-x-auto rounded-2xl border border-white/10 bg-black/30 p-3">
+              <div className="flex min-h-32 gap-1 overflow-x-auto rounded-2xl border border-white/10 bg-black/30 p-3">
                 {segments.map((segment, index) => {
                   const duration = segmentDuration(segment);
                   const selected = segment.id === selectedSegmentId;
-                  return <article key={segment.id} draggable onDragStart={() => setDraggingId(segment.id)} onDragOver={(event) => event.preventDefault()} onDrop={() => dropBefore(segment.id)} onClick={() => { setSelectedSegmentId(segment.id); setSelectedOverlayId(""); }} style={{ flexBasis: `${Math.max(100, duration * 17)}px` }} className={`group relative min-w-[100px] flex-none cursor-pointer overflow-hidden rounded-xl border p-2 transition ${selected ? "border-cyan-300 bg-cyan-300/10" : segment.locked ? "border-emerald-300/25 bg-emerald-300/[0.06]" : "border-white/10 bg-white/5"}`}>
-                    <div className="flex gap-1"><span className="text-[9px] text-white/30">{index + 1}</span><span className="ml-auto text-[9px]">{segment.locked ? "🔒" : "⋮⋮"}</span></div>
-                    <div className="mt-2 line-clamp-2 text-[10px] font-medium">{segment.label}</div><div className="mt-1 text-[9px] text-white/35">{duration.toFixed(1)}s · {segment.kind}</div>
-                    <div className="mt-2 flex gap-1"><button type="button" onClick={(event) => { event.stopPropagation(); move(segment.id, -1); }} className="rounded border border-white/10 px-1.5">↑</button><button type="button" onClick={(event) => { event.stopPropagation(); move(segment.id, 1); }} className="rounded border border-white/10 px-1.5">↓</button><button type="button" disabled={segment.locked} onClick={(event) => { event.stopPropagation(); setSegments((current) => current.filter((item) => item.id !== segment.id)); }} className="ml-auto rounded border border-red-300/10 px-1.5 text-red-300 disabled:opacity-25">×</button></div>
+                  const segmentAsset = byId.get(segment.assetId);
+                  const meta = segmentAsset ? assetMeta(segmentAsset) : ASSET_META.video;
+                  return <article key={segment.id} draggable onDragStart={() => setDraggingId(segment.id)} onDragOver={(event) => event.preventDefault()} onDrop={() => dropBefore(segment.id)} onClick={() => { setSelectedSegmentId(segment.id); setSelectedOverlayId(""); setPreviewAssetId(segment.assetId); setPreviewMixId(""); }} style={{ flexBasis: `${Math.max(116, duration * 18)}px` }} className={`group relative min-w-[116px] flex-none cursor-pointer overflow-hidden rounded-xl border transition ${selected ? "border-cyan-300 shadow-[0_0_16px_rgba(34,211,238,.15)]" : segment.locked ? "border-emerald-300/25" : "border-white/10"}`}>
+                    {segmentAsset && <video aria-hidden="true" muted playsInline preload="metadata" src={`/api/projects/${projectId}/media/${segmentAsset.id}/file#t=${Math.max(0.05, segment.sourceStart)}`} className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-50" />}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/10" />
+                    <div className="relative z-[1] flex h-full min-h-[118px] flex-col p-2">
+                      <div className="flex items-center gap-1"><span className={`rounded-md border px-1.5 py-0.5 text-[8px] ${meta.badge}`}>{meta.icon} {meta.label}</span><span className="ml-auto text-[9px]">{segment.locked ? "🔒" : "⋮⋮"}</span></div>
+                      <div className="mt-auto line-clamp-2 text-[10px] font-medium text-white">{index + 1}. {segment.label}</div><div className="mt-1 text-[9px] text-white/55">{duration.toFixed(1)}s</div>
+                      <div className="mt-2 flex gap-1"><button type="button" aria-label={`Mover antes ${segment.label}`} onClick={(event) => { event.stopPropagation(); move(segment.id, -1); }} className="rounded border border-white/15 bg-black/35 px-1.5">←</button><button type="button" aria-label={`Mover después ${segment.label}`} onClick={(event) => { event.stopPropagation(); move(segment.id, 1); }} className="rounded border border-white/15 bg-black/35 px-1.5">→</button><button type="button" aria-label={`Quitar ${segment.label}`} disabled={segment.locked} onClick={(event) => { event.stopPropagation(); setSegments((current) => current.filter((item) => item.id !== segment.id)); }} className="ml-auto rounded border border-red-300/15 bg-black/35 px-1.5 text-red-200 disabled:opacity-25">×</button></div>
+                    </div>
                   </article>;
                 })}
               </div>
@@ -553,22 +600,24 @@ export function MixStudioPanel({ projectId, assets, onMediaChanged }: { projectI
                   const left = timelineDuration > 0 ? (overlay.timelineStart / timelineDuration) * 100 : 0;
                   const width = timelineDuration > 0 ? (overlayDuration(overlay) / timelineDuration) * 100 : 100;
                   const selected = overlay.id === selectedOverlayId;
+                  const overlayAsset = byId.get(overlay.assetId);
                   return <article
                     key={overlay.id}
                     role="button"
                     tabIndex={0}
                     aria-label={`${overlay.label}, de ${overlay.timelineStart.toFixed(1)} a ${(overlay.timelineStart + overlayDuration(overlay)).toFixed(1)} segundos`}
                     onPointerDown={(event) => beginOverlayGesture(event, overlay, "move")}
-                    onClick={() => { setSelectedOverlayId(overlay.id); setSelectedSegmentId(""); }}
+                    onClick={() => { setSelectedOverlayId(overlay.id); setSelectedSegmentId(""); setPreviewAssetId(overlay.assetId); setPreviewMixId(""); }}
                     onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { setSelectedOverlayId(overlay.id); setSelectedSegmentId(""); } }}
                     style={{ left: `${left}%`, width: `${Math.max(4, Math.min(100 - left, width))}%`, touchAction: "none" }}
-                    className={`group absolute top-3 h-[70px] cursor-grab select-none overflow-hidden rounded-lg border px-3 py-2 text-left transition active:cursor-grabbing ${selected ? "z-10 border-cyan-200 bg-cyan-300/20 shadow-[0_0_18px_rgba(34,211,238,.18)]" : overlay.mode === "cover" ? "border-purple-300/25 bg-purple-400/10" : "border-cyan-300/20 bg-cyan-400/10"}`}
+                    className={`group absolute top-3 h-[70px] cursor-grab select-none overflow-hidden rounded-lg border text-left transition active:cursor-grabbing ${selected ? "z-10 border-cyan-200 bg-cyan-300/20 shadow-[0_0_18px_rgba(34,211,238,.18)]" : overlay.mode === "cover" ? "border-purple-300/25 bg-purple-400/10" : "border-cyan-300/20 bg-cyan-400/10"}`}
                   >
-                    <button type="button" aria-label={`Ajustar inicio de ${overlay.label}`} title="Arrastra para ajustar el inicio" onPointerDown={(event) => beginOverlayGesture(event, overlay, "resize-start")} className="absolute inset-y-0 left-0 w-2 cursor-ew-resize border-r border-white/15 bg-white/5 opacity-70 hover:bg-cyan-200/30" />
-                    <span className="block truncate text-[10px] font-medium">{overlay.label}</span>
-                    <span className="mt-1 block text-[9px] text-white/40">{overlay.timelineStart.toFixed(1)}–{(overlay.timelineStart + overlayDuration(overlay)).toFixed(1)}s</span>
-                    <span className="text-[9px] text-white/40">{overlay.mode === "cover" ? "Pantalla completa" : "PIP"}</span>
-                    <button type="button" aria-label={`Ajustar final de ${overlay.label}`} title="Arrastra para ajustar el final" onPointerDown={(event) => beginOverlayGesture(event, overlay, "resize-end")} className="absolute inset-y-0 right-0 w-2 cursor-ew-resize border-l border-white/15 bg-white/5 opacity-70 hover:bg-cyan-200/30" />
+                    {overlayAsset && <video aria-hidden="true" muted playsInline preload="metadata" src={`/api/projects/${projectId}/media/${overlayAsset.id}/file#t=${Math.max(0.05, overlay.sourceStart)}`} className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-40" />}
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/55 to-black/25" />
+                    <button type="button" aria-label={`Ajustar inicio de ${overlay.label}`} title="Arrastra para ajustar el inicio" onPointerDown={(event) => beginOverlayGesture(event, overlay, "resize-start")} className="absolute inset-y-0 left-0 z-[2] w-2 cursor-ew-resize border-r border-white/20 bg-black/20 hover:bg-cyan-200/30" />
+                    <div className="relative z-[1] px-3 py-2"><span className="block truncate text-[10px] font-medium">{overlay.label}</span>
+                    <span className="mt-1 block text-[9px] text-white/65">{overlay.timelineStart.toFixed(1)}–{(overlay.timelineStart + overlayDuration(overlay)).toFixed(1)}s · {overlay.mode === "cover" ? "Completa" : "PIP"}</span></div>
+                    <button type="button" aria-label={`Ajustar final de ${overlay.label}`} title="Arrastra para ajustar el final" onPointerDown={(event) => beginOverlayGesture(event, overlay, "resize-end")} className="absolute inset-y-0 right-0 z-[2] w-2 cursor-ew-resize border-l border-white/20 bg-black/20 hover:bg-cyan-200/30" />
                   </article>;
                 })}
               </div>
@@ -577,33 +626,84 @@ export function MixStudioPanel({ projectId, assets, onMediaChanged }: { projectI
           </div>
 
           <div>
-            <div className="mb-2 text-xs font-semibold text-white/65">Bandeja de vídeos</div>
-            <div className="grid max-h-64 gap-2 overflow-y-auto sm:grid-cols-2">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-400/15 text-[10px] font-bold text-amber-100">4</span><div><span className="block text-xs font-semibold text-white/65">Explora la bandeja de vídeos</span><span className="text-[10px] text-white/30">Pulsa una miniatura para reproducirla en el monitor.</span></div></div><span className="rounded-full bg-white/5 px-2 py-1 text-[10px] text-white/40">{videos.length} recursos</span></div>
+            <div className="grid max-h-[620px] gap-3 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
               {videos.map((asset) => {
                 const baseUses = segments.filter((segment) => segment.assetId === asset.id).length;
                 const overlayUses = overlays.filter((overlay) => overlay.assetId === asset.id).length;
                 const uses = baseUses + overlayUses;
-                return <div key={asset.id} className="rounded-xl border border-white/10 bg-black/15 p-2">
-                  <div className="flex items-center gap-2"><span className="min-w-0 flex-1"><span className="block truncate text-xs">{asset.name}</span><span className={`text-[9px] ${asset.kind === "clip" && uses === 0 ? "text-amber-300" : "text-white/35"}`}>{asset.kind} · {asset.duration?.toFixed(1) ?? "?"}s · {uses ? `${uses} uso${uses > 1 ? "s" : ""}` : "sin usar"}</span></span></div>
-                  <div className="mt-2 grid grid-cols-2 gap-1"><button type="button" onClick={() => addAsset(asset)} className="rounded-lg border border-white/10 px-2 py-1 text-[10px] hover:bg-white/5">+ Pista base</button><button type="button" disabled={visualDuration <= 0} onClick={() => addOverlay(asset)} className="rounded-lg border border-cyan-300/20 bg-cyan-300/5 px-2 py-1 text-[10px] text-cyan-100 disabled:opacity-30">+ Superponer</button></div>
-                </div>;
+                const meta = assetMeta(asset);
+                const activePreview = previewAssetId === asset.id && !previewMixId;
+                return <article key={asset.id} className={`overflow-hidden rounded-2xl border bg-black/20 transition ${activePreview ? "border-cyan-300/60 shadow-[0_0_20px_rgba(34,211,238,.12)]" : "border-white/10 hover:border-white/20"}`}>
+                  <button type="button" onClick={() => { setPreviewAssetId(asset.id); setPreviewMixId(""); }} className="group relative block aspect-[16/10] w-full overflow-hidden bg-black text-left" aria-label={`Previsualizar ${asset.name}`}>
+                    <video aria-hidden="true" muted playsInline preload="metadata" src={`/api/projects/${projectId}/media/${asset.id}/file#t=0.1`} className="pointer-events-none h-full w-full object-cover opacity-75 transition duration-300 group-hover:scale-[1.03] group-hover:opacity-90" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
+                    <span className={`absolute left-2 top-2 rounded-lg border px-2 py-1 text-[9px] font-semibold ${meta.badge}`}>{meta.icon} {meta.label}</span>
+                    <span className="absolute right-2 top-2 rounded-lg bg-black/65 px-2 py-1 text-[9px] text-white/80">{asset.duration?.toFixed(1) ?? "?"}s</span>
+                    <span className="absolute inset-0 flex items-center justify-center"><span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/25 bg-black/55 text-sm text-white shadow-lg transition group-hover:scale-110 group-hover:bg-cyan-500/70">▶</span></span>
+                    <span className="absolute bottom-2 left-2 right-2 truncate text-[10px] font-medium text-white">{asset.name}</span>
+                  </button>
+                  <div className="p-2.5">
+                    <div className="flex items-center justify-between gap-2 text-[9px]"><span className="truncate text-white/35">{asset.origin}</span><span className={asset.kind === "clip" && uses === 0 ? "text-amber-300" : uses ? "text-emerald-300" : "text-white/35"}>{uses ? `${uses} uso${uses > 1 ? "s" : ""}` : "Sin usar"}</span></div>
+                    <div className="mt-2 grid grid-cols-2 gap-1"><button type="button" onClick={() => addAsset(asset)} className="rounded-lg border border-white/10 px-2 py-1.5 text-[10px] hover:bg-white/5">+ Pista base</button><button type="button" disabled={visualDuration <= 0} onClick={() => addOverlay(asset)} className="rounded-lg border border-cyan-300/20 bg-cyan-300/5 px-2 py-1.5 text-[10px] text-cyan-100 disabled:opacity-30">+ Superponer</button></div>
+                  </div>
+                </article>;
               })}
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-xs text-white/50">Locución<select className="input mt-1" value={voiceId} onChange={(event) => setVoiceId(event.target.value)}><option value="">Audio original</option>{voices.map((asset) => <option key={asset.id} value={asset.id}>{asset.name} · {asset.duration?.toFixed(1) ?? "?"}s</option>)}</select></label>
-            <label className="text-xs text-white/50">Música<select className="input mt-1" value={musicId} onChange={(event) => setMusicId(event.target.value)}><option value="">Sin música</option>{music.map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}</select></label>
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <div className="mb-3 flex items-center gap-2"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-pink-400/15 text-[10px] font-bold text-pink-100">5</span><div><span className="block text-xs font-semibold text-white/65">Escucha y revisa el audio</span><span className="text-[10px] text-white/30">Previsualiza la locución antes de generar y comprueba el texto exacto.</span></div></div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-xl border border-white/8 bg-white/[0.025] p-3">
+                <label className="text-xs text-white/50">Locución<select className="input mt-1" value={voiceId} onChange={(event) => setVoiceId(event.target.value)}><option value="">Audio original</option>{voices.map((asset) => <option key={asset.id} value={asset.id}>{asset.name} · {asset.duration?.toFixed(1) ?? "?"}s</option>)}</select></label>
+                {selectedVoice ? <div className="mt-3"><div className="mb-1 flex items-center justify-between gap-2 text-[9px] text-white/35"><span className="truncate">{selectedVoice.name}</span><span>{selectedVoice.duration?.toFixed(1) ?? "?"}s</span></div><audio key={selectedVoice.id} controls preload="metadata" className="h-9 w-full" src={`/api/projects/${projectId}/media/${selectedVoice.id}/file`} /></div> : <p className="mt-3 text-[10px] text-white/30">Se conservará el audio original de la pista de vídeo.</p>}
+              </div>
+              <div className="rounded-xl border border-white/8 bg-white/[0.025] p-3">
+                <label className="text-xs text-white/50">Música<select className="input mt-1" value={musicId} onChange={(event) => setMusicId(event.target.value)}><option value="">Sin música</option>{music.map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}</select></label>
+                {selectedMusic ? <div className="mt-3"><audio key={selectedMusic.id} controls preload="metadata" className="h-9 w-full" src={`/api/projects/${projectId}/media/${selectedMusic.id}/file`} /><label className="mt-2 block text-[10px] text-white/45">Volumen · {Math.round(musicVolume * 100)}%<input className="mt-1 w-full accent-purple-500" type="range" min="0.02" max="0.5" step="0.01" value={musicVolume} onChange={(event) => setMusicVolume(Number(event.target.value))} /></label></div> : <p className="mt-3 text-[10px] text-white/30">Sin música de fondo.</p>}
+              </div>
+            </div>
+            <label className="mt-3 block text-xs text-white/50">Subtítulos obligatorios<textarea className="input mt-1 min-h-28" value={subtitleText} onChange={(event) => setSubtitleText(event.target.value)} placeholder="Pega la locución exacta. Se mostrará abajo, dentro de la zona segura." /></label>
           </div>
-          {musicId && <label className="block text-xs text-white/50">Volumen · {Math.round(musicVolume * 100)}%<input className="mt-2 w-full accent-purple-500" type="range" min="0.02" max="0.5" step="0.01" value={musicVolume} onChange={(event) => setMusicVolume(Number(event.target.value))} /></label>}
-          <label className="block text-xs text-white/50">Subtítulos obligatorios<textarea className="input mt-1 min-h-28" value={subtitleText} onChange={(event) => setSubtitleText(event.target.value)} placeholder="Pega la locución exacta. Se mostrará abajo, dentro de la zona segura." /></label>
           {message && <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/60">{message}</div>}
           <button onClick={renderMix} disabled={busy || !name.trim() || !segments.length || !subtitleText.trim() || !durationOk || !overlaysFit} className="w-full rounded-xl bg-gradient-to-r from-purple-600 to-pink-500 px-5 py-3 text-sm font-bold disabled:opacity-35">{busy ? "Mezclando…" : !overlaysFit ? "Ajusta las superposiciones" : durationOk ? "MIX · Generar nueva versión" : "Ajusta las duraciones antes de MIX"}</button>
         </div>
 
-        <div><div className="mb-2 text-xs font-semibold text-white/65">Resultados</div><div className="space-y-3">{mixes.length === 0 && <div className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-xs text-white/35">Tus versiones aparecerán aquí.</div>}{mixes.map((mix) => <article key={mix.id} className="overflow-hidden rounded-2xl border border-white/10 bg-black/20">{mix.status === "ready" ? <video controls src={`/api/projects/${projectId}/mixes/${mix.id}/file`} className="aspect-[9/16] max-h-[420px] w-full bg-black object-contain" /> : <div className="flex aspect-video items-center justify-center text-xs text-white/40">{mix.status === "error" ? "Render con error" : "Renderizando…"}</div>}<div className="p-3"><div className="flex gap-2"><span className="min-w-0 flex-1 truncate text-sm font-medium">{mix.name}</span><span className="text-[10px] text-white/40">{mix.status}</span></div>{mix.error && <p className="mt-2 text-[11px] text-red-300">{mix.error}</p>}<div className="mt-3 flex gap-2">{mix.status === "ready" && mix.pieceId && <button onClick={() => useAsFinal(mix)} className="rounded-lg bg-purple-600 px-3 py-2 text-xs font-semibold">Usar como final</button>}<button onClick={() => removeMix(mix)} className="ml-auto rounded-lg border border-red-400/20 px-3 py-2 text-xs text-red-300">Eliminar</button></div></div></article>)}</div></div>
+        <aside className="min-w-0 space-y-4 xl:sticky xl:top-4 xl:self-start">
+          <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/25">
+            <div className="flex items-center justify-between gap-2 border-b border-white/10 p-3"><div><div className="text-xs font-semibold text-white/75">Monitor de previsualización</div><div className="text-[10px] text-white/35">Recursos y resultados finales en un único reproductor.</div></div>{previewMix ? <span className="rounded-lg border border-amber-300/20 bg-amber-300/10 px-2 py-1 text-[9px] text-amber-100">◆ Resultado MIX</span> : monitorAsset && monitorMeta ? <span className={`rounded-lg border px-2 py-1 text-[9px] ${monitorMeta.badge}`}>{monitorMeta.icon} {monitorMeta.label}</span> : null}</div>
+            <div className="flex min-h-[360px] items-center justify-center bg-black/70 p-3">
+              {monitorSource ? <video key={monitorSource} controls preload="metadata" src={monitorSource} className="aspect-[9/16] max-h-[560px] w-full rounded-xl bg-black object-contain" /> : <div className="px-6 text-center text-xs text-white/30">Selecciona una miniatura de la bandeja o genera una versión MIX.</div>}
+            </div>
+            <div className="border-t border-white/8 p-3">
+              <div className="truncate text-xs font-medium">{previewMix?.name ?? monitorAsset?.name ?? "Sin selección"}</div>
+              <p className="mt-1 text-[10px] leading-relaxed text-white/35">{previewMix ? "Este es el vídeo final renderizado: puedes revisarlo completo antes de usarlo como final." : "Previsualización del recurso seleccionado. La timeline inferior anticipa el orden; el resultado exacto se reproduce aquí después de MIX."}</p>
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-2 flex items-center justify-between"><span className="text-xs font-semibold text-white/65">Versiones renderizadas</span><span className="text-[10px] text-white/30">{mixes.length} resultado{mixes.length === 1 ? "" : "s"}</span></div>
+            <div className="space-y-2">
+              {mixes.length === 0 && <div className="rounded-2xl border border-dashed border-white/15 p-8 text-center text-xs text-white/35">Tus versiones aparecerán aquí y podrás reproducirlas en el monitor.</div>}
+              {mixes.map((mix) => {
+                const active = previewMixId === mix.id;
+                return <article key={mix.id} className={`rounded-2xl border p-3 transition ${active ? "border-amber-300/35 bg-amber-300/[0.06]" : "border-white/10 bg-black/20"}`}>
+                  <div className="flex items-start gap-2"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/25 to-cyan-400/20 text-sm">◆</span><div className="min-w-0 flex-1"><div className="truncate text-sm font-medium">{mix.name}</div><span className={`text-[10px] ${mix.status === "ready" ? "text-emerald-300" : mix.status === "error" ? "text-red-300" : "text-amber-200"}`}>{mix.status === "ready" ? "Listo para previsualizar" : mix.status === "error" ? "Error de render" : "Renderizando…"}</span></div></div>
+                  {mix.error && <p className="mt-2 text-[11px] text-red-300">{mix.error}</p>}
+                  <div className="mt-3 flex flex-wrap gap-2">{mix.status === "ready" && <button type="button" onClick={() => { setPreviewMixId(mix.id); setPreviewAssetId(""); }} className={`rounded-lg border px-3 py-2 text-xs ${active ? "border-amber-300/30 bg-amber-300/10 text-amber-100" : "border-white/12 hover:bg-white/5"}`}>▶ {active ? "Viendo resultado" : "Previsualizar"}</button>}{mix.status === "ready" && mix.pieceId && <button onClick={() => useAsFinal(mix)} className="rounded-lg bg-purple-600 px-3 py-2 text-xs font-semibold">Usar como final</button>}<button onClick={() => removeMix(mix)} className="ml-auto rounded-lg border border-red-400/20 px-3 py-2 text-xs text-red-300">Eliminar</button></div>
+                </article>;
+              })}
+            </div>
+          </div>
+        </aside>
       </div>
       {appDialog.dialog}
     </section>
   );
+}
+
+function AssetBadge({ asset }: { asset: Pick<StudioAsset, "kind" | "origin"> }) {
+  const meta = assetMeta(asset);
+  return <span className={`shrink-0 rounded-lg border px-2 py-1 text-[9px] font-semibold ${meta.badge}`}>{meta.icon} {meta.label}</span>;
 }

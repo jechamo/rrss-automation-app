@@ -278,6 +278,14 @@ seleccionar, añadir, arrastrar/reordenar, recortar con entrada/salida, bloquear
 reproductor superior previsualiza el recurso seleccionado; el resultado exacto se revisa después de
 renderizar.
 
+La lectura se divide en cinco pasos numerados: configurar versión, elegir plan, construir timeline,
+explorar vídeos y revisar audio/subtítulos. La bandeja usa tarjetas con fotograma, play, duración,
+origen, número de usos y badges de tipo. Un monitor fijo en la columna derecha reproduce el recurso
+seleccionado o el MIX final; las versiones renderizadas quedan como tarjetas compactas debajo.
+
+La locución y la música disponen de reproductor independiente. Los bloques de ambas pistas de vídeo
+usan un fotograma aproximado como fondo con gradiente para conservar la legibilidad del texto.
+
 ### 16.3 Armonización
 
 La cabecera compara duración visual y locución. **Ajustar a locución** reparte la diferencia entre
