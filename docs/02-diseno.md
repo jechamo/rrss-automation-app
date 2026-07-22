@@ -285,6 +285,28 @@ segmentos no protegidos dentro de los límites de sus fuentes. Los avisos distin
 desajuste, recurso ausente y corte sin utilizar. Los marcadores Playwright se representan como
 segmentos de demo protegidos; los manuales pueden bloquearse desde el propio editor.
 
+### 16.4 Superposiciones
+
+La acción **Preparar en capas** coloca la grabación manual o Playwright en la pista base y distribuye
+los apoyos visuales en una pista superior. Cada recurso ofrece **Pista base** y **Superponer**. Al
+seleccionar una superposición se editan inicio temporal, entrada/salida, modo pantalla completa o
+picture-in-picture, esquina/centro y tamaño. La timeline superior es proporcional y avisa si el apoyo
+sale de la duración final o si una pantalla completa tapa un momento protegido. La locución permanece
+continua y los subtítulos se dibujan siempre por encima de ambas pistas. El cuerpo del bloque se
+arrastra para moverlo en el tiempo; sus asas laterales cambian entrada/salida y duración sin sustituir
+los controles numéricos de precisión.
+
+La UI explica la diferencia antes de preparar: **Secuencial** alterna recursos a pantalla completa;
+**En capas** mantiene la navegación debajo de los apoyos. Los dos modos usan una única carga de
+locución/subtítulos desde la pieza destino.
+
+### 16.5 Captura y diálogos adaptativos
+
+Captura local usa un contenedor limitado por `100dvh`, cuerpo con scroll y cabecera/acciones fijas,
+de modo que REC, STOP y Guardar siguen accesibles en portátiles y ventanas bajas. Confirmaciones,
+avisos y renombrados se muestran en un diálogo propio con tonos normal/peligro y foco de teclado; el
+único diálogo inevitable del navegador es el selector seguro para compartir pantalla.
+
 ## 17. Revisión previa de prompts fal.ai (REQ-013)
 
 En ambos modales, la rama fal.ai añade una tarjeta violeta entre el plan audiovisual y el CTA final.

@@ -590,9 +590,13 @@ locución como pista maestra, mezcla música opcional, quema ASS y crea `mix-<id
   efectos laterales; los modales usan el mismo contrato que los pipelines.
 - `MixRecipe` es versionada. V1 conserva `videoAssetIds`; V2 contiene `segments[]` con `assetId`,
   `sourceStart`, `sourceEnd`, `label`, `locked`, `kind` y `shotIndex` opcional.
+- V2 añade `overlays[]` de forma retrocompatible: `assetId`, recorte de fuente, `timelineStart`, modo
+  `cover|pip`, posición y escala. No requiere migración porque la receta continúa siendo JSON.
 - Los marcadores reutilizables viven en `MediaAsset.metadata`; no se requiere migración Prisma.
-- `assembleMix()` mantiene la rama legacy y añade filtros `trim/setpts` por segmento. En v2 la
-  duración visual debe coincidir con la pista maestra dentro de 0,25 s; no se usa padding oculto.
+- `assembleMix()` mantiene la rama legacy, concatena la base, desplaza cada overlay con `setpts` y los
+  compone en cadena con `overlay`. Ignora el audio superior y aplica ASS al último resultado. En v2
+  secuencial la duración debe coincidir dentro de 0,25 s; en una receta por capas puede congelar el
+  último frame hasta completar una locución más larga, siempre comunicado en la UI.
 - La UI de `MixStudioPanel` prepara recetas v2 y el endpoint existente continúa aceptando v1.
 
 ### REQ-013 — Preflight de prompts y contratos fal.ai

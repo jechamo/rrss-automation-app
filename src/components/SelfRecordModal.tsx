@@ -126,9 +126,9 @@ export function SelfRecordModal({
   const step = state === "recording" ? 3 : state === "review" || state === "saving" ? 4 : 1;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-      <div className="glass-strong w-full max-w-3xl overflow-hidden shadow-2xl">
-        <header className="flex items-start justify-between border-b border-white/10 p-5">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-black/80 p-2 backdrop-blur-sm sm:p-4">
+      <div className="glass-strong my-auto flex max-h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden shadow-2xl sm:max-h-[calc(100dvh-2rem)]">
+        <header className="flex shrink-0 items-start justify-between border-b border-white/10 p-4 sm:p-5">
           <div>
             <div className="text-xs uppercase tracking-[0.24em] text-[var(--color-accent-2)]">Captura local</div>
             <h2 className="mt-1 text-xl font-bold">Graba tú mismo</h2>
@@ -137,7 +137,7 @@ export function SelfRecordModal({
           <button onClick={onClose} disabled={state === "recording" || state === "saving"} className="text-white/45 hover:text-white disabled:opacity-30">✕</button>
         </header>
 
-        <div className="grid grid-cols-4 border-b border-white/10 text-center text-[11px]">
+        <div className="grid shrink-0 grid-cols-4 border-b border-white/10 text-center text-[11px]">
           {["Preparar", "Compartir", "Grabar", "Revisar"].map((label, index) => (
             <div key={label} className={`px-2 py-2 ${step >= index + 1 ? "bg-white/5 text-white" : "text-white/30"}`}>
               <span className="mr-1 text-[var(--color-accent-2)]">{index + 1}</span>{label}
@@ -145,7 +145,7 @@ export function SelfRecordModal({
           ))}
         </div>
 
-        <div className="grid gap-5 p-5 md:grid-cols-[0.9fr_1.1fr]">
+        <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto overscroll-contain p-4 sm:p-5 md:grid-cols-[0.9fr_1.1fr]">
           <div className="flex flex-col gap-4">
             <label className="text-xs text-white/55">
               URL de tu app
@@ -162,7 +162,7 @@ export function SelfRecordModal({
             ) : null}
           </div>
 
-          <div className="flex min-h-80 flex-col items-center justify-center rounded-2xl border border-white/10 bg-black/45 p-4">
+          <div className="flex min-h-56 flex-col items-center justify-center rounded-2xl border border-white/10 bg-black/45 p-4 sm:min-h-72">
             {preview ? (
               <video src={preview} controls className="max-h-[420px] w-full rounded-xl bg-black" />
             ) : (
@@ -181,7 +181,7 @@ export function SelfRecordModal({
 
         {error && <div className="mx-5 mb-3 rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">{error}</div>}
 
-        <footer className="flex flex-wrap justify-end gap-2 border-t border-white/10 p-4">
+        <footer className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-white/10 bg-black/15 p-3 sm:p-4">
           {state === "ready" || state === "requesting" ? (
             <button onClick={startRecording} disabled={state === "requesting"} className="rounded-xl bg-red-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-red-500/20 disabled:opacity-40">● REC</button>
           ) : null}

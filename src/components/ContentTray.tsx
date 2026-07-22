@@ -7,6 +7,7 @@ import { DemoContentModal } from "@/components/DemoContentModal";
 import { PieceCarousel } from "@/components/PieceCarousel";
 import { PublishModal } from "@/components/PublishModal";
 import { SelfRecordModal } from "@/components/SelfRecordModal";
+import { useAppDialog } from "@/components/AppDialog";
 import type { ContentPiece, DemoConfig, MediaConfig } from "@/core/content/types";
 import { friendlyProviderFailure, sanitizeProviderMessage } from "@/core/media/contracts";
 
@@ -103,6 +104,7 @@ export function ContentTray({
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const esRef = useRef<Map<string, EventSource>>(new Map());
+  const appDialog = useAppDialog();
 
   const load = useCallback(async () => {
     const r = await fetch(`/api/content/${projectId}`);
@@ -265,14 +267,23 @@ export function ContentTray({
     });
     if (!response.ok) {
       const data = (await response.json()) as { error?: string };
-      window.alert(data.error || "No se pudo adjuntar la grabación.");
+      await appDialog.alert({
+        title: "No se pudo adjuntar",
+        message: data.error || "No se pudo adjuntar la grabación.",
+        tone: "danger",
+      });
       return;
     }
     await load();
   }
 
   async function clearRecording(pieceId: string) {
-    if (!window.confirm("¿Quitar esta grabación de la pieza? El original de la mediateca se conserva.")) return;
+    if (!await appDialog.confirm({
+      title: "Quitar grabación de la pieza",
+      message: "La grabación dejará de estar asociada a esta pieza, pero el archivo original seguirá disponible en la mediateca.",
+      confirmLabel: "Quitar grabación",
+      tone: "danger",
+    })) return;
     await fetch(`/api/content/${projectId}/${pieceId}`, {
       method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clearRecording: true }),
     });
@@ -283,7 +294,11 @@ export function ContentTray({
     const message = mode === "auto"
       ? "Se validará y regrabará únicamente la navegación. Después se remontará reutilizando vídeos y voz existentes."
       : "Se remontará con la grabación actual y los recursos existentes, sin llamar a fal.ai ni ElevenLabs.";
-    if (!window.confirm(`${message}\n\n¿Continuar?`)) return;
+    if (!await appDialog.confirm({
+      title: mode === "auto" ? "Regrabar navegación" : "Remontar sin créditos",
+      message,
+      confirmLabel: mode === "auto" ? "Validar y regrabar" : "Crear nuevo montaje",
+    })) return;
     const response = await fetch(`/api/content/${projectId}/${pieceId}/remount`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -295,7 +310,11 @@ export function ContentTray({
       nodes?: GraphNode[];
     };
     if (!response.ok || !data.runId) {
-      window.alert(data.error || "No se pudo iniciar el remontaje.");
+      await appDialog.alert({
+        title: "No se pudo iniciar",
+        message: data.error || "No se pudo iniciar el remontaje.",
+        tone: "danger",
+      });
       return;
     }
     setRunNodes((previous) => ({
@@ -308,7 +327,12 @@ export function ContentTray({
   }
 
   async function removePiece(pieceId: string) {
-    if (!confirm("¿Eliminar esta pieza de contenido?")) return;
+    if (!await appDialog.confirm({
+      title: "Eliminar pieza de contenido",
+      message: "Se eliminará la pieza y dejará de aparecer en esta bandeja.",
+      confirmLabel: "Eliminar pieza",
+      tone: "danger",
+    })) return;
     await fetch(`/api/content/${projectId}/${pieceId}`, { method: "DELETE" });
     setPieces((prev) => prev.filter((p) => p.id !== pieceId));
   }
@@ -474,6 +498,7 @@ export function ContentTray({
           }}
         />
       )}
+      {appDialog.dialog}
     </div>
   );
 }
@@ -779,10 +804,16 @@ function PieceCard({
             ) : null}
             </div>
           </div>
-          <p className="mb-2 text-[10px] leading-relaxed text-white/35">
-            Puedes reemplazar la navegación manualmente o regrabarla con Playwright y después remontar
-            reutilizando el vídeo, la voz y el guion ya generados.
-          </p>
+          <details className="mb-2 rounded-lg border border-white/8 bg-black/15 px-3 py-2 text-[10px] text-white/45">
+            <summary className="cursor-pointer font-medium text-white/60">¿Qué hace cada opción?</summary>
+            <dl className="mt-2 grid gap-2 leading-relaxed sm:grid-cols-2">
+              <div><dt className="font-semibold text-red-200">REC</dt><dd>Abre la captura manual. Navegas tú por la app y guardas el resultado en la mediateca y en esta pieza.</dd></div>
+              <div><dt className="font-semibold text-cyan-200">Regrabar navegación</dt><dd>Valida los pasos y vuelve a grabarlos con Playwright. Después remonta usando los vídeos y la voz ya existentes.</dd></div>
+              <div><dt className="font-semibold text-white/75">Reemplazar vídeo</dt><dd>Sube otro archivo como navegación de esta pieza. No genera ni monta nada hasta que pulses remontar.</dd></div>
+              <div><dt className="font-semibold text-red-200">Quitar</dt><dd>Desvincula la grabación de esta pieza. El original sigue guardado en la mediateca.</dd></div>
+              <div className="sm:col-span-2"><dt className="font-semibold text-purple-200">Remontar sin créditos</dt><dd>Crea de nuevo el vídeo final con la grabación actual, los cortes, la locución, el guion y los subtítulos existentes. No llama a fal.ai, ElevenLabs ni HeyGen.</dd></div>
+            </dl>
+          </details>
           {piece.assets.recordingPath ? (
             <video
               key={piece.assets.recordingPath}

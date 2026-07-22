@@ -10,6 +10,7 @@ import { ContentTray } from "@/components/ContentTray";
 import { EntityLogo } from "@/components/EntityLogo";
 import { ProjectLoading } from "@/components/ProjectLoading";
 import { NavigationMapPanel } from "@/components/NavigationMapPanel";
+import { useAppDialog } from "@/components/AppDialog";
 
 type RunEvent =
   | { type: "node"; nodeId: string; state: NodeState; detail?: string }
@@ -43,6 +44,7 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
   const [regenerating, setRegenerating] = useState(false);
   const [logoRevision, setLogoRevision] = useState(0);
   const esRef = useRef<EventSource | null>(null);
+  const appDialog = useAppDialog();
 
   const loadDossier = useCallback(async () => {
     const r = await fetch(`/api/dossier/${id}`);
@@ -118,7 +120,12 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
   }
 
   async function removeProject() {
-    if (!confirm("¿Eliminar este analisis y su dossier? Esta accion no se puede deshacer.")) return;
+    if (!await appDialog.confirm({
+      title: "Eliminar proyecto",
+      message: "Se eliminarán el análisis, el dossier y los datos asociados. Esta acción no se puede deshacer.",
+      confirmLabel: "Eliminar proyecto",
+      tone: "danger",
+    })) return;
     await fetch(`/api/projects/${id}`, { method: "DELETE" });
     window.location.href = "/";
   }
@@ -279,6 +286,7 @@ export default function ProyectoPage({ params }: { params: Promise<{ id: string 
           <ContentTray projectId={id} projectUrl={project?.url ?? ""} ready={!!dossier} />
         </section>
       )}
+      {appDialog.dialog}
     </div>
   );
 }

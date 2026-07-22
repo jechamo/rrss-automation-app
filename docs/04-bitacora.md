@@ -32,6 +32,37 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ## Historial
 
+### 2026-07-19 — UX de captura, edición directa y diálogos propios
+
+- Captura local queda limitada al viewport dinámico: cabecera/pasos/acciones no desaparecen y el
+  cuerpo central tiene scroll propio. Verificado a 900×560 con REC visible y contenido desplazable.
+- Las superposiciones MIX se mueven arrastrando su cuerpo y se recortan/amplían con asas laterales;
+  los campos `Empieza en`, `Entrada` y `Salida` continúan disponibles para precisión. Verificado en
+  navegador moviendo 4,0–9,0s a 6,5–11,5s y ampliando después hasta 13,4s.
+- Secuencial y capas comparten la carga de voz/subtítulos de la pieza. La ayuda visible explica que
+  solo cambia la composición visual; en la prueba ICGVault se recuperaron 498 caracteres.
+- Nuevo diálogo visual reutilizable para avisos, confirmaciones y texto. Sustituye todos los
+  `alert`/`confirm`/`prompt` de componentes y rutas cliente; el selector de captura permanece nativo
+  por seguridad del navegador.
+- Cada pieza propia incorpora ayuda plegable para REC, Regrabar navegación, Reemplazar vídeo,
+  Quitar y Remontar sin créditos. Verificado con build de producción y 24/24 contratos.
+
+### 2026-07-19 — REQ-012: MIX por capas sobre navegación
+
+- `MixRecipe` mantiene v1/v2 y añade `overlays[]` opcional, sin migración: recurso, recorte de fuente,
+  inicio en timeline, modo `cover|pip`, posición y tamaño. Las recetas anteriores normalizan a una
+  lista vacía y conservan su render.
+- `assembleMix()` concatena primero la pista base, desplaza y compone hasta 20 apoyos visuales, ignora
+  su audio y quema los subtítulos ASS al final para que siempre queden por encima. Pantalla completa
+  tapa visualmente la navegación mientras esta avanza debajo; PIP conserva ambas visibles.
+- El editor ofrece `Preparar secuencial` y `Preparar en capas`. Grabaciones manuales/Playwright sirven
+  como base; cada vídeo puede añadirse a la base o superponerse. Se editan inicio, entrada/salida,
+  presentación, posición y tamaño desde una timeline superior proporcional.
+- La UI avisa si una pantalla completa cruza un momento protegido, si una capa sale de la duración o
+  si la locución exige mantener el último frame de la base. La decisión nunca queda oculta.
+- Verificado con TypeScript, build, 24/24 contratos, filtro FFmpeg real con base+PIP y navegador local
+  sobre una pieza ICGVault; navegación, clips y controles por capas aparecen correctamente.
+
 ### 2026-07-19 — REQ-017: captura 9:16, tutoriales superpuestos y cierre de marca
 
 - La grabación Playwright usa el mismo viewport y tamaño de vídeo 390×693 (9:16). Se elimina la

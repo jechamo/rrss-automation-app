@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SelfRecordModal, type SavedMediaAsset } from "./SelfRecordModal";
 import { MixStudioPanel } from "./MixStudioPanel";
+import { useAppDialog } from "./AppDialog";
 
 export type StudioAsset = SavedMediaAsset & {
   projectId: string;
@@ -40,6 +41,7 @@ export function MediaStudio({ projectId, projectName, projectUrl }: { projectId:
   const [uploading, setUploading] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
   const [message, setMessage] = useState("");
+  const appDialog = useAppDialog();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -76,7 +78,13 @@ export function MediaStudio({ projectId, projectName, projectUrl }: { projectId:
   }
 
   async function rename(asset: StudioAsset) {
-    const name = window.prompt("Nuevo nombre", asset.name)?.trim();
+    const name = (await appDialog.prompt({
+      title: "Renombrar recurso",
+      message: "El nuevo nombre se mostrará en la mediateca y en el montador MIX.",
+      inputLabel: "Nuevo nombre",
+      initialValue: asset.name,
+      confirmLabel: "Guardar nombre",
+    }))?.trim();
     if (!name || name === asset.name) return;
     const response = await fetch(`/api/projects/${projectId}/media/${asset.id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }),
@@ -85,7 +93,12 @@ export function MediaStudio({ projectId, projectName, projectUrl }: { projectId:
   }
 
   async function remove(asset: StudioAsset) {
-    if (!window.confirm(`¿Eliminar «${asset.name}»? Esta acción no se puede deshacer.`)) return;
+    if (!await appDialog.confirm({
+      title: "Eliminar recurso",
+      message: `Se eliminará «${asset.name}». Esta acción no se puede deshacer.`,
+      confirmLabel: "Eliminar recurso",
+      tone: "danger",
+    })) return;
     const response = await fetch(`/api/projects/${projectId}/media/${asset.id}`, { method: "DELETE" });
     const data = (await response.json()) as { error?: string };
     setMessage(response.ok ? "Recurso eliminado." : data.error || "No se pudo eliminar.");
@@ -134,6 +147,7 @@ export function MediaStudio({ projectId, projectName, projectUrl }: { projectId:
       <MixStudioPanel projectId={projectId} assets={assets} onMediaChanged={load} />
 
       {showRecorder && <SelfRecordModal projectId={projectId} initialUrl={projectUrl} onClose={() => setShowRecorder(false)} onSaved={async () => { setShowRecorder(false); setMessage("Grabación guardada. Ya puedes reutilizarla en tus piezas o en MIX."); await load(); }} />}
+      {appDialog.dialog}
     </div>
   );
 }

@@ -288,6 +288,9 @@ permitir crear un vídeo final combinándolos sin romper los montajes automátic
 
 El selector de `getDisplayMedia` siempre requiere una acción explícita: la aplicación no puede
 elegir una ventana ni ocultar el diálogo de seguridad del navegador.
+El modal debe caber en alturas reducidas: cabecera y acciones permanecen accesibles y el contenido
+central dispone de scroll propio. Las confirmaciones, avisos y cambios de nombre de la aplicación
+usan diálogos visuales de RRSS Studio, no `alert`/`confirm`/`prompt` del navegador.
 
 **Estudio MIX inteligente (v1, sin línea de tiempo):**
 - Panel visual de recursos + receta por bloques: hook, presentación, demo, B-roll y cierre.
@@ -307,6 +310,7 @@ viral+fal, viral+HeyGen, Playwright, subida, REC/STOP, MIX y publicación asisti
 **Criterios de aceptación:**
 - Las piezas anteriores a REQ-011 abren, se reproducen y se publican como antes.
 - Una grabación REC/STOP aparece en la mediateca y se puede reutilizar.
+- Captura local no se sale del viewport y permite llegar a REC/STOP/Guardar con scroll interno.
 - MIX combina vídeo, locución y música opcional sin sobrescribir el final anterior.
 - Toda salida final con voz muestra subtítulos legibles en la zona inferior segura.
 - Ajustes informa ruta y versión reales de yt-dlp/FFmpeg/ffprobe desde el proceso Next.
@@ -333,8 +337,12 @@ montajes automáticos y las recetas MIX anteriores.
   inserción, eliminación y protección de momentos importantes.
 - Una acción de armonización ajusta los bloques no protegidos a la duración de la locución. Las
   diferencias restantes se muestran como error accionable, nunca como truncado o congelado oculto.
-- La primera versión usa una pista visual secuencial, locución, música y subtítulos; overlays,
-  keyframes, filtros y edición cuadro a cuadro quedan fuera de alcance.
+- La receta v2 admite una pista superior opcional de superposiciones. Cada apoyo define recurso,
+  recorte, inicio en timeline, pantalla completa o picture-in-picture, posición y tamaño. La pista
+  base sigue avanzando y el audio de la superposición se ignora. El bloque puede desplazarse
+  directamente y sus dos asas permiten reducir o ampliar el recorte, además de los campos numéricos.
+- Los subtítulos se aplican después de todas las capas para permanecer siempre visibles. Keyframes,
+  filtros creativos y edición cuadro a cuadro continúan fuera de alcance.
 
 **Compatibilidad:**
 - Las recetas MIX v1 se siguen leyendo y renderizando como antes.
@@ -345,7 +353,13 @@ montajes automáticos y las recetas MIX anteriores.
 - Automático y 0–6 cortes manuales funcionan y el coste usa la cantidad real.
 - Todos los cortes generados quedan visibles en la mediateca y los utilizados aparecen en la timeline.
 - Los segmentos protegidos no se eliminan ni recortan sin desbloqueo explícito.
-- Una receta v2 no renderiza si vídeo y pista maestra difieren más de 0,25 s.
+- Una receta v2 secuencial no renderiza si vídeo y pista maestra difieren más de 0,25 s. En modo por
+  capas, si la locución es más larga, se informa y se mantiene el último frame de la base bajo los
+  apoyos; nunca se oculta ese ajuste.
+- Grabaciones manuales y Playwright pueden actuar como pista base; cualquier vídeo reutilizable puede
+  añadirse como apoyo superior sin incorporar su audio.
+- Preparar secuencial y Preparar en capas recuperan la misma locución y los mismos subtítulos de la
+  pieza destino; solo cambia la composición visual.
 - No se vuelve a omitir ningún corte ni se trunca el último por una locución más corta.
 - Toda salida con voz conserva subtítulos inferiores en la zona segura.
 - Piezas y MIX anteriores continúan abriendo, renderizando y publicándose.
