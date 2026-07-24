@@ -333,11 +333,19 @@ montajes automáticos y las recetas MIX anteriores.
 
 **Montador ligero:**
 - MIX admite una receta v2 por segmentos, con recurso, entrada/salida, etiqueta y bloqueo.
-- La UI muestra una línea temporal vertical-first con previsualización, reordenación, recorte,
-  inserción, eliminación y protección de momentos importantes.
+- La UI muestra una única línea temporal vertical-first, con regla y cabezal comunes. La pista
+  principal y las capas se editan dentro del mismo lienzo alineado, sin separar el trabajo en dos
+  zonas. Permite selección, reordenación, recorte, inserción, eliminación y protección de momentos
+  importantes.
 - La bandeja audiovisual usa miniaturas reproducibles y una etiqueta inequívoca por origen/tipo
-  (`Playwright`, grabación manual, clip IA, presentador, vídeo, final o versión MIX). Un monitor único
-  reproduce tanto recursos como resultados renderizados sin duplicar reproductores por toda la UI.
+  (`Playwright`, grabación manual, clip IA, presentador, vídeo, final o versión MIX). Un visor único
+  distingue claramente entre el montaje vivo, un recurso aislado y un resultado renderizado.
+- La bandeja puede filtrarse por recursos principales, clips, finales y versiones MIX. La galería de
+  Mediateca permanece plegada hasta que el usuario decide gestionar archivos; su inventario continúa
+  disponible para el editor.
+- El montaje vivo dispone de reproducir/pausar, detener, desplazamiento del cabezal y zoom. Compone
+  en el navegador la pista principal, las capas activas, la locución, la música y una referencia de
+  subtítulos según la posición actual, sin llamar a proveedores ni exigir un render previo.
 - La timeline muestra fotogramas aproximados de pista base y superposiciones. Locución y música
   seleccionadas tienen controles de audio propios antes de renderizar.
 - Una acción de armonización ajusta los bloques no protegidos a la duración de la locución. Las
@@ -348,6 +356,11 @@ montajes automáticos y las recetas MIX anteriores.
   directamente y sus dos asas permiten reducir o ampliar el recorte, además de los campos numéricos.
 - Los subtítulos se aplican después de todas las capas para permanecer siempre visibles. Keyframes,
   filtros creativos y edición cuadro a cuadro continúan fuera de alcance.
+- Al elegir una locución generada para una pieza, el campo de subtítulos recupera inmediatamente el
+  texto de su guion asociado. Un audio libre sin guion no borra texto escrito por el usuario.
+- Preparar secuencial o en capas transforma la selección actual sin importar otros recursos. Si la
+  timeline está vacía, la propuesta automática exige una pieza destino y nunca toma toda la
+  mediateca del proyecto de forma implícita.
 
 **Compatibilidad:**
 - Las recetas MIX v1 se siguen leyendo y renderizando como antes.
@@ -359,6 +372,8 @@ montajes automáticos y las recetas MIX anteriores.
 - Todos los cortes generados quedan visibles en la mediateca y los utilizados aparecen en la timeline.
 - Cada vídeo puede previsualizarse desde la bandeja, la locución puede escucharse y toda versión MIX
   lista puede reproducirse completa antes de marcarla como final.
+- Al mover o recortar una capa, reproducir desde la timeline refleja inmediatamente su nueva posición;
+  nunca se confunde el montaje actual con el último recurso aislado que se haya abierto.
 - Los segmentos protegidos no se eliminan ni recortan sin desbloqueo explícito.
 - Una receta v2 secuencial no renderiza si vídeo y pista maestra difieren más de 0,25 s. En modo por
   capas, si la locución es más larga, se informa y se mantiene el último frame de la base bajo los

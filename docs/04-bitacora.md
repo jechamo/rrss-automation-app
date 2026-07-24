@@ -32,6 +32,30 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ## Historial
 
+### 2026-07-22 — Preparación MIX predecible, subtítulos y filtros
+
+- Elegir una locución enlazada a una pieza recupera al instante su texto de guion en **Subtítulos
+  obligatorios**. Los audios libres no borran una edición manual si no existe transcripción asociada.
+- **Preparar secuencial** y **Preparar en capas** transforman la selección actual y son idempotentes:
+  no vuelven a importar ni duplicar recursos. Con timeline vacía exigen una pieza destino en vez de
+  tomar todos los vídeos del proyecto.
+- La galería completa de Mediateca queda plegada de inicio y solo monta previews al abrirse, mientras
+  el inventario permanece disponible para MIX. La bandeja añade filtros con recuento para Principal,
+  Clips, Finales y MIX.
+
+### 2026-07-22 — Timeline unificada y visor del montaje vivo
+
+- Principal y superposiciones dejan de presentarse como dos zonas independientes: ahora comparten
+  un único lienzo temporal, regla, escala, cabezal y scroll horizontal, con calles alineadas.
+- La barra del editor añade Play/Pausa, Stop, timecode, salto sobre la regla y zoom. El visor compone
+  en el navegador el principal y las capas activas, con PIP/cover, posición, tamaño, voz, música y
+  referencia de subtítulos, sin consumir créditos ni generar un fichero temporal.
+- Se separan explícitamente los modos **Montaje vivo**, **Recurso aislado** y **Resultado renderizado**.
+  Añadir, mover o recortar una capa mantiene el montaje como referencia; abrir un asset es una acción
+  aislada y reversible mediante **Monitor: montaje**.
+- La biblioteca usa **+ Principal** y **+ Capa** y los resultados usan **Ver resultado**, evitando que
+  el último recurso seleccionado parezca la composición actual.
+
 ### 2026-07-22 — MIX visual: biblioteca, monitor y previews
 
 - El editor se ordena en cinco pasos numerados y separa selección, planificación, timeline,

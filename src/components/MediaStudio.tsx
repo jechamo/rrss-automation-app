@@ -40,6 +40,7 @@ export function MediaStudio({ projectId, projectName, projectUrl }: { projectId:
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [showRecorder, setShowRecorder] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [message, setMessage] = useState("");
   const appDialog = useAppDialog();
 
@@ -124,24 +125,27 @@ export function MediaStudio({ projectId, projectName, projectUrl }: { projectId:
         </div>
       </header>
 
-      <section className="glass p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <section className="glass overflow-hidden">
+        <button type="button" aria-expanded={libraryOpen} onClick={() => setLibraryOpen((current) => !current)} className="flex w-full flex-wrap items-center justify-between gap-3 p-5 text-left hover:bg-white/[0.025]">
           <div>
             <h2 className="font-semibold">Mediateca</h2>
-            <p className="text-xs text-white/40">{assets.length} recursos · los generados por tus piezas se indexan sin duplicar archivos</p>
+            <p className="text-xs text-white/40">{loading ? "Indexando recursos…" : `${assets.length} recursos`} · abre solo cuando quieras gestionar archivos</p>
           </div>
+          <span className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs text-white/55"><span>{libraryOpen ? "Ocultar" : "Abrir mediateca"}</span><span aria-hidden="true" className={`transition-transform ${libraryOpen ? "rotate-180" : ""}`}>⌄</span></span>
+        </button>
+        {message && <div className="mx-5 mb-4 rounded-lg bg-white/5 px-3 py-2 text-xs text-white/60">{message}</div>}
+        {libraryOpen && <div className="border-t border-white/10 p-5">
           <div className="flex flex-wrap gap-1">
-            {FILTERS.map((item) => <button key={item.id} onClick={() => setFilter(item.id)} className={`rounded-lg px-3 py-1.5 text-xs ${filter === item.id ? "bg-white/12 text-white" : "text-white/45 hover:bg-white/5"}`}>{item.label}</button>)}
+              {FILTERS.map((item) => <button key={item.id} onClick={() => setFilter(item.id)} className={`rounded-lg px-3 py-1.5 text-xs ${filter === item.id ? "bg-white/12 text-white" : "text-white/45 hover:bg-white/5"}`}>{item.label}</button>)}
           </div>
-        </div>
-        {message && <div className="mt-3 rounded-lg bg-white/5 px-3 py-2 text-xs text-white/60">{message}</div>}
-        {loading ? <div className="py-16 text-center text-sm text-white/35">Indexando recursos…</div> : visible.length === 0 ? (
-          <div className="my-6 rounded-2xl border border-dashed border-white/15 px-6 py-16 text-center"><div className="text-4xl">◉</div><p className="mt-3 text-sm text-white/55">Todavía no hay recursos en este filtro.</p><p className="mt-1 text-xs text-white/30">Graba tu app o sube un vídeo/audio para empezar.</p></div>
-        ) : (
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {visible.map((asset) => <AssetCard key={asset.id} projectId={projectId} asset={asset} onRename={() => rename(asset)} onDelete={() => remove(asset)} />)}
-          </div>
-        )}
+          {loading ? <div className="py-16 text-center text-sm text-white/35">Indexando recursos…</div> : visible.length === 0 ? (
+            <div className="my-6 rounded-2xl border border-dashed border-white/15 px-6 py-16 text-center"><div className="text-4xl">◉</div><p className="mt-3 text-sm text-white/55">Todavía no hay recursos en este filtro.</p><p className="mt-1 text-xs text-white/30">Graba tu app o sube un vídeo/audio para empezar.</p></div>
+          ) : (
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {visible.map((asset) => <AssetCard key={asset.id} projectId={projectId} asset={asset} onRename={() => rename(asset)} onDelete={() => remove(asset)} />)}
+            </div>
+          )}
+        </div>}
       </section>
 
       <MixStudioPanel projectId={projectId} assets={assets} onMediaChanged={load} />
