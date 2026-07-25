@@ -280,6 +280,7 @@ test("MIX v1 sigue siendo compatible y MIX v2 conserva recortes y bloqueos", () 
   assert.equal(timeline.overlays[0].mode, "pip");
   assert.equal(timeline.overlays[0].position, "bottom-right");
   assert.equal(timeline.overlays[0].timelineStart, 2);
+  assert.equal(timeline.includeBrandOutro, true);
 });
 
 test("MIX v2 descarta segmentos imposibles de forma defensiva", () => {
@@ -312,4 +313,21 @@ test("MIX v2 sanea superposiciones sin romper recetas anteriores", () => {
   assert.equal(recipe.overlays[0].timelineStart, 0);
   assert.equal(recipe.overlays[0].position, "top-right");
   assert.equal(recipe.overlays[0].size, 0.8);
+});
+
+test("MIX conserva todas las capas y permite desactivar el cierre de marca", () => {
+  const overlays = Array.from({ length: 27 }, (_, index) => ({
+    assetId: `layer-${index}`,
+    sourceStart: 0,
+    sourceEnd: 2,
+    timelineStart: index,
+  }));
+  const recipe = coerceMixRecipe({
+    version: 2,
+    segments: [{ assetId: "base", sourceStart: 0, sourceEnd: 40 }],
+    overlays,
+    includeBrandOutro: false,
+  });
+  assert.equal(recipe.overlays.length, 27);
+  assert.equal(recipe.includeBrandOutro, false);
 });

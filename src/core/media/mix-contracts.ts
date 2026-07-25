@@ -34,6 +34,7 @@ export interface MixRecipe {
   musicAssetId: string;
   subtitleText: string;
   musicVolume: number;
+  includeBrandOutro: boolean;
 }
 
 function finiteNumber(value: unknown, fallback = 0): number {
@@ -69,7 +70,7 @@ export function coerceMixRecipe(raw: unknown): MixRecipe {
       })
     : [];
   const overlays = Array.isArray(value.overlays)
-    ? value.overlays.slice(0, 20).flatMap((rawOverlay, index) => {
+    ? value.overlays.flatMap((rawOverlay, index) => {
         if (!rawOverlay || typeof rawOverlay !== "object") return [];
         const overlay = rawOverlay as Record<string, unknown>;
         const assetId = typeof overlay.assetId === "string" ? overlay.assetId : "";
@@ -97,13 +98,14 @@ export function coerceMixRecipe(raw: unknown): MixRecipe {
   const volume = Number(value.musicVolume);
   return {
     version: segments.length > 0 || overlays.length > 0 || value.version === 2 ? 2 : 1,
-    videoAssetIds: [...new Set(ids)].slice(0, 20),
+    videoAssetIds: [...new Set(ids)],
     segments,
     overlays,
     voiceAssetId: typeof value.voiceAssetId === "string" ? value.voiceAssetId : "",
     musicAssetId: typeof value.musicAssetId === "string" ? value.musicAssetId : "",
     subtitleText: typeof value.subtitleText === "string" ? value.subtitleText.trim() : "",
     musicVolume: Number.isFinite(volume) ? Math.min(0.5, Math.max(0.02, volume)) : 0.12,
+    includeBrandOutro: value.includeBrandOutro !== false,
   };
 }
 

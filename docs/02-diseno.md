@@ -272,17 +272,28 @@ CTA pasa a ser **Aprobar plan y generar** para dejar claro cuándo se consumirá
 
 ### 16.2 Timeline
 
-MIX adopta un editor ligero inspirado en herramientas como Clipchamp: un único lienzo temporal
-proporcional con regla, cabezal rojo y calles alineadas dentro de la misma zona. **Principal** contiene
-la secuencia que gobierna la duración y **Capas** contiene los apoyos que se superponen, pero no son
-dos editores distintos. Cada bloque muestra miniatura/nombre, tipo, duración y candado. Se puede
-seleccionar, añadir, arrastrar/reordenar, recortar con entrada/salida, bloquear y eliminar.
+MIX adopta un editor ligero inspirado en herramientas como Clipchamp y elimina los cinco pasos
+numerados. El viewport se divide en un rail fijo de biblioteca y una columna principal con barra
+superior, visor+propiedades, plan y timeline. No hay scroll de página: rail, inspector y pistas
+gestionan su propio overflow.
+
+La barra superior ordena **Proyecto → Nombre del borrador → Pieza destino → estado de guardado**.
+A la derecha quedan **Versiones** y el CTA **Generar versión**; se elimina el botón redundante
+Vista previa. Cambiar proyecto muestra un diálogo que guarda el borrador antes de navegar.
+
+La biblioteca tiene pestañas **Pistas app** (Playwright y grabaciones manuales) y **Capas** (clips IA,
+presentadores y subidos), además de Subir, REC y Gestionar mediateca. Las tarjetas llevan preview,
+tipo, duración y agarre; pueden soltarse en cualquier calle. Finales y MIX no aparecen como fuentes.
+
+El lienzo temporal es proporcional, con regla, cabezal rojo y calles alineadas. **Principal**
+contiene la secuencia que gobierna la duración y cada superposición ocupa una capa dinámica. Solo se
+muestran capas activas y una calle «Suelta aquí»; el área crece con scroll vertical. Cada bloque
+muestra miniaturas/nombre, tipo, duración y candado. Se puede seleccionar, añadir,
+arrastrar/reordenar, recortar con entrada/salida, bloquear y eliminar.
 
 La barra del editor reúne reproducir/pausar, detener, timecode y zoom. Al pulsar la regla o un bloque,
 el cabezal se desplaza y el visor compone en vivo el principal y las capas activas, respetando PIP,
-pantalla completa, posición y tamaño. La lectura se divide en cinco pasos numerados: configurar
-versión, elegir plan, construir timeline, explorar vídeos y revisar audio/subtítulos. La bandeja usa
-tarjetas con fotograma, play, duración, origen, número de usos y badges de tipo.
+pantalla completa, posición y tamaño.
 
 El monitor fijo diferencia tres estados visibles: **Montaje vivo**, **Recurso aislado** y **Resultado
 renderizado**. Abrir un recurso no altera la receta y el botón **Monitor: montaje** siempre vuelve a la
@@ -294,9 +305,8 @@ usan un fotograma aproximado como fondo con gradiente para conservar la legibili
 Seleccionar una locución enlazada a una pieza recupera su guion en **Subtítulos obligatorios**. Si el
 audio es libre y no tiene texto asociado, se conserva lo ya escrito y se muestra una explicación.
 
-La galería completa de **Mediateca** aparece plegada de inicio y monta sus previews solo al abrirla.
-El inventario ligero sigue alimentando MIX. La bandeja del editor ofrece filtros **Todos**,
-**Principal**, **Clips**, **Finales** y **MIX**, con recuento visible.
+La galería completa de **Mediateca** se abre en un diálogo desde el rail y conserva subida,
+renombrado, descarga y eliminación. El inventario ligero alimenta la biblioteca del editor.
 
 ### 16.3 Armonización
 
@@ -324,7 +334,19 @@ transformaciones: secuencial pasa las capas al principal y en capas mantiene com
 grabaciones —o el primer bloque— y convierte el resto. Repetir una acción no duplica recursos. Con
 timeline vacía se requiere una pieza destino para evitar importar todo el proyecto.
 
-### 16.5 Captura y diálogos adaptativos
+### 16.5 Borradores, versiones y cierre de marca
+
+La timeline activa muestra un badge **Borrador** y un estado discreto Guardando/Guardado/Error. Los
+borradores se autoguardan y pueden reabrirse desde **Versiones**. El diálogo agrupa Borradores,
+Renderizando, Listas, Error y Final actual; las versiones renderizadas solo se consultan y pueden
+aplicarse como final, nunca vuelven a la biblioteca.
+
+El inspector cambia según la selección: Principal ofrece recorte, bloqueo y quitar; una Capa añade
+presentación, posición y tamaño; sin selección muestra ajustes globales, audio y subtítulos. El
+switch **Cierre de marca** está activo por defecto si hay logo. La timeline representa un bloque
+final bloqueado de tres segundos y lo elimina inmediatamente al desactivar el switch.
+
+### 16.6 Captura y diálogos adaptativos
 
 Captura local usa un contenedor limitado por `100dvh`, cuerpo con scroll y cabecera/acciones fijas,
 de modo que REC, STOP y Guardar siguen accesibles en portátiles y ventanas bajas. Confirmaciones,

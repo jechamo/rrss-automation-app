@@ -32,6 +32,25 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ## Historial
 
+### 2026-07-24 — Editor MIX profesional, borradores y versiones finales
+
+- El Estudio multimedia adopta un espacio de trabajo sin scroll exterior: biblioteca fija, barra de
+  proyecto/versión, visor 9:16, propiedades y timeline unificada. La mediateca completa queda en un
+  diálogo bajo demanda.
+- Los vídeos se arrastran directamente a Principal o a una capa. Las capas son dinámicas y sin un
+  máximo fijo; el cuerpo mueve el bloque y las asas cambian su entrada/salida sobre una timeline con
+  scroll interno, zoom, cabezal, Play/Pausa y Stop.
+- Los borradores MIX se persisten y autoguardan por proyecto. Versiones permite recuperar, crear o
+  eliminar borradores y consultar renders; el selector de proyecto exige guardar antes de cambiar.
+- Los resultados MIX/finales no son material reutilizable en la biblioteca. Un resultado marcado
+  como final solo ofrece reproducción; tampoco puede eliminarse hasta que otra versión lo sustituya.
+- El cierre de marca es una opción de cada borrador, activada inicialmente cuando el proyecto tiene
+  logo. Aparece como tramo final de la timeline y el render solo lo añade si la opción sigue activa.
+- Verificado con datos locales de ICGVault: biblioteca 2 pistas app + 8 capas, subtítulos automáticos
+  de 498 caracteres, dos capas dinámicas, autoguardado y recuperación tras recarga. La versión final
+  existente quedó únicamente en el modal de consulta. El borrador creado para la prueba fue eliminado.
+- Verificación técnica: `npm run build` correcto y `npm run test:contracts` con 25/25 pruebas.
+
 ### 2026-07-22 — Preparación MIX predecible, subtítulos y filtros
 
 - Elegir una locución enlazada a una pieza recupera al instante su texto de guion en **Subtítulos

@@ -3,17 +3,38 @@ import { prisma } from "@/lib/prisma";
 import { assembleMix, coerceMixRecipe, mixVideoCount } from "@/core/media/mix";
 import { registerMediaAsset } from "@/core/media/library";
 import { appendBrandOutro } from "@/core/media/brand-outro";
+import { coerceAssets } from "@/core/content/types";
 
 export const dynamic = "force-dynamic";
 
-function dto(row: { id: string; projectId: string; pieceId: string | null; name: string; status: string; recipe: string; outputPath: string | null; error: string | null; createdAt: Date; updatedAt: Date }) {
-  return { ...row, recipe: coerceMixRecipe(JSON.parse(row.recipe || "{}")), createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString() };
+function dto(
+  row: { id: string; projectId: string; pieceId: string | null; name: string; status: string; recipe: string; outputPath: string | null; error: string | null; createdAt: Date; updatedAt: Date },
+  finalPaths: Set<string> = new Set(),
+) {
+  return {
+    ...row,
+    recipe: coerceMixRecipe(JSON.parse(row.recipe || "{}")),
+    isFinal: Boolean(row.outputPath && finalPaths.has(row.outputPath)),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
 }
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  const mixes = await prisma.mixComposition.findMany({ where: { projectId: id }, orderBy: { createdAt: "desc" } });
-  return NextResponse.json({ mixes: mixes.map(dto) });
+  const [mixes, pieces] = await Promise.all([
+    prisma.mixComposition.findMany({ where: { projectId: id }, orderBy: { updatedAt: "desc" } }),
+    prisma.contentPiece.findMany({ where: { projectId: id }, select: { assets: true } }),
+  ]);
+  const finalPaths = new Set(pieces.flatMap((piece) => {
+    try {
+      const path = coerceAssets(JSON.parse(piece.assets || "{}")).videoPath;
+      return path ? [path] : [];
+    } catch {
+      return [];
+    }
+  }));
+  return NextResponse.json({ mixes: mixes.map((mix) => dto(mix, finalPaths)) });
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
@@ -35,7 +56,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   });
   try {
     let outputPath = await assembleMix(id, mix.id, recipe);
-    if (project.logoPath) {
+    if (project.logoPath && recipe.includeBrandOutro) {
       try {
         const branded = appendBrandOutro({
           pieceId: pieceId || `project-${id}`,
