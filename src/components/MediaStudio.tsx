@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SelfRecordModal, type SavedMediaAsset } from "./SelfRecordModal";
 import { MixStudioPanel } from "./MixStudioPanel";
 import { useAppDialog } from "./AppDialog";
@@ -34,7 +34,17 @@ const FILTERS = [
   { id: "final", label: "Finales" },
 ] as const;
 
-export function MediaStudio({ projectId, projectName, projectUrl }: { projectId: string; projectName: string; projectUrl: string }) {
+export function MediaStudio({
+  projectId,
+  projectName,
+  projectUrl,
+  hasLogo,
+}: {
+  projectId: string;
+  projectName: string;
+  projectUrl: string;
+  hasLogo: boolean;
+}) {
   const [assets, setAssets] = useState<StudioAsset[]>([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -42,6 +52,7 @@ export function MediaStudio({ projectId, projectName, projectUrl }: { projectId:
   const [showRecorder, setShowRecorder] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const uploadInputRef = useRef<HTMLInputElement>(null);
   const appDialog = useAppDialog();
 
   const load = useCallback(async () => {
@@ -107,48 +118,60 @@ export function MediaStudio({ projectId, projectName, projectUrl }: { projectId:
   }
 
   return (
-    <div className="mx-auto max-w-7xl">
-      <header className="hero glass glow-border mb-6 overflow-hidden p-6">
-        <div className="relative z-10 flex flex-wrap items-end justify-between gap-5">
-          <div>
-            <div className="text-xs uppercase tracking-[0.25em] text-[var(--color-accent-2)]">{projectName}</div>
-            <h1 className="mt-2 text-3xl font-bold"><span className="text-gradient">Estudio multimedia</span></h1>
-            <p className="mt-2 max-w-2xl text-sm text-white/50">Grabaciones, clips, voces, música y montajes en un solo espacio reutilizable.</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <label className="cursor-pointer rounded-xl border border-white/15 px-4 py-3 text-sm hover:bg-white/5">
-              {uploading ? "Subiendo…" : "Subir recurso ↑"}
-              <input type="file" className="hidden" accept="video/*,audio/*,.mp4,.webm,.mov,.mp3,.wav,.m4a" disabled={uploading} onChange={(event) => { const file = event.target.files?.[0]; if (file) upload(file); event.target.value = ""; }} />
-            </label>
-            <button onClick={() => setShowRecorder(true)} className="rounded-xl bg-red-500 px-5 py-3 text-sm font-bold shadow-lg shadow-red-500/20">● Graba tú mismo</button>
-          </div>
-        </div>
-      </header>
+    <div className="h-[calc(100dvh-3rem)] min-h-0 lg:h-[calc(100dvh-4rem)]">
+      <input
+        ref={uploadInputRef}
+        type="file"
+        className="hidden"
+        accept="video/*,audio/*,.mp4,.webm,.mov,.mp3,.wav,.m4a"
+        disabled={uploading}
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) void upload(file);
+          event.target.value = "";
+        }}
+      />
 
-      <section className="glass overflow-hidden">
-        <button type="button" aria-expanded={libraryOpen} onClick={() => setLibraryOpen((current) => !current)} className="flex w-full flex-wrap items-center justify-between gap-3 p-5 text-left hover:bg-white/[0.025]">
-          <div>
-            <h2 className="font-semibold">Mediateca</h2>
-            <p className="text-xs text-white/40">{loading ? "Indexando recursos…" : `${assets.length} recursos`} · abre solo cuando quieras gestionar archivos</p>
-          </div>
-          <span className="flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs text-white/55"><span>{libraryOpen ? "Ocultar" : "Abrir mediateca"}</span><span aria-hidden="true" className={`transition-transform ${libraryOpen ? "rotate-180" : ""}`}>⌄</span></span>
-        </button>
-        {message && <div className="mx-5 mb-4 rounded-lg bg-white/5 px-3 py-2 text-xs text-white/60">{message}</div>}
-        {libraryOpen && <div className="border-t border-white/10 p-5">
-          <div className="flex flex-wrap gap-1">
-              {FILTERS.map((item) => <button key={item.id} onClick={() => setFilter(item.id)} className={`rounded-lg px-3 py-1.5 text-xs ${filter === item.id ? "bg-white/12 text-white" : "text-white/45 hover:bg-white/5"}`}>{item.label}</button>)}
-          </div>
-          {loading ? <div className="py-16 text-center text-sm text-white/35">Indexando recursos…</div> : visible.length === 0 ? (
-            <div className="my-6 rounded-2xl border border-dashed border-white/15 px-6 py-16 text-center"><div className="text-4xl">◉</div><p className="mt-3 text-sm text-white/55">Todavía no hay recursos en este filtro.</p><p className="mt-1 text-xs text-white/30">Graba tu app o sube un vídeo/audio para empezar.</p></div>
-          ) : (
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {visible.map((asset) => <AssetCard key={asset.id} projectId={projectId} asset={asset} onRename={() => rename(asset)} onDelete={() => remove(asset)} />)}
+      <MixStudioPanel
+        projectId={projectId}
+        projectName={projectName}
+        hasLogo={hasLogo}
+        assets={assets}
+        onMediaChanged={load}
+        onUpload={() => uploadInputRef.current?.click()}
+        onRecord={() => setShowRecorder(true)}
+        onManageMedia={() => setLibraryOpen(true)}
+      />
+
+      {libraryOpen && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md" role="dialog" aria-modal="true" aria-label="Mediateca">
+          <section className="glass flex max-h-[88dvh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-white/12 shadow-2xl">
+            <header className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 p-5">
+              <div>
+                <h2 className="text-lg font-semibold">Mediateca del proyecto</h2>
+                <p className="mt-1 text-xs text-white/40">{loading ? "Indexando recursos…" : `${assets.length} recursos`} · gestión avanzada de archivos</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => uploadInputRef.current?.click()} disabled={uploading} className="rounded-xl border border-white/12 px-4 py-2 text-xs hover:bg-white/5 disabled:opacity-50">{uploading ? "Subiendo…" : "Subir recurso ↑"}</button>
+                <button type="button" onClick={() => setLibraryOpen(false)} className="rounded-xl border border-white/12 px-4 py-2 text-xs hover:bg-white/5">Cerrar</button>
+              </div>
+            </header>
+            <div className="min-h-0 flex-1 overflow-y-auto p-5 studio-scrollbar">
+              {message && <div className="mb-4 rounded-xl border border-white/8 bg-white/5 px-3 py-2 text-xs text-white/60">{message}</div>}
+              <div className="flex flex-wrap gap-1">
+                {FILTERS.map((item) => <button key={item.id} onClick={() => setFilter(item.id)} className={`rounded-lg px-3 py-1.5 text-xs ${filter === item.id ? "bg-white/12 text-white" : "text-white/45 hover:bg-white/5"}`}>{item.label}</button>)}
+              </div>
+              {loading ? <div className="py-16 text-center text-sm text-white/35">Indexando recursos…</div> : visible.length === 0 ? (
+                <div className="my-6 rounded-2xl border border-dashed border-white/15 px-6 py-16 text-center"><div className="text-4xl">◉</div><p className="mt-3 text-sm text-white/55">Todavía no hay recursos en este filtro.</p><p className="mt-1 text-xs text-white/30">Graba tu app o sube un vídeo/audio para empezar.</p></div>
+              ) : (
+                <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {visible.map((asset) => <AssetCard key={asset.id} projectId={projectId} asset={asset} onRename={() => rename(asset)} onDelete={() => remove(asset)} />)}
+                </div>
+              )}
             </div>
-          )}
-        </div>}
-      </section>
-
-      <MixStudioPanel projectId={projectId} assets={assets} onMediaChanged={load} />
+          </section>
+        </div>
+      )}
 
       {showRecorder && <SelfRecordModal projectId={projectId} initialUrl={projectUrl} onClose={() => setShowRecorder(false)} onSaved={async () => { setShowRecorder(false); setMessage("Grabación guardada. Ya puedes reutilizarla en tus piezas o en MIX."); await load(); }} />}
       {appDialog.dialog}

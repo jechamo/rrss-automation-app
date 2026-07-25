@@ -361,6 +361,30 @@ montajes automáticos y las recetas MIX anteriores.
 - Preparar secuencial o en capas transforma la selección actual sin importar otros recursos. Si la
   timeline está vacía, la propuesta automática exige una pieza destino y nunca toma toda la
   mediateca del proyecto de forma implícita.
+- El estudio adopta un espacio de trabajo sin pasos numerados: biblioteca fija a la izquierda,
+  configuración superior, visor y propiedades en el centro, y timeline a todo el ancho inferior.
+  La página no tiene scroll de documento; biblioteca, propiedades y pistas usan scroll interno.
+- La biblioteca separa **Pistas app** y **Capas**. Sus tarjetas se arrastran a Principal o a una
+  capa, conservando acciones accesibles equivalentes. Los vídeos finales y versiones MIX no se
+  reutilizan como material: se consultan únicamente desde **Versiones**.
+- Las capas son dinámicas: se muestran las ocupadas y una calle vacía para crear la siguiente. No
+  existe un máximo de producto ni truncado silencioso; si FFmpeg no soporta una composición debe
+  devolver un error explícito.
+- La receta puede activar o desactivar el cierre de marca. Cuando está activo y existe logo se
+  representa como bloque final bloqueado y se añade al render; las recetas anteriores lo conservan
+  activo por defecto.
+
+**Borradores y versiones:**
+- La edición de una timeline se persiste como `MixComposition.status="draft"` antes de renderizar.
+  Puede haber varios borradores con nombre y pieza destino dentro de un proyecto.
+- El editor autoguarda con estados visibles `Guardando…`, `Borrador guardado` y `Error al guardar`.
+  Al volver al proyecto permite continuar el borrador y lo distingue de una versión renderizada.
+- Cambiar de proyecto con edición activa exige un diálogo propio **Guardar y cambiar / Cancelar**.
+  El cierre o recarga de pestaña mantiene el aviso estándar del navegador como última protección.
+- **Generar versión** crea una composición renderizada independiente a partir del borrador. Una
+  versión `ready` continúa siendo candidata; solo **Usar como final** actualiza la pieza.
+- El diálogo **Versiones** agrupa borradores, renderizando, listas, error y final actual. Finales y
+  MIX renderizados son consultables, no arrastrables ni reutilizables como entrada.
 
 **Compatibilidad:**
 - Las recetas MIX v1 se siguen leyendo y renderizando como antes.
@@ -385,6 +409,13 @@ montajes automáticos y las recetas MIX anteriores.
 - No se vuelve a omitir ningún corte ni se trunca el último por una locución más corta.
 - Toda salida con voz conserva subtítulos inferiores en la zona segura.
 - Piezas y MIX anteriores continúan abriendo, renderizando y publicándose.
+- Un borrador sobrevive al cambio de proyecto y se recupera con su nombre, pieza, timeline, audio,
+  subtítulos, capas y preferencia de cierre de marca.
+- Repetir el autoguardado actualiza el mismo borrador; generar una versión no destruye el borrador.
+- Desactivar el cierre elimina su bloque visual y evita añadirlo al MP4; volver a activarlo restaura
+  ambos comportamientos sin regenerar proveedores.
+- Ninguna capa se pierde por superar un límite interno y cada resultado indica si es borrador,
+  versión renderizada o final aplicado.
 
 ### REQ-013 — Preflight de prompts y catálogo fal.ai ampliado
 
