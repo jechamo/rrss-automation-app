@@ -12,7 +12,7 @@
 | REQ-001 | Análisis de la appweb → dossier de negocio | 🟢 Verificado end-to-end (run status "ok") — pendiente visto bueno final del usuario |
 | REQ-002 | Análisis de competencia | 🟡 Implementado — pendiente pruebas del usuario |
 | REQ-003 | Scraping de clientes potenciales + estrategia | 🟡 Implementado (DA-02 resuelta: negocios locales reales vía IA+WebSearch) — pendiente pruebas del usuario |
-| REQ-004 | Scraping de virales del nicho (YT/TikTok/IG) | 🟡 Implementado (DA-03 resuelta: IA+WebSearch, viral relativo al autor, ventana 30d, Top 20) — pendiente pruebas del usuario |
+| REQ-004 | Scraping de virales del nicho (YT/TikTok/IG) | 🟡 Fuentes IA+WebSearch / Scrape Creators / híbrida implementadas — pendiente prueba real con API key y créditos |
 | REQ-005 | Generación de vídeo (clonado de viral) | 🟡 Implementado (fal.ai por contrato + HeyGen v3 Photo Avatar/voz/audio + montaje FFmpeg) — pendiente prueba real con red+keys |
 | REQ-006 | Generación de contenido propio de la app | 🟡 Implementado (fal/HeyGen elegible, recorder v2 y montaje presentador+screencast) — pendiente prueba real con red+keys+navegador Playwright |
 | REQ-007 | Skills | 🟡 Pase de curación hecho (skills de proyecto + catálogo, DA-06 resuelta); feature UI aplazada |
@@ -31,6 +31,26 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 ---
 
 ## Historial
+
+### 2026-07-26 — REQ-004: fuente Scrape Creators seleccionable
+
+- Rama `codex/scrape-creators-virales`. Integración aditiva: cada run puede usar **IA + web**,
+  **Scrape Creators** o **Híbrido**, sin alterar el fallback histórico.
+- Ajustes incorpora Scrape Creators en el Secret Vault. La prueba real consulta saldo, muestra el
+  resultado y avisa antes de que consume un crédito.
+- Conector para búsqueda pública de Shorts de YouTube, TikTok por palabra e Instagram Reels:
+  adapta la ventana a los enums de cada plataforma, normaliza respuestas heterogéneas, deduplica
+  por ID/URL y conserva vistas, likes, comentarios, compartidos, guardados, seguidores, duración,
+  miniatura, autor y fecha.
+- El ratio relativo al autor no se inventa: los resultados API quedan con
+  `ratioConfidence:"unverified"` hasta implementar/encontrar el histórico suficiente. El ranking
+  inicial usa vistas, engagement ponderado y recencia; la IA sigue descomponiendo hooks y patrones.
+- La UI muestra procedencia y métricas, estimación base de tres créditos, saldo/consumo en logs y
+  bloquea los modos API con enlace a Ajustes cuando falta la key. El híbrido registra y tolera la
+  caída de una sola fuente; falla únicamente si no queda ninguna.
+- Verificación: `npm run test:contracts` 30/30, `npm run build` correcto, `git diff --check` limpio
+  y revisión visual local de Ajustes/Virales sin errores de consola. No se hicieron llamadas reales
+  a Scrape Creators ni se consumieron créditos.
 
 ### 2026-07-24 — Editor MIX profesional, borradores y versiones finales
 

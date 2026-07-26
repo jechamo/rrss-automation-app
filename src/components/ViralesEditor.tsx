@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   EMPTY_VIRAL,
   type PatronViral,
@@ -43,6 +43,10 @@ export function ViralesEditor({
   const [showEdit, setShowEdit] = useState(false);
   const approved = status === "approved";
 
+  useEffect(() => {
+    setV(initial);
+  }, [initial]);
+
   const setViral = (i: number, patch: Partial<Viral>) =>
     setV((p) => ({ ...p, virales: p.virales.map((x, idx) => (idx === i ? { ...x, ...patch } : x)) }));
   const removeViral = (i: number) =>
@@ -73,6 +77,16 @@ export function ViralesEditor({
           <span className="text-xs text-white/40">
             {v.criterio.umbral} · ventana {v.criterio.ventanaDias > 0 ? `${v.criterio.ventanaDias}d` : "histórico"}
           </span>
+          {v.discovery && (
+            <span className="rounded-full bg-white/8 px-2 py-0.5 text-[10px] text-white/55">
+              Fuente: {v.discovery.source === "hybrid"
+                ? "híbrida"
+                : v.discovery.source === "scrapecreators"
+                  ? "Scrape Creators"
+                  : "IA + web"}
+              {v.discovery.creditsCharged != null ? ` · ${v.discovery.creditsCharged} créditos` : ""}
+            </span>
+          )}
         </div>
         <div className="flex gap-2">
           <button
@@ -107,16 +121,17 @@ export function ViralesEditor({
           renderCard={(viral, isCenter) => {
             const meta = PLAT_META[viral.plataforma] ?? PLAT_META.youtube;
             const yid = viral.plataforma === "youtube" ? youtubeId(viral.url) : "";
+            const thumbnail = viral.metrics?.thumbnailUrl || (yid ? `https://img.youtube.com/vi/${yid}/hqdefault.jpg` : "");
             return (
               <>
                 <div
                   className="relative flex-1 overflow-hidden"
                   style={{ background: `linear-gradient(135deg, ${meta.color}33, #000a 70%)` }}
                 >
-                  {yid ? (
+                  {thumbnail ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={`https://img.youtube.com/vi/${yid}/hqdefault.jpg`}
+                      src={thumbnail}
                       alt=""
                       className="h-full w-full object-cover opacity-90"
                     />
@@ -134,6 +149,11 @@ export function ViralesEditor({
                   >
                     {meta.icon} {viral.plataforma}
                   </span>
+                  {viral.sourceProvider === "scrapecreators" && (
+                    <span className="absolute bottom-2 left-2 rounded-full bg-black/75 px-2 py-0.5 text-[9px] text-cyan-100">
+                      métricas API
+                    </span>
+                  )}
                 </div>
                 <div className="shrink-0 space-y-1 p-2">
                   <div className="line-clamp-2 text-xs font-semibold">{viral.titulo || "(sin título)"}</div>
@@ -169,14 +189,31 @@ export function ViralesEditor({
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <ScoreBar label="Viral score" value={viral.viralScore} max={100} color={meta.color} />
-                  <ScoreBar
-                    label="Ratio sobre el autor"
-                    value={Math.min(viral.ratioAutor, 10)}
-                    max={10}
-                    color="var(--color-accent)"
-                    suffix={`×${viral.ratioAutor}`}
-                  />
+                  {viral.ratioAutor > 0 && viral.metrics?.ratioConfidence !== "unverified" ? (
+                    <ScoreBar
+                      label="Ratio sobre el autor"
+                      value={Math.min(viral.ratioAutor, 10)}
+                      max={10}
+                      color="var(--color-accent)"
+                      suffix={`×${viral.ratioAutor}`}
+                    />
+                  ) : (
+                    <div className="rounded-lg border border-white/8 bg-black/15 p-3 text-xs text-white/45">
+                      Ratio sobre el autor pendiente de verificar
+                    </div>
+                  )}
                 </div>
+                {viral.metrics && (
+                  <div className="flex flex-wrap gap-1.5 text-[11px] text-white/60">
+                    {viral.metrics.likes != null && <MetricChip label="Me gusta" value={viral.metrics.likes} />}
+                    {viral.metrics.comments != null && <MetricChip label="Comentarios" value={viral.metrics.comments} />}
+                    {viral.metrics.shares != null && <MetricChip label="Compartidos" value={viral.metrics.shares} />}
+                    {viral.metrics.saves != null && <MetricChip label="Guardados" value={viral.metrics.saves} />}
+                    {viral.metrics.engagementRate != null && (
+                      <MetricChip label="Engagement" value={`${viral.metrics.engagementRate}%`} />
+                    )}
+                  </div>
+                )}
                 {viral.hook.texto && <DetailRow label={`Hook (${viral.hook.tipo})`} value={viral.hook.texto} />}
                 {viral.shareTrigger && <DetailRow label="Share trigger" value={viral.shareTrigger} />}
                 {viral.porQueFunciona && <DetailRow label="Por qué funciona" value={viral.porQueFunciona} />}
@@ -329,6 +366,14 @@ export function ViralesEditor({
       </>
       )}
     </div>
+  );
+}
+
+function MetricChip({ label, value }: { label: string; value: number | string }) {
+  return (
+    <span className="rounded-full border border-white/8 bg-white/5 px-2 py-1">
+      {label}: {typeof value === "number" ? value.toLocaleString("es-ES") : value}
+    </span>
   );
 }
 

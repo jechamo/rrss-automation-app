@@ -266,19 +266,26 @@ manuales). **UI:** `LeadsPanel` + `LeadsEditor` en `/proyecto/[id]`, bajo la com
 ## 8.2. Arquitectura concreta de REQ-004 (virales del nicho)
 
 **Modelo:** `Virales` (1-a-1 con `Project`, espejo de `Competencia`/`Leads`): `content` JSON
-`{ nicho, criterio{metrica,umbral,ventanaDias}, virales[], patronesRecurrentes[] }` + `status`/`version`.
+`{ nicho, criterio{metrica,umbral,ventanaDias}, descubrimiento{}, virales[],
+patronesRecurrentes[] }` + `status`/`version`.
 Cada `Viral` guarda `{url, plataforma(youtube|tiktok|instagram), titulo, autor, vistas, fecha,
 ratioAutor, viralScore(0-100), formato, hook{tipo,texto,segundos}, estructura[], shareTrigger,
-porQueFunciona, patronTransferible, origen(ia|manual)}`.
+porQueFunciona, patronTransferible, origen(ia|manual), proveedorOrigen(web|scrapecreators),
+metricas{platformId,views,likes,comments,shares,saves,followers,durationSeconds,publishedAt,
+thumbnailUrl,authorId,authorHandle,ratioConfidence,fetchedAt}}`. Todos los campos nuevos son
+opcionales para leer sin migración los proyectos existentes.
 
 **Nodos del pipeline** (`src/core/pipeline/req004.ts`):
-`[Entrada] → [Buscar virales (web)] → [Ranking Top 20] → [Análisis de patrones]`
+`[Entrada] → [Buscar virales (fuente elegida)] → [Ranking Top N] → [Análisis de patrones]`
 
 - **Entrada** (`input`): exige dossier (REQ-001); conserva los virales `origen:"manual"` previos
   (semillas) para no perderlos al regenerar.
-- **Buscar virales (web)** (`discover.ts`): la IA con **WebSearch/WebFetch** localiza virales
-  públicos del nicho en YT/TikTok/IG y estima vistas/`ratioAutor`/`viralScore`. Dedupe por URL;
-  las semillas manuales van primero. `allowedTools:["WebSearch","WebFetch"]`, timeout 300s.
+- **Buscar virales**: `discover.ts` conserva IA + **WebSearch/WebFetch**. El conector
+  `scrape-creators.ts` planifica una consulta breve por plataforma a partir del dossier, llama a
+  los endpoints públicos de YouTube/TikTok/Instagram con `x-api-key`, normaliza sus respuestas y
+  calcula un score determinista con vistas, engagement y recencia. **Híbrido** une ambas fuentes.
+  Dedupe por URL/ID; las semillas manuales van primero. Un ratio sin histórico del autor queda
+  `ratioAutor:0` + `ratioConfidence:"unverified"`, nunca se presenta como medición real.
 - **Ranking Top 20** (`rank`): puro código; ordena manuales primero, luego por `viralScore` desc,
   y corta al Top 20 (`TOP_N`). Marca `origen` casando URLs con las semillas manuales.
 - **Análisis de patrones** (`analyze.ts`): la IA descompone cada viral (hook, estructura,
@@ -288,10 +295,15 @@ porQueFunciona, patronTransferible, origen(ia|manual)}`.
   Apoyo: skill `rrss-viral-analysis`. **Timeout 600s** (`TIMEOUT_MS`): descomponer el Top 20 supera
   el timeout por defecto del motor (180s), así que no debe cortarse por tiempo.
 
-**Endpoints:** `POST /api/projects/:id/virales/run` (409 si no hay dossier; body opcional
-`{ ventanaDias }`), `GET/PUT /api/virales/:projectId` (GET incluye su `lastRun` de REQ-004; PUT
+**Endpoints:** `POST /api/projects/:id/virales/run` (409 si no hay dossier o si se elige API sin
+key; body `{ ventanaDias, modo, cantidad, fuente }`), `GET/PUT /api/virales/:projectId` (GET incluye
+su `lastRun` de REQ-004; PUT
 guarda/aprueba y conserva manuales). **UI:** `ViralesPanel` (con selector de ventana) + `ViralesEditor`
 en `/proyecto/[id]`, bajo los leads.
+
+**Conector:** `scrapecreators` se añade al catálogo de Ajustes y reutiliza el Secret Vault
+AES-256-GCM. «Probar» llama al saldo real, muestra el saldo restante y avisa de que esa operación
+consume un crédito según el contrato del proveedor.
 
 ---
 

@@ -8,7 +8,8 @@ export type ProviderId =
   | "elevenlabs"
   | "heygen"
   | "fal"
-  | "github";
+  | "github"
+  | "scrapecreators";
 
 export interface ProviderMeta {
   id: ProviderId;
@@ -17,6 +18,7 @@ export interface ProviderMeta {
   /** true si necesita una API key en el vault (ai-engine no). */
   needsKey: boolean;
   docsUrl?: string;
+  testHint?: string;
 }
 
 export const PROVIDERS: ProviderMeta[] = [
@@ -60,6 +62,14 @@ export const PROVIDERS: ProviderMeta[] = [
     description: "Clonar repos privados para analizar codigo.",
     needsKey: true,
     docsUrl: "https://github.com/settings/tokens",
+  },
+  {
+    id: "scrapecreators",
+    name: "Scrape Creators",
+    description: "Busqueda estructurada de virales publicos en YouTube, TikTok e Instagram.",
+    needsKey: true,
+    docsUrl: "https://app.scrapecreators.com/",
+    testHint: "La prueba consulta el saldo real y consume 1 credito.",
   },
 ];
 
@@ -129,6 +139,33 @@ export async function testProvider(id: ProviderId, engineId?: AiEngineId): Promi
         return looksValid
           ? { ok: true, detail: "fal.ai: key guardada (validacion completa al primer uso)." }
           : { ok: false, detail: "El formato de la key de fal.ai no parece correcto." };
+      }
+      case "scrapecreators": {
+        const r = await fetchWithTimeout(
+          "https://api.scrapecreators.com/v1/account/credit-balance",
+          { headers: { "x-api-key": key, Accept: "application/json" } },
+        );
+        if (r.ok) {
+          const data = (await r.json()) as {
+            creditCount?: number;
+            credits_remaining?: number;
+            credits_charged?: number;
+          };
+          const balance = data.creditCount ?? data.credits_remaining;
+          return {
+            ok: true,
+            detail:
+              `Scrape Creators OK${balance != null ? ` · ${balance.toLocaleString("es-ES")} creditos disponibles` : ""}. ` +
+              `Prueba real completada${data.credits_charged ? ` (${data.credits_charged} credito consumido)` : ""}.`,
+          };
+        }
+        if (r.status === 401) {
+          return { ok: false, detail: "Scrape Creators rechazo la API key." };
+        }
+        if (r.status === 402) {
+          return { ok: false, detail: "Scrape Creators: no quedan creditos disponibles." };
+        }
+        return { ok: false, detail: `Scrape Creators respondio ${r.status}.` };
       }
       default:
         return { ok: false, detail: "Proveedor desconocido." };

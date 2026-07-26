@@ -8,6 +8,7 @@ type Provider = {
   description: string;
   needsKey: boolean;
   docsUrl?: string;
+  testHint?: string;
   hasKey: boolean;
   masked: string | null;
   status: "ok" | "error" | "unset";
@@ -300,10 +301,12 @@ function ProviderCard({ p, onChanged }: { p: Provider; onChanged: () => void }) 
             disabled={busy !== null}
             className="rounded-lg border border-white/15 px-3 py-2 text-sm hover:bg-white/5 disabled:opacity-40"
           >
-            {busy === "test" ? "Probando…" : "Probar"}
+            {busy === "test" ? "Probando…" : p.id === "scrapecreators" ? "Probar (1 crédito)" : "Probar"}
           </button>
         </div>
       )}
+
+      {p.testHint && <div className="mt-2 text-[11px] text-amber-200/65">{p.testHint}</div>}
 
       {!p.needsKey && (
         <div className="mt-3">

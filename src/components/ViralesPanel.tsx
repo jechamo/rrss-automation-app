@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { PipelineGraph, type GraphNode, type NodeState } from "@/components/PipelineGraph";
 import { ViralesEditor } from "@/components/ViralesEditor";
 import { CardArt } from "@/components/CardArt";
-import type { Virales } from "@/core/virales/types";
+import type { ViralDiscoverySource, Virales } from "@/core/virales/types";
 
 type RunEvent =
   | { type: "node"; nodeId: string; state: NodeState; detail?: string }
@@ -28,12 +29,28 @@ const VENTANAS: { dias: number; label: string }[] = [
   { dias: 0, label: "Histórico" },
 ];
 
-const initialNodes = (cantidad = 20, modo: "reemplazar" | "ampliar" = "reemplazar"): GraphNode[] =>
+const sourceStepLabel = (fuente: ViralDiscoverySource): string =>
+  fuente === "scrapecreators"
+    ? "Buscar virales (Scrape Creators)"
+    : fuente === "hybrid"
+      ? "Buscar virales (híbrido)"
+      : "Buscar virales (web)";
+
+const initialNodes = (
+  cantidad = 20,
+  modo: "reemplazar" | "ampliar" = "reemplazar",
+  fuente: ViralDiscoverySource = "web",
+): GraphNode[] =>
   REQ004_STEPS.map((s) => ({
     id: s.id,
-    label: s.id === "rank"
-      ? modo === "ampliar" ? `Ranking +${cantidad} nuevos` : `Ranking Top ${cantidad}`
-      : s.label,
+    label:
+      s.id === "rank"
+        ? modo === "ampliar"
+          ? `Ranking +${cantidad} nuevos`
+          : `Ranking Top ${cantidad}`
+        : s.id === "discover"
+          ? sourceStepLabel(fuente)
+          : s.label,
     state: "pending" as NodeState,
   }));
 
@@ -54,14 +71,28 @@ export function ViralesPanel({
   const [starting, setStarting] = useState(false);
   const [ventanaDias, setVentanaDias] = useState(30);
   const [cantidad, setCantidad] = useState(20);
+  const [fuente, setFuente] = useState<ViralDiscoverySource>("web");
+  const [scrapeCreatorsReady, setScrapeCreatorsReady] = useState(false);
+  const [startError, setStartError] = useState("");
   const esRef = useRef<EventSource | null>(null);
 
   const load = useCallback(async () => {
-    const r = await fetch(`/api/virales/${projectId}`);
+    const [r, connectorsResponse] = await Promise.all([
+      fetch(`/api/virales/${projectId}`),
+      fetch("/api/connectors"),
+    ]);
     if (!r.ok) return;
     const d = await r.json();
+    const connectorsData = connectorsResponse.ok
+      ? ((await connectorsResponse.json()) as { providers?: Array<{ id: string; hasKey: boolean }> })
+      : {};
+    const hasScrapeCreators =
+      connectorsData.providers?.some((provider) => provider.id === "scrapecreators" && provider.hasKey) ?? false;
+    setScrapeCreatorsReady(hasScrapeCreators);
     setVirales(d.virales);
     setStatus(d.status);
+    const storedSource = d.virales?.discovery?.source as ViralDiscoverySource | undefined;
+    setFuente(storedSource ?? (hasScrapeCreators ? "hybrid" : "web"));
     if (d.virales?.criterio?.ventanaDias != null) setVentanaDias(d.virales.criterio.ventanaDias);
     if (d.lastRun) {
       setNodes(JSON.parse(d.lastRun.nodes) as GraphNode[]);
@@ -109,21 +140,28 @@ export function ViralesPanel({
   }, [runId, load]);
 
   async function startRun(modo: "reemplazar" | "ampliar" = "reemplazar") {
+    if (fuente !== "web" && !scrapeCreatorsReady) {
+      setStartError("Configura primero la API key de Scrape Creators en Ajustes.");
+      return;
+    }
     const effectiveQuantity = modo === "ampliar" ? 10 : cantidad;
     setStarting(true);
+    setStartError("");
     setLogs([]);
-    setNodes(initialNodes(effectiveQuantity, modo));
+    setNodes(initialNodes(effectiveQuantity, modo, fuente));
     setRunStatus("running");
     const r = await fetch(`/api/projects/${projectId}/virales/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ventanaDias, modo, cantidad: effectiveQuantity }),
+      body: JSON.stringify({ ventanaDias, modo, cantidad: effectiveQuantity, fuente }),
     });
     if (r.ok) {
       const d = await r.json();
       setRunId(d.runId);
     } else {
       setRunStatus("error");
+      const data = (await r.json().catch(() => ({}))) as { error?: string };
+      setStartError(data.error ?? "No se pudo iniciar la búsqueda de virales.");
     }
     setStarting(false);
   }
@@ -142,13 +180,28 @@ export function ViralesPanel({
 
   const running = runStatus === "running" || runStatus === "pending";
   const showGraph = nodes.length > 0;
+  const sourceAvailable = fuente === "web" || scrapeCreatorsReady;
 
   return (
     <div className="flex flex-col gap-4">
       <div className="relative flex items-center justify-between gap-3 overflow-hidden rounded-xl p-4">
         <CardArt name="bg-virales.webp" fallback="linear-gradient(120deg, rgba(244,114,182,0.28), rgba(34,211,238,0.22))" />
         <h2 className="relative text-lg font-bold">Virales del nicho</h2>
-        <div className="relative flex items-center gap-2">
+        <div className="relative flex flex-wrap items-center justify-end gap-2">
+          <select
+            className="input min-w-44"
+            value={fuente}
+            onChange={(event) => {
+              setFuente(event.target.value as ViralDiscoverySource);
+              setStartError("");
+            }}
+            disabled={!dossierReady || running || starting}
+            title="Fuente utilizada para localizar y medir los virales"
+          >
+            <option value="hybrid">Híbrido · recomendado</option>
+            <option value="scrapecreators">Scrape Creators</option>
+            <option value="web">IA + web</option>
+          </select>
           {!virales && (
             <>
               <select
@@ -178,7 +231,7 @@ export function ViralesPanel({
               </select>
               <button
                 onClick={() => startRun()}
-                disabled={!dossierReady || running || starting}
+                disabled={!dossierReady || !sourceAvailable || running || starting}
                 className="rounded-lg bg-[var(--color-accent)] px-3 py-2 text-sm font-medium disabled:opacity-40"
                 title={dossierReady ? undefined : "Genera primero el dossier."}
               >
@@ -189,7 +242,7 @@ export function ViralesPanel({
           {virales && (
             <button
               onClick={() => startRun("ampliar")}
-              disabled={running || starting}
+              disabled={!sourceAvailable || running || starting}
               className="rounded-lg border border-[var(--color-accent-2)]/50 px-3 py-2 text-sm font-medium text-[var(--color-accent-2)] hover:bg-[var(--color-accent-2)]/10 disabled:opacity-40"
               title="Busca 10 virales NUEVOS y los añade a los actuales"
             >
@@ -198,6 +251,29 @@ export function ViralesPanel({
           )}
         </div>
       </div>
+
+      <div className="glass flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-xs">
+        <div className="text-white/55">
+          {fuente === "web"
+            ? "IA + web: no consume créditos de Scrape Creators; las métricas pueden ser aproximadas."
+            : fuente === "hybrid"
+              ? "Híbrido: la IA amplía el descubrimiento y Scrape Creators aporta métricas estructuradas."
+              : "Scrape Creators: 3 consultas base por ejecución, una para cada plataforma."}
+        </div>
+        {fuente !== "web" && !scrapeCreatorsReady ? (
+          <Link href="/ajustes" className="font-medium text-amber-200 hover:underline">
+            Configurar API key en Ajustes →
+          </Link>
+        ) : fuente !== "web" ? (
+          <span className="text-[var(--color-state-ok)]">API configurada · estimación base: 3 créditos</span>
+        ) : null}
+      </div>
+
+      {startError && (
+        <div className="glass border border-[var(--color-state-error)]/40 p-3 text-sm text-[var(--color-state-error)]">
+          {startError}
+        </div>
+      )}
 
       {!dossierReady && (
         <div className="glass p-4 text-sm text-white/50">
