@@ -32,6 +32,24 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ## Historial
 
+### 2026-07-27 — REQ-004: histórico por autor, confianza y presupuesto
+
+- Scrape Creators incorpora niveles **Rápido** y **Preciso**. Rápido mantiene las tres búsquedas
+  base; Preciso añade un nodo de pipeline que consulta una vez cada autor único del Top 20 y
+  respeta un tope total de 10/20/40/60 créditos elegido antes de ejecutar.
+- El ratio excluye el propio viral de la mediana pública del autor. Se presenta como verificado
+  con ≥10 vídeos comparables, estimado con 5–9 y pendiente con menos de 5; el `viralScore` solo
+  incorpora la señal relativa cuando la muestra es suficiente.
+- Históricos normalizados para Shorts de YouTube, vídeos de TikTok y Reels de Instagram. La caché
+  local dura 7 días, no guarda API keys, se encuentra bajo `data/` (ignorado por Git) y evita
+  repetir créditos al volver a analizar el mismo autor.
+- La UI muestra nivel, límite, consumo real, autores verificados/estimados, aciertos de caché y
+  autores omitidos por presupuesto. Los fallos de un autor quedan registrados y no rompen el run.
+- Compatibilidad: IA + web y el modo rápido siguen disponibles; proyectos anteriores se leen sin
+  migración porque todos los metadatos nuevos son opcionales.
+- Verificación: `npm run test:contracts` 33/33, `npx tsc --noEmit` y `npm run build` correctos.
+  La API real no se invocó durante las pruebas, por lo que no se consumieron créditos.
+
 ### 2026-07-26 — REQ-004: fuente Scrape Creators seleccionable
 
 - Rama `codex/scrape-creators-virales`. Integración aditiva: cada run puede usar **IA + web**,

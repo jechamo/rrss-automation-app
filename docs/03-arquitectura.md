@@ -272,11 +272,13 @@ Cada `Viral` guarda `{url, plataforma(youtube|tiktok|instagram), titulo, autor, 
 ratioAutor, viralScore(0-100), formato, hook{tipo,texto,segundos}, estructura[], shareTrigger,
 porQueFunciona, patronTransferible, origen(ia|manual), proveedorOrigen(web|scrapecreators),
 metricas{platformId,views,likes,comments,shares,saves,followers,durationSeconds,publishedAt,
-thumbnailUrl,authorId,authorHandle,ratioConfidence,fetchedAt}}`. Todos los campos nuevos son
+thumbnailUrl,authorId,authorHandle,ratioConfidence,authorMedianViews,authorSampleSize,
+baselineFetchedAt,baselineCacheHit,fetchedAt}}`. `discovery` registra nivel, presupuesto, consumo,
+consultas de enriquecimiento, aciertos de caché y recuentos por confianza. Todos los campos nuevos son
 opcionales para leer sin migración los proyectos existentes.
 
 **Nodos del pipeline** (`src/core/pipeline/req004.ts`):
-`[Entrada] → [Buscar virales (fuente elegida)] → [Ranking Top N] → [Análisis de patrones]`
+`[Entrada] → [Buscar virales (fuente elegida)] → [Ranking Top N] → [Verificar ratio por autor] → [Análisis de patrones]`
 
 - **Entrada** (`input`): exige dossier (REQ-001); conserva los virales `origen:"manual"` previos
   (semillas) para no perderlos al regenerar.
@@ -288,6 +290,13 @@ opcionales para leer sin migración los proyectos existentes.
   `ratioAutor:0` + `ratioConfidence:"unverified"`, nunca se presenta como medición real.
 - **Ranking Top 20** (`rank`): puro código; ordena manuales primero, luego por `viralScore` desc,
   y corta al Top 20 (`TOP_N`). Marca `origen` casando URLs con las semillas manuales.
+- **Verificar ratio por autor** (`enrich`): opcional en modo **Preciso**. Agrupa candidatos por
+  autor y consulta como máximo una página de Shorts/vídeos/Reels públicos por autor. Excluye el
+  propio vídeo, calcula la mediana y recalibra el score relativo. La muestra es `verified` con
+  ≥10 piezas, `estimated` con 5–9 y `unverified` con menos. La caché JSON local en
+  `data/cache/scrape-creators-authors.json` dura 7 días, no contiene secretos y está ignorada por
+  Git. El presupuesto reserva siempre los tres créditos base y limita las consultas restantes;
+  fallos individuales degradan a ratio no verificado sin romper el análisis.
 - **Análisis de patrones** (`analyze.ts`): la IA descompone cada viral (hook, estructura,
   share-trigger, **patrón transferible** — concepto, no copia) en el contexto del dossier y extrae
   `patronesRecurrentes` del nicho. `upsert` de `Virales`. Definición de viralidad **relativa al
@@ -296,7 +305,7 @@ opcionales para leer sin migración los proyectos existentes.
   el timeout por defecto del motor (180s), así que no debe cortarse por tiempo.
 
 **Endpoints:** `POST /api/projects/:id/virales/run` (409 si no hay dossier o si se elige API sin
-key; body `{ ventanaDias, modo, cantidad, fuente }`), `GET/PUT /api/virales/:projectId` (GET incluye
+key; body `{ ventanaDias, modo, cantidad, fuente, nivel, maxCreditos }`), `GET/PUT /api/virales/:projectId` (GET incluye
 su `lastRun` de REQ-004; PUT
 guarda/aprueba y conserva manuales). **UI:** `ViralesPanel` (con selector de ventana) + `ViralesEditor`
 en `/proyecto/[id]`, bajo los leads.

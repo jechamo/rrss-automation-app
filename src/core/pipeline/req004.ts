@@ -9,10 +9,14 @@ import {
   type ViralCandidato,
   type ViralDiscovery,
   type ViralDiscoverySource,
+  type ViralEnrichmentLevel,
   type Virales,
 } from "@/core/virales/types";
 import { discoverVirales } from "@/core/virales/discover";
-import { discoverWithScrapeCreators } from "@/core/virales/scrape-creators";
+import {
+  discoverWithScrapeCreators,
+  enrichWithAuthorBaselines,
+} from "@/core/virales/scrape-creators";
 import { mergeViralCandidates } from "@/core/virales/scrape-creators-contracts";
 import { analyzeVirales, type AnalyzeInput } from "@/core/virales/analyze";
 import type { PipelineDef, PipelineNode } from "./engine";
@@ -21,10 +25,12 @@ export const REQ004_NODES = [
   { id: "input", label: "Entrada" },
   { id: "discover", label: "Buscar virales (web)" },
   { id: "rank", label: "Ranking" },
+  { id: "enrich", label: "Verificar ratio por autor" },
   { id: "analyze", label: "Análisis de patrones" },
 ] as const;
 
 const DEFAULT_TOP = 20;
+const DEFAULT_MAX_CREDITS = 20;
 
 export type ReqMode = "reemplazar" | "ampliar";
 export interface Req004Opts {
@@ -32,6 +38,8 @@ export interface Req004Opts {
   modo?: ReqMode;
   cantidad?: number;
   fuente?: ViralDiscoverySource;
+  nivel?: ViralEnrichmentLevel;
+  maxCreditos?: number;
 }
 
 /** Pasa un Viral guardado a candidato (para conservar los manuales). */
@@ -59,6 +67,12 @@ export function buildReq004Pipeline(opts: Req004Opts = {}): PipelineDef {
   const cantidad = opts.cantidad && opts.cantidad > 0 ? Math.min(50, opts.cantidad) : DEFAULT_TOP;
   const fuente: ViralDiscoverySource =
     opts.fuente === "scrapecreators" || opts.fuente === "hybrid" ? opts.fuente : "web";
+  const nivel: ViralEnrichmentLevel =
+    fuente !== "web" && opts.nivel === "preciso" ? "preciso" : "rapido";
+  const maxCreditos = Math.max(
+    3,
+    Math.min(100, Math.floor(opts.maxCreditos ?? DEFAULT_MAX_CREDITS)),
+  );
   const criterio: CriterioViral = { ...DEFAULT_CRITERIO, ventanaDias };
 
   const input: PipelineNode = {
@@ -85,6 +99,13 @@ export function buildReq004Pipeline(opts: Req004Opts = {}): PipelineDef {
           ? `Modo ampliar: se conservan ${conservar.length} virales y se buscan ${cantidad} nuevos con ${sourceLabel(fuente)}.`
           : `Dossier cargado. Fuente: ${sourceLabel(fuente)}. Virales manuales conservados: ${conservar.length}.`,
       );
+      if (fuente !== "web") {
+        ctx.log(
+          nivel === "preciso"
+            ? `Precisión: histórico por autor · presupuesto máximo ${maxCreditos} créditos.`
+            : "Precisión rápida: solo las 3 consultas base, sin histórico adicional por autor.",
+        );
+      }
     },
   };
 
@@ -149,6 +170,8 @@ export function buildReq004Pipeline(opts: Req004Opts = {}): PipelineDef {
       }
 
       ctx.artifacts.candidatos = candidatos;
+      discovery.enrichmentLevel = nivel;
+      discovery.maxCredits = fuente === "web" ? 0 : maxCreditos;
       ctx.artifacts.discovery = discovery;
       if (discovery.queries) {
         ctx.log(
@@ -203,6 +226,69 @@ export function buildReq004Pipeline(opts: Req004Opts = {}): PipelineDef {
     },
   };
 
+  const enrich: PipelineNode = {
+    id: "enrich",
+    label: nivel === "preciso" ? "Verificar ratio por autor" : "Métricas rápidas",
+    run: async (ctx) => {
+      const top = (ctx.artifacts.top as AnalyzeInput[]) ?? [];
+      const discovery = ctx.artifacts.discovery as ViralDiscovery;
+      if (fuente === "web") {
+        ctx.log("Fuente web: se conservan los ratios aproximados declarados por la investigación.");
+        return;
+      }
+      if (nivel !== "preciso") {
+        ctx.log("Modo rápido: no se consultan históricos de autores.");
+        return;
+      }
+
+      const baseCredits = discovery.creditsCharged ?? 0;
+      // Las tres búsquedas de plataforma cuestan un crédito cada una. Reservarlas aunque una
+      // respuesta omita credits_charged garantiza que el tope elegido nunca se sobrepase.
+      const reservedBaseCredits = Math.max(3, baseCredits);
+      const availableRequests = Math.max(0, maxCreditos - reservedBaseCredits);
+      const enrichableTop = top.slice(0, 20);
+      const result = await enrichWithAuthorBaselines({
+        candidatos: enrichableTop,
+        maxRequests: availableRequests,
+      });
+      const untouched = top.slice(enrichableTop.length);
+      const enriched = [...result.candidatos, ...untouched] as AnalyzeInput[];
+      enriched.sort((a, b) => {
+        if (a.origen !== b.origen) return a.origen === "manual" ? -1 : 1;
+        return b.viralScore - a.viralScore;
+      });
+      ctx.artifacts.top = enriched;
+
+      discovery.enrichmentCreditsCharged = result.report.creditsCharged;
+      discovery.enrichmentRequests = result.report.requests;
+      discovery.cacheHits = result.report.cacheHits;
+      discovery.authorsVerified = result.report.authorsVerified;
+      discovery.authorsEstimated = result.report.authorsEstimated;
+      discovery.authorsUnverified = result.report.authorsUnverified;
+      discovery.authorsSkippedBudget = result.report.authorsSkippedBudget;
+      discovery.creditsCharged = baseCredits + result.report.creditsCharged;
+      if (result.report.creditsRemaining != null) {
+        discovery.creditsRemaining = result.report.creditsRemaining;
+      }
+      discovery.warnings = [...(discovery.warnings ?? []), ...result.report.warnings];
+
+      ctx.log(
+        `Históricos: ${result.report.authorsVerified} autor(es) verificados · ` +
+          `${result.report.authorsEstimated} estimados · ${result.report.authorsUnverified} sin muestra suficiente.`,
+      );
+      ctx.log(
+        `Enriquecimiento: ${result.report.requests} consulta(s), ${result.report.cacheHits} desde caché · ` +
+          `${result.report.creditsCharged} crédito(s) adicional(es).`,
+      );
+      if (result.report.authorsSkippedBudget > 0) {
+        ctx.log(
+          `Límite respetado: ${result.report.authorsSkippedBudget} autor(es) quedaron pendientes por presupuesto.`,
+        );
+      }
+      result.report.warnings.forEach((warning) => ctx.log(`Aviso de histórico: ${warning}`));
+    },
+  };
+
   const analyze: PipelineNode = {
     id: "analyze",
     label: "Análisis de patrones",
@@ -249,11 +335,12 @@ export function buildReq004Pipeline(opts: Req004Opts = {}): PipelineDef {
 
   return {
     requisito: "REQ-004",
-    nodes: [input, discover, rank, analyze],
+    nodes: [input, discover, rank, enrich, analyze],
     edges: [
       ["input", "discover"],
       ["discover", "rank"],
-      ["rank", "analyze"],
+      ["rank", "enrich"],
+      ["enrich", "analyze"],
     ],
   };
 }

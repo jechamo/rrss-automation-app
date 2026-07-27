@@ -1,8 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  applyAuthorBaseline,
   mapWindowToProvider,
   mergeViralCandidates,
+  normalizeAuthorHistory,
   normalizeInstagramResponse,
   normalizeTikTokResponse,
   normalizeYouTubeResponse,
@@ -111,4 +113,79 @@ test("traduce ventanas a los enums de cada plataforma", () => {
   assert.deepEqual(mapWindowToProvider("tiktok", criterio(30)), { date_posted: "this-month" });
   assert.deepEqual(mapWindowToProvider("instagram", criterio(14)), { date_posted: "last-month" });
   assert.deepEqual(mapWindowToProvider("instagram", criterio(0)), {});
+});
+
+test("calcula ratio verificado contra la mediana y excluye el propio viral", () => {
+  const candidate = normalizeYouTubeResponse({
+    shorts: [{
+      id: "viral-1",
+      url: "https://youtube.com/shorts/viral-1",
+      title: "Viral",
+      viewCountInt: 5000,
+      channel: { id: "channel-1", handle: "coach" },
+    }],
+  }).candidatos[0];
+  const history = {
+    videos: [
+      { id: "viral-1", views: 999999 },
+      ...Array.from({ length: 10 }, (_, index) => ({ id: `base-${index}`, views: 1000 })),
+    ],
+  };
+
+  const enriched = applyAuthorBaseline(candidate, history, {
+    fetchedAt: "2026-07-26T10:00:00.000Z",
+    cacheHit: false,
+  });
+
+  assert.equal(enriched.ratioAutor, 5);
+  assert.equal(enriched.metrics?.authorMedianViews, 1000);
+  assert.equal(enriched.metrics?.authorSampleSize, 10);
+  assert.equal(enriched.metrics?.ratioConfidence, "verified");
+  assert.ok(enriched.viralScore > candidate.viralScore);
+});
+
+test("marca como estimada una muestra de 5 y no inventa ratio con menos", () => {
+  const candidate = normalizeTikTokResponse({
+    videos: [{
+      aweme_id: "viral-2",
+      share_url: "https://www.tiktok.com/@coach/video/viral-2",
+      author: { uid: "u1", unique_id: "coach" },
+      statistics: { play_count: 600 },
+    }],
+  }).candidatos[0];
+  const estimated = applyAuthorBaseline(
+    candidate,
+    { videos: Array.from({ length: 5 }, (_, index) => ({ id: `v-${index}`, views: 100 })) },
+    { fetchedAt: "2026-07-26T10:00:00.000Z", cacheHit: true },
+  );
+  const unverified = applyAuthorBaseline(
+    candidate,
+    { videos: Array.from({ length: 4 }, (_, index) => ({ id: `v-${index}`, views: 100 })) },
+    { fetchedAt: "2026-07-26T10:00:00.000Z", cacheHit: false },
+  );
+
+  assert.equal(estimated.ratioAutor, 6);
+  assert.equal(estimated.metrics?.ratioConfidence, "estimated");
+  assert.equal(estimated.metrics?.baselineCacheHit, true);
+  assert.equal(unverified.ratioAutor, 0);
+  assert.equal(unverified.metrics?.ratioConfidence, "unverified");
+});
+
+test("normaliza los historicos oficiales de las tres plataformas", () => {
+  const youtube = normalizeAuthorHistory("youtube", {
+    credits_charged: 1,
+    shorts: [{ id: "yt", viewCountInt: 120 }],
+  });
+  const tiktok = normalizeAuthorHistory("tiktok", {
+    credits_charged: 1,
+    aweme_list: [{ aweme_id: "tt", statistics: { play_count: 230 } }],
+  });
+  const instagram = normalizeAuthorHistory("instagram", {
+    credits_charged: 1,
+    items: [{ media: { pk: "ig", play_count: 340 } }],
+  });
+
+  assert.deepEqual(youtube.videos, [{ id: "yt", views: 120 }]);
+  assert.deepEqual(tiktok.videos, [{ id: "tt", views: 230 }]);
+  assert.deepEqual(instagram.videos, [{ id: "ig", views: 340 }]);
 });

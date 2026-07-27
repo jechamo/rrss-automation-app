@@ -4,6 +4,7 @@ export type Plataforma = "youtube" | "tiktok" | "instagram";
 export type ViralDiscoverySource = "web" | "scrapecreators" | "hybrid";
 export type ViralSourceProvider = "web" | "scrapecreators";
 export type RatioConfidence = "unverified" | "estimated" | "verified";
+export type ViralEnrichmentLevel = "rapido" | "preciso";
 
 /** Un bloque temporal de la estructura del video (hook, contexto, ...). */
 export interface Bloque {
@@ -35,6 +36,10 @@ export interface ViralMetrics {
   authorHandle?: string;
   engagementRate?: number;
   ratioConfidence?: RatioConfidence;
+  authorMedianViews?: number;
+  authorSampleSize?: number;
+  baselineFetchedAt?: string;
+  baselineCacheHit?: boolean;
   fetchedAt?: string;
 }
 
@@ -44,6 +49,15 @@ export interface ViralDiscovery {
   platformCounts?: Partial<Record<Plataforma, number>>;
   creditsCharged?: number;
   creditsRemaining?: number;
+  enrichmentLevel?: ViralEnrichmentLevel;
+  maxCredits?: number;
+  enrichmentCreditsCharged?: number;
+  enrichmentRequests?: number;
+  cacheHits?: number;
+  authorsVerified?: number;
+  authorsEstimated?: number;
+  authorsUnverified?: number;
+  authorsSkippedBudget?: number;
   warnings?: string[];
   searchedAt?: string;
 }
@@ -159,6 +173,10 @@ function ratioConfidence(v: unknown): RatioConfidence | undefined {
   return v === "unverified" || v === "estimated" || v === "verified" ? v : undefined;
 }
 
+function enrichmentLevel(v: unknown): ViralEnrichmentLevel | undefined {
+  return v === "rapido" || v === "preciso" ? v : undefined;
+}
+
 function optionalNum(v: unknown): number | undefined {
   if (v == null || v === "") return undefined;
   const n = typeof v === "number" ? v : Number(v);
@@ -188,6 +206,10 @@ function coerceMetrics(input: unknown): ViralMetrics | undefined {
     authorHandle: optionalStr(o.authorHandle),
     engagementRate: optionalNum(o.engagementRate),
     ratioConfidence: ratioConfidence(o.ratioConfidence),
+    authorMedianViews: optionalNum(o.authorMedianViews),
+    authorSampleSize: optionalNum(o.authorSampleSize),
+    baselineFetchedAt: optionalStr(o.baselineFetchedAt),
+    baselineCacheHit: typeof o.baselineCacheHit === "boolean" ? o.baselineCacheHit : undefined,
     fetchedAt: optionalStr(o.fetchedAt),
   };
   return Object.values(metrics).some((value) => value != null) ? metrics : undefined;
@@ -212,6 +234,15 @@ function coerceDiscovery(input: unknown): ViralDiscovery | undefined {
     },
     creditsCharged: optionalNum(o.creditsCharged),
     creditsRemaining: optionalNum(o.creditsRemaining),
+    enrichmentLevel: enrichmentLevel(o.enrichmentLevel),
+    maxCredits: optionalNum(o.maxCredits),
+    enrichmentCreditsCharged: optionalNum(o.enrichmentCreditsCharged),
+    enrichmentRequests: optionalNum(o.enrichmentRequests),
+    cacheHits: optionalNum(o.cacheHits),
+    authorsVerified: optionalNum(o.authorsVerified),
+    authorsEstimated: optionalNum(o.authorsEstimated),
+    authorsUnverified: optionalNum(o.authorsUnverified),
+    authorsSkippedBudget: optionalNum(o.authorsSkippedBudget),
     warnings: Array.isArray(o.warnings) ? o.warnings.map(str).filter(Boolean) : [],
     searchedAt: optionalStr(o.searchedAt),
   };

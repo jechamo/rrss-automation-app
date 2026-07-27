@@ -5,7 +5,11 @@ import Link from "next/link";
 import { PipelineGraph, type GraphNode, type NodeState } from "@/components/PipelineGraph";
 import { ViralesEditor } from "@/components/ViralesEditor";
 import { CardArt } from "@/components/CardArt";
-import type { ViralDiscoverySource, Virales } from "@/core/virales/types";
+import type {
+  ViralDiscoverySource,
+  ViralEnrichmentLevel,
+  Virales,
+} from "@/core/virales/types";
 
 type RunEvent =
   | { type: "node"; nodeId: string; state: NodeState; detail?: string }
@@ -19,6 +23,7 @@ const REQ004_STEPS: { id: string; label: string }[] = [
   { id: "input", label: "Entrada" },
   { id: "discover", label: "Buscar virales (web)" },
   { id: "rank", label: "Ranking" },
+  { id: "enrich", label: "Verificar ratio por autor" },
   { id: "analyze", label: "Análisis de patrones" },
 ];
 
@@ -40,6 +45,7 @@ const initialNodes = (
   cantidad = 20,
   modo: "reemplazar" | "ampliar" = "reemplazar",
   fuente: ViralDiscoverySource = "web",
+  nivel: ViralEnrichmentLevel = "rapido",
 ): GraphNode[] =>
   REQ004_STEPS.map((s) => ({
     id: s.id,
@@ -50,6 +56,10 @@ const initialNodes = (
           : `Ranking Top ${cantidad}`
         : s.id === "discover"
           ? sourceStepLabel(fuente)
+          : s.id === "enrich"
+            ? fuente !== "web" && nivel === "preciso"
+              ? "Verificar ratio por autor"
+              : "Métricas rápidas"
           : s.label,
     state: "pending" as NodeState,
   }));
@@ -72,6 +82,8 @@ export function ViralesPanel({
   const [ventanaDias, setVentanaDias] = useState(30);
   const [cantidad, setCantidad] = useState(20);
   const [fuente, setFuente] = useState<ViralDiscoverySource>("web");
+  const [nivel, setNivel] = useState<ViralEnrichmentLevel>("preciso");
+  const [maxCreditos, setMaxCreditos] = useState(20);
   const [scrapeCreatorsReady, setScrapeCreatorsReady] = useState(false);
   const [startError, setStartError] = useState("");
   const esRef = useRef<EventSource | null>(null);
@@ -93,6 +105,11 @@ export function ViralesPanel({
     setStatus(d.status);
     const storedSource = d.virales?.discovery?.source as ViralDiscoverySource | undefined;
     setFuente(storedSource ?? (hasScrapeCreators ? "hybrid" : "web"));
+    const storedLevel = d.virales?.discovery?.enrichmentLevel as ViralEnrichmentLevel | undefined;
+    setNivel(storedLevel ?? "preciso");
+    if (d.virales?.discovery?.maxCredits >= 3) {
+      setMaxCreditos(d.virales.discovery.maxCredits);
+    }
     if (d.virales?.criterio?.ventanaDias != null) setVentanaDias(d.virales.criterio.ventanaDias);
     if (d.lastRun) {
       setNodes(JSON.parse(d.lastRun.nodes) as GraphNode[]);
@@ -148,12 +165,19 @@ export function ViralesPanel({
     setStarting(true);
     setStartError("");
     setLogs([]);
-    setNodes(initialNodes(effectiveQuantity, modo, fuente));
+    setNodes(initialNodes(effectiveQuantity, modo, fuente, nivel));
     setRunStatus("running");
     const r = await fetch(`/api/projects/${projectId}/virales/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ventanaDias, modo, cantidad: effectiveQuantity, fuente }),
+      body: JSON.stringify({
+        ventanaDias,
+        modo,
+        cantidad: effectiveQuantity,
+        fuente,
+        nivel: fuente === "web" ? "rapido" : nivel,
+        maxCreditos,
+      }),
     });
     if (r.ok) {
       const d = await r.json();
@@ -202,6 +226,35 @@ export function ViralesPanel({
             <option value="scrapecreators">Scrape Creators</option>
             <option value="web">IA + web</option>
           </select>
+          {fuente !== "web" && (
+            <>
+              <select
+                className="input min-w-40"
+                value={nivel}
+                onChange={(event) => setNivel(event.target.value as ViralEnrichmentLevel)}
+                disabled={!dossierReady || running || starting}
+                title="Rápido usa solo las búsquedas base. Preciso compara cada viral con el histórico público de su autor."
+              >
+                <option value="preciso">Preciso · ratio real</option>
+                <option value="rapido">Rápido · 3 créditos</option>
+              </select>
+              {nivel === "preciso" && (
+                <select
+                  className="input min-w-36"
+                  value={maxCreditos}
+                  onChange={(event) => setMaxCreditos(parseInt(event.target.value, 10))}
+                  disabled={!dossierReady || running || starting}
+                  title="Tope total de créditos para esta ejecución, incluidas las 3 búsquedas base"
+                >
+                  {[10, 20, 40, 60].map((credits) => (
+                    <option key={credits} value={credits}>
+                      Máx. {credits} créditos
+                    </option>
+                  ))}
+                </select>
+              )}
+            </>
+          )}
           {!virales && (
             <>
               <select
@@ -256,8 +309,10 @@ export function ViralesPanel({
         <div className="text-white/55">
           {fuente === "web"
             ? "IA + web: no consume créditos de Scrape Creators; las métricas pueden ser aproximadas."
+            : nivel === "preciso"
+              ? `Preciso: busca en las tres plataformas y compara el Top con la mediana reciente de cada autor. Nunca superará ${maxCreditos} créditos; la caché local reduce llamadas.`
             : fuente === "hybrid"
-              ? "Híbrido: la IA amplía el descubrimiento y Scrape Creators aporta métricas estructuradas."
+              ? "Híbrido rápido: la IA amplía el descubrimiento y Scrape Creators aporta métricas estructuradas sin consultar históricos."
               : "Scrape Creators: 3 consultas base por ejecución, una para cada plataforma."}
         </div>
         {fuente !== "web" && !scrapeCreatorsReady ? (
@@ -265,7 +320,9 @@ export function ViralesPanel({
             Configurar API key en Ajustes →
           </Link>
         ) : fuente !== "web" ? (
-          <span className="text-[var(--color-state-ok)]">API configurada · estimación base: 3 créditos</span>
+          <span className="text-[var(--color-state-ok)]">
+            API configurada · {nivel === "preciso" ? `tope ${maxCreditos}` : "estimación base: 3"} créditos
+          </span>
         ) : null}
       </div>
 

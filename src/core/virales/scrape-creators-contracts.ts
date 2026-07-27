@@ -11,6 +11,17 @@ export interface NormalizedSearch {
   creditsRemaining?: number;
 }
 
+export interface AuthorVideoMetric {
+  id?: string;
+  views: number;
+}
+
+export interface NormalizedAuthorHistory {
+  videos: AuthorVideoMetric[];
+  creditsCharged: number;
+  creditsRemaining?: number;
+}
+
 type Obj = Record<string, unknown>;
 
 function obj(value: unknown): Obj {
@@ -113,6 +124,110 @@ function creditInfo(raw: Obj): Pick<NormalizedSearch, "creditsCharged" | "credit
     creditsCharged: number(raw.credits_charged) ?? 0,
     creditsRemaining: number(raw.credits_remaining),
   };
+}
+
+export function normalizeAuthorHistory(
+  plataforma: Plataforma,
+  rawInput: unknown,
+): NormalizedAuthorHistory {
+  const raw = obj(rawInput);
+  let inputs: unknown[] = [];
+  if (plataforma === "youtube") {
+    inputs = [...arr(raw.shorts), ...arr(raw.videos)];
+  } else if (plataforma === "tiktok") {
+    inputs = arr(raw.aweme_list ?? raw.videos);
+  } else {
+    inputs = arr(raw.items ?? raw.reels);
+  }
+
+  const seen = new Set<string>();
+  const videos = inputs.flatMap((input): AuthorVideoMetric[] => {
+    const wrapper = obj(input);
+    const item =
+      plataforma === "instagram"
+        ? obj(wrapper.media ?? wrapper)
+        : plataforma === "tiktok"
+          ? obj(wrapper.aweme_info ?? wrapper)
+          : wrapper;
+    const stats = obj(item.statistics ?? item.stats);
+    const id = firstText(
+      item.id,
+      item.aweme_id,
+      item.videoId,
+      item.pk,
+      item.code,
+      item.shortcode,
+    );
+    const views =
+      plataforma === "youtube"
+        ? number(item.viewCountInt ?? item.viewCount)
+        : plataforma === "tiktok"
+          ? number(stats.play_count ?? stats.playCount)
+          : number(item.play_count ?? item.ig_play_count ?? item.video_play_count ?? item.video_view_count);
+    if (views == null || views <= 0) return [];
+    const key = id || `${views}:${seen.size}`;
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [{ id: id || undefined, views }];
+  });
+
+  return { videos, ...creditInfo(raw) };
+}
+
+export function applyAuthorBaseline(
+  candidate: ViralCandidato,
+  history: Pick<NormalizedAuthorHistory, "videos">,
+  options: { fetchedAt: string; cacheHit: boolean },
+): ViralCandidato {
+  const candidateId = candidate.metrics?.platformId?.trim();
+  const comparableViews = history.videos
+    .filter((video) => !candidateId || !video.id || video.id !== candidateId)
+    .map((video) => video.views)
+    .filter((views) => Number.isFinite(views) && views > 0);
+  const sampleSize = comparableViews.length;
+  const medianViews = median(comparableViews);
+  const confidence =
+    sampleSize >= 10 ? "verified" : sampleSize >= 5 ? "estimated" : "unverified";
+  const ratio =
+    confidence !== "unverified" && medianViews > 0 && candidate.metrics?.views
+      ? Math.round((candidate.metrics.views / medianViews) * 100) / 100
+      : 0;
+  const metrics: ViralMetrics = {
+    ...candidate.metrics,
+    ratioConfidence: confidence,
+    authorMedianViews: medianViews || undefined,
+    authorSampleSize: sampleSize,
+    baselineFetchedAt: options.fetchedAt,
+    baselineCacheHit: options.cacheHit,
+  };
+  const relativeDetail =
+    ratio > 0
+      ? `${ratio}× la mediana del autor (${formatMetric(medianViews)}; muestra ${sampleSize})`
+      : `histórico insuficiente del autor (muestra ${sampleSize})`;
+
+  return {
+    ...candidate,
+    ratioAutor: ratio,
+    viralScore: ratio > 0 ? scoreWithRelativeBaseline(candidate.viralScore, ratio) : candidate.viralScore,
+    motivo: [candidate.motivo, relativeDetail].filter(Boolean).join(" · "),
+    metrics,
+  };
+}
+
+export function scoreWithRelativeBaseline(currentScore: number, ratio: number): number {
+  if (!Number.isFinite(ratio) || ratio <= 0) return currentScore;
+  const boundedRatio = Math.max(0.25, Math.min(16, ratio));
+  const relativeScore = Math.max(0, Math.min(100, ((Math.log2(boundedRatio) + 2) / 6) * 100));
+  return Math.round(Math.max(0, Math.min(100, currentScore * 0.45 + relativeScore * 0.55)));
+}
+
+function median(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[middle - 1] + sorted[middle]) / 2
+    : sorted[middle];
 }
 
 export function normalizeYouTubeResponse(rawInput: unknown): NormalizedSearch {

@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { buildReq004Pipeline } from "@/core/pipeline/req004";
 import { executeRun, initialNodeStatus } from "@/core/pipeline/engine";
-import { DEFAULT_CRITERIO, type ViralDiscoverySource } from "@/core/virales/types";
+import {
+  DEFAULT_CRITERIO,
+  type ViralDiscoverySource,
+  type ViralEnrichmentLevel,
+} from "@/core/virales/types";
 import { hasSecret } from "@/core/secrets/vault";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +22,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const rawFuente = (body as { fuente?: unknown })?.fuente;
   const fuente: ViralDiscoverySource =
     rawFuente === "scrapecreators" || rawFuente === "hybrid" ? rawFuente : "web";
+  const rawNivel = (body as { nivel?: unknown })?.nivel;
+  const nivel: ViralEnrichmentLevel = rawNivel === "preciso" ? "preciso" : "rapido";
+  const rawMaxCreditos = (body as { maxCreditos?: unknown })?.maxCreditos;
+  const maxCreditos =
+    typeof rawMaxCreditos === "number"
+      ? Math.max(3, Math.min(100, Math.floor(rawMaxCreditos)))
+      : undefined;
 
   const project = await prisma.project.findUnique({
     where: { id },
@@ -39,7 +50,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     );
   }
 
-  const def = buildReq004Pipeline({ ventanaDias, modo, cantidad, fuente });
+  const def = buildReq004Pipeline({
+    ventanaDias,
+    modo,
+    cantidad,
+    fuente,
+    nivel,
+    maxCreditos,
+  });
   const run = await prisma.run.create({
     data: {
       projectId: project.id,
@@ -60,5 +78,5 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     /* el estado de error ya se persiste dentro de executeRun */
   });
 
-  return NextResponse.json({ runId: run.id, fuente });
+  return NextResponse.json({ runId: run.id, fuente, nivel, maxCreditos });
 }

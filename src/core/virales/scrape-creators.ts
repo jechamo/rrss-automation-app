@@ -4,14 +4,20 @@ import { getSecret } from "@/core/secrets/vault";
 import type { Dossier } from "@/core/dossier/types";
 import { fetchWithTimeout } from "@/core/media/http";
 import {
+  applyAuthorBaseline,
   canonicalViralKey,
   mapWindowToProvider,
   mergeViralCandidates,
+  normalizeAuthorHistory,
   normalizeInstagramResponse,
   normalizeTikTokResponse,
   normalizeYouTubeResponse,
   type NormalizedSearch,
 } from "./scrape-creators-contracts";
+import {
+  getCachedAuthorHistory,
+  setCachedAuthorHistory,
+} from "./scrape-creators-cache";
 import type {
   CriterioViral,
   Plataforma,
@@ -28,6 +34,23 @@ type QueryPlan = Record<Plataforma, string>;
 export interface ScrapeCreatorsDiscovery {
   candidatos: ViralCandidato[];
   discovery: ViralDiscovery;
+}
+
+export interface ScrapeCreatorsEnrichmentReport {
+  creditsCharged: number;
+  requests: number;
+  cacheHits: number;
+  authorsVerified: number;
+  authorsEstimated: number;
+  authorsUnverified: number;
+  authorsSkippedBudget: number;
+  creditsRemaining?: number;
+  warnings: string[];
+}
+
+export interface ScrapeCreatorsEnrichment {
+  candidatos: ViralCandidato[];
+  report: ScrapeCreatorsEnrichmentReport;
 }
 
 interface SearchJob {
@@ -144,6 +167,136 @@ export async function discoverWithScrapeCreators(args: {
   };
 }
 
+export async function enrichWithAuthorBaselines(args: {
+  candidatos: ViralCandidato[];
+  maxRequests: number;
+}): Promise<ScrapeCreatorsEnrichment> {
+  const key = getSecret("scrapecreators");
+  if (!key) {
+    throw new Error("Scrape Creators no esta configurado. Guarda su API key en Ajustes.");
+  }
+
+  const candidatos = args.candidatos.map((candidate) => ({ ...candidate }));
+  const authorGroups = new Map<string, { candidate: ViralCandidato; indexes: number[] }>();
+  candidatos.forEach((candidate, index) => {
+    const groupKey = authorCacheKey(candidate);
+    if (!groupKey || candidate.sourceProvider !== "scrapecreators") return;
+    const current = authorGroups.get(groupKey);
+    if (current) current.indexes.push(index);
+    else authorGroups.set(groupKey, { candidate, indexes: [index] });
+  });
+
+  const report: ScrapeCreatorsEnrichmentReport = {
+    creditsCharged: 0,
+    requests: 0,
+    cacheHits: 0,
+    authorsVerified: 0,
+    authorsEstimated: 0,
+    authorsUnverified: 0,
+    authorsSkippedBudget: 0,
+    warnings: [],
+  };
+  const maxRequests = Math.max(0, Math.floor(args.maxRequests));
+
+  for (const [cacheKey, group] of authorGroups) {
+    let history: Awaited<ReturnType<typeof getCachedAuthorHistory>> = null;
+    try {
+      history = await getCachedAuthorHistory(cacheKey);
+    } catch {
+      // Una caché dañada o inaccesible no debe impedir el enriquecimiento en vivo.
+    }
+
+    let cacheHit = Boolean(history);
+    if (history) {
+      report.cacheHits += 1;
+    } else {
+      if (report.requests >= maxRequests) {
+        report.authorsSkippedBudget += 1;
+        continue;
+      }
+      report.requests += 1;
+      try {
+        const raw = await requestAuthorHistory(group.candidate, key);
+        const normalized = normalizeAuthorHistory(group.candidate.plataforma, raw);
+        report.creditsCharged += normalized.creditsCharged;
+        if (
+          normalized.creditsRemaining != null &&
+          (report.creditsRemaining == null || normalized.creditsRemaining < report.creditsRemaining)
+        ) {
+          report.creditsRemaining = normalized.creditsRemaining;
+        }
+        history = { videos: normalized.videos, fetchedAt: new Date().toISOString() };
+        try {
+          await setCachedAuthorHistory(cacheKey, history);
+        } catch {
+          report.warnings.push(
+            `${platformLabel(group.candidate.plataforma)} · ${group.candidate.autor || "autor"}: no se pudo guardar la caché local.`,
+          );
+        }
+      } catch (error) {
+        report.authorsUnverified += 1;
+        report.warnings.push(
+          `${platformLabel(group.candidate.plataforma)} · ${group.candidate.autor || "autor"}: ${errorMessage(error)}`,
+        );
+        continue;
+      }
+      cacheHit = false;
+    }
+
+    const fetchedAt = history.fetchedAt;
+    group.indexes.forEach((index) => {
+      candidatos[index] = applyAuthorBaseline(
+        candidatos[index],
+        { videos: history!.videos },
+        { fetchedAt, cacheHit },
+      );
+    });
+    const confidence = candidatos[group.indexes[0]].metrics?.ratioConfidence;
+    if (confidence === "verified") report.authorsVerified += 1;
+    else if (confidence === "estimated") report.authorsEstimated += 1;
+    else report.authorsUnverified += 1;
+  }
+
+  return { candidatos, report };
+}
+
+async function requestAuthorHistory(candidate: ViralCandidato, key: string): Promise<unknown> {
+  const authorId = candidate.metrics?.authorId?.trim();
+  const handle = candidate.metrics?.authorHandle?.trim().replace(/^@/, "");
+  if (candidate.plataforma === "youtube") {
+    return request(
+      "/v1/youtube/channel/shorts",
+      authorId ? { channelId: authorId, sort: "newest" } : { handle: handle ?? "", sort: "newest" },
+      key,
+    );
+  }
+  if (candidate.plataforma === "tiktok") {
+    return request(
+      "/v3/tiktok/profile/videos",
+      {
+        handle: handle ?? "",
+        ...(authorId ? { user_id: authorId } : {}),
+        sort_by: "latest",
+        trim: "true",
+      },
+      key,
+    );
+  }
+  return request(
+    "/v1/instagram/user/reels",
+    authorId ? { user_id: authorId, trim: "true" } : { handle: handle ?? "", trim: "true" },
+    key,
+  );
+}
+
+function authorCacheKey(candidate: ViralCandidato): string {
+  const handle = candidate.metrics?.authorHandle?.trim().replace(/^@/, "");
+  // El endpoint de vídeos de TikTok exige handle incluso cuando también se aporta user_id.
+  if (candidate.plataforma === "tiktok" && !handle) return "";
+  const author = candidate.metrics?.authorId || handle;
+  return author ? `${candidate.plataforma}:${author.trim().replace(/^@/, "").toLowerCase()}` : "";
+}
+
 async function planQueries(dossier: Dossier): Promise<{ queries: QueryPlan; warning?: string }> {
   const fallback = fallbackQueries(dossier);
   const prompt = `Genera una consulta de busqueda por plataforma para localizar videos virales
@@ -237,6 +390,10 @@ function providerError(status: number): string {
 
 function platformLabel(platform: Plataforma): string {
   return platform === "youtube" ? "YouTube" : platform === "tiktok" ? "TikTok" : "Instagram";
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error ?? "error desconocido");
 }
 
 function canonicalUrl(value: string): string {

@@ -112,6 +112,23 @@ export function ViralesEditor({
           </button>
         </div>
       </div>
+      {v.discovery?.enrichmentLevel === "preciso" && (
+        <div className="glass flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 text-xs text-white/60">
+          <span className="font-medium text-white/80">Precisión por histórico de autor</span>
+          <span>{v.discovery.authorsVerified ?? 0} verificados</span>
+          <span>{v.discovery.authorsEstimated ?? 0} estimados</span>
+          <span>{v.discovery.authorsUnverified ?? 0} sin muestra suficiente</span>
+          <span>{v.discovery.cacheHits ?? 0} desde caché</span>
+          <span>
+            {v.discovery.creditsCharged ?? 0}/{v.discovery.maxCredits ?? "—"} créditos
+          </span>
+          {(v.discovery.authorsSkippedBudget ?? 0) > 0 && (
+            <span className="text-amber-200">
+              {v.discovery.authorsSkippedBudget} pendientes por límite
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Vista visual: carrusel 360 + detalle desplegable */}
       {v.virales.length > 0 && (
@@ -191,7 +208,9 @@ export function ViralesEditor({
                   <ScoreBar label="Viral score" value={viral.viralScore} max={100} color={meta.color} />
                   {viral.ratioAutor > 0 && viral.metrics?.ratioConfidence !== "unverified" ? (
                     <ScoreBar
-                      label="Ratio sobre el autor"
+                      label={`Ratio sobre el autor · ${
+                        viral.metrics?.ratioConfidence === "verified" ? "verificado" : "estimado"
+                      }`}
                       value={Math.min(viral.ratioAutor, 10)}
                       max={10}
                       color="var(--color-accent)"
@@ -212,6 +231,13 @@ export function ViralesEditor({
                     {viral.metrics.engagementRate != null && (
                       <MetricChip label="Engagement" value={`${viral.metrics.engagementRate}%`} />
                     )}
+                    {viral.metrics.authorMedianViews != null && (
+                      <MetricChip label="Mediana autor" value={viral.metrics.authorMedianViews} />
+                    )}
+                    {viral.metrics.authorSampleSize != null && (
+                      <MetricChip label="Muestra" value={viral.metrics.authorSampleSize} />
+                    )}
+                    {viral.metrics.baselineCacheHit && <MetricChip label="Histórico" value="caché" />}
                   </div>
                 )}
                 {viral.hook.texto && <DetailRow label={`Hook (${viral.hook.tipo})`} value={viral.hook.texto} />}
