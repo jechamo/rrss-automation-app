@@ -143,11 +143,20 @@ conocimiento: skill `rrss-lead-research`.
 
 **Salida:** **Top 20** ordenado por más vistos / más virales.
 
-**Decisión (DA-03 resuelta, ver §7):** fuente = **IA + WebSearch** (el motor `claude -p` localiza
-y describe virales públicos, sin claves API extra); definición de **viral = relativo al autor**
-(≈5× la mediana de vistas del propio canal, para no sesgar hacia cuentas grandes); ventana
-temporal = **30 días** (configurable: 7/14/30/histórico desde la UI). Implementado como pipeline
-REQ-004 (`input → discover(web) → rank(Top 20) → analyze(patrones)`), espejo de REQ-002/003.
+**Decisión (DA-03 ampliada):** fuente seleccionable por ejecución:
+**IA + WebSearch** (sin clave adicional), **Scrape Creators** (datos públicos estructurados de
+YouTube, TikTok e Instagram) o **Híbrido** (IA para orientar el nicho + API para recopilar
+métricas; recomendado cuando hay key). La clave de Scrape Creators se guarda cifrada en Ajustes
+y el flujo anterior sigue disponible como fallback explícito. Definición de **viral = relativo al
+autor** (≈5× la mediana de vistas del propio canal cuando se puede verificar; si no, el ratio se
+marca como no verificado para no inventarlo); ventana temporal = **30 días** (configurable:
+7/14/30/histórico desde la UI). Con Scrape Creators hay dos niveles: **Rápido** (solo las tres
+búsquedas base) y **Preciso** (consulta una vez el histórico público de cada autor único del Top,
+con caché local de 7 días y tope total de créditos elegido antes de ejecutar). La mediana excluye
+el propio viral; se marca **verificada** con al menos 10 piezas comparables, **estimada** con 5–9
+y **no verificada** por debajo de 5. Pipeline REQ-004:
+`input → discover(fuente elegida) → rank(Top N) → enrich(histórico opcional) → analyze(patrones)`,
+espejo de REQ-002/003.
 Cada viral se descompone (hook, estructura, share-trigger, patrón transferible) para alimentar
 REQ-005. Apoyo de conocimiento: skill `rrss-viral-analysis`.
 

@@ -1,8 +1,13 @@
 import { getEngine } from "@/core/ai";
 import { getSettings } from "@/core/settings";
 import type { Dossier } from "@/core/dossier/types";
-import type { ViralCandidato } from "./discover";
-import { coerceVirales, type CriterioViral, type Viral, type Virales } from "./types";
+import {
+  coerceVirales,
+  type CriterioViral,
+  type Viral,
+  type ViralCandidato,
+  type Virales,
+} from "./types";
 
 /** Candidato + origen (para conservar los manuales al regenerar). */
 export interface AnalyzeInput extends ViralCandidato {
@@ -26,6 +31,8 @@ function buildBlock(v: AnalyzeInput, i: number): string {
     v.vistas && `vistas: ${v.vistas}`,
     v.formato && `formato: ${v.formato}`,
     v.motivo && `motivo: ${v.motivo}`,
+    v.sourceProvider && `fuente: ${v.sourceProvider}`,
+    v.metrics?.ratioConfidence === "unverified" && "ratioAutor: no verificado",
   ]
     .filter(Boolean)
     .join(" | ");
@@ -105,12 +112,14 @@ No incluyas nada fuera del JSON.`;
     const meta = metaPorUrl.get(normUrl(v.url));
     return {
       ...v,
-      vistas: v.vistas || meta?.vistas || "",
-      fecha: v.fecha || meta?.fecha || "",
-      autor: v.autor || meta?.autor || "",
-      viralScore: v.viralScore || meta?.viralScore || 0,
-      ratioAutor: v.ratioAutor || meta?.ratioAutor || 1,
+      vistas: meta?.vistas || v.vistas || "",
+      fecha: meta?.fecha || v.fecha || "",
+      autor: meta?.autor || v.autor || "",
+      viralScore: meta?.viralScore ?? v.viralScore ?? 0,
+      ratioAutor: meta?.ratioAutor ?? v.ratioAutor ?? 0,
       origen: meta?.origen ?? v.origen ?? "ia",
+      sourceProvider: meta?.sourceProvider ?? v.sourceProvider,
+      metrics: meta?.metrics ?? v.metrics,
     };
   });
 

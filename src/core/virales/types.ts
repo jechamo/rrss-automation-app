@@ -1,6 +1,10 @@
 /** Estructura del Top de virales del nicho (REQ-004). Ver docs/01-requisitos.md §REQ-004. */
 
 export type Plataforma = "youtube" | "tiktok" | "instagram";
+export type ViralDiscoverySource = "web" | "scrapecreators" | "hybrid";
+export type ViralSourceProvider = "web" | "scrapecreators";
+export type RatioConfidence = "unverified" | "estimated" | "verified";
+export type ViralEnrichmentLevel = "rapido" | "preciso";
 
 /** Un bloque temporal de la estructura del video (hook, contexto, ...). */
 export interface Bloque {
@@ -14,6 +18,48 @@ export interface Hook {
   tipo: string; // pregunta | dato | promesa | conflicto | negacion | ...
   texto: string;
   segundos: number;
+}
+
+/** Metricas estructuradas cuando la fuente las facilita. */
+export interface ViralMetrics {
+  platformId?: string;
+  views?: number;
+  likes?: number;
+  comments?: number;
+  shares?: number;
+  saves?: number;
+  followers?: number;
+  durationSeconds?: number;
+  publishedAt?: string;
+  thumbnailUrl?: string;
+  authorId?: string;
+  authorHandle?: string;
+  engagementRate?: number;
+  ratioConfidence?: RatioConfidence;
+  authorMedianViews?: number;
+  authorSampleSize?: number;
+  baselineFetchedAt?: string;
+  baselineCacheHit?: boolean;
+  fetchedAt?: string;
+}
+
+export interface ViralDiscovery {
+  source: ViralDiscoverySource;
+  queries?: Partial<Record<Plataforma, string>>;
+  platformCounts?: Partial<Record<Plataforma, number>>;
+  creditsCharged?: number;
+  creditsRemaining?: number;
+  enrichmentLevel?: ViralEnrichmentLevel;
+  maxCredits?: number;
+  enrichmentCreditsCharged?: number;
+  enrichmentRequests?: number;
+  cacheHits?: number;
+  authorsVerified?: number;
+  authorsEstimated?: number;
+  authorsUnverified?: number;
+  authorsSkippedBudget?: number;
+  warnings?: string[];
+  searchedAt?: string;
 }
 
 /** Un video viral del nicho. */
@@ -33,6 +79,24 @@ export interface Viral {
   porQueFunciona: string;
   patronTransferible: string; // concepto reutilizable (no copia) para REQ-005/006
   origen?: "ia" | "manual"; // "manual" => se conserva al regenerar
+  sourceProvider?: ViralSourceProvider;
+  metrics?: ViralMetrics;
+}
+
+/** Candidato previo al analisis profundo por IA. */
+export interface ViralCandidato {
+  url: string;
+  plataforma: Plataforma;
+  titulo: string;
+  autor: string;
+  vistas: string;
+  fecha: string;
+  ratioAutor: number;
+  viralScore: number;
+  formato: string;
+  motivo: string;
+  sourceProvider?: ViralSourceProvider;
+  metrics?: ViralMetrics;
 }
 
 /** Un patron recurrente detectado en >= varias piezas. */
@@ -51,6 +115,7 @@ export interface CriterioViral {
 export interface Virales {
   nicho: string;
   criterio: CriterioViral;
+  discovery?: ViralDiscovery;
   virales: Viral[]; // Top ordenado por viralScore desc
   patronesRecurrentes: PatronViral[];
 }
@@ -100,6 +165,89 @@ function plataforma(v: unknown): Plataforma {
   return v === "youtube" || v === "tiktok" || v === "instagram" ? v : "youtube";
 }
 
+function discoverySource(v: unknown): ViralDiscoverySource {
+  return v === "scrapecreators" || v === "hybrid" ? v : "web";
+}
+
+function ratioConfidence(v: unknown): RatioConfidence | undefined {
+  return v === "unverified" || v === "estimated" || v === "verified" ? v : undefined;
+}
+
+function enrichmentLevel(v: unknown): ViralEnrichmentLevel | undefined {
+  return v === "rapido" || v === "preciso" ? v : undefined;
+}
+
+function optionalNum(v: unknown): number | undefined {
+  if (v == null || v === "") return undefined;
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? Math.max(0, n) : undefined;
+}
+
+function optionalStr(v: unknown): string | undefined {
+  const value = str(v).trim();
+  return value || undefined;
+}
+
+function coerceMetrics(input: unknown): ViralMetrics | undefined {
+  if (!input || typeof input !== "object") return undefined;
+  const o = input as Record<string, unknown>;
+  const metrics: ViralMetrics = {
+    platformId: optionalStr(o.platformId),
+    views: optionalNum(o.views),
+    likes: optionalNum(o.likes),
+    comments: optionalNum(o.comments),
+    shares: optionalNum(o.shares),
+    saves: optionalNum(o.saves),
+    followers: optionalNum(o.followers),
+    durationSeconds: optionalNum(o.durationSeconds),
+    publishedAt: optionalStr(o.publishedAt),
+    thumbnailUrl: optionalStr(o.thumbnailUrl),
+    authorId: optionalStr(o.authorId),
+    authorHandle: optionalStr(o.authorHandle),
+    engagementRate: optionalNum(o.engagementRate),
+    ratioConfidence: ratioConfidence(o.ratioConfidence),
+    authorMedianViews: optionalNum(o.authorMedianViews),
+    authorSampleSize: optionalNum(o.authorSampleSize),
+    baselineFetchedAt: optionalStr(o.baselineFetchedAt),
+    baselineCacheHit: typeof o.baselineCacheHit === "boolean" ? o.baselineCacheHit : undefined,
+    fetchedAt: optionalStr(o.fetchedAt),
+  };
+  return Object.values(metrics).some((value) => value != null) ? metrics : undefined;
+}
+
+function coerceDiscovery(input: unknown): ViralDiscovery | undefined {
+  if (!input || typeof input !== "object") return undefined;
+  const o = input as Record<string, unknown>;
+  const queries = (o.queries ?? {}) as Record<string, unknown>;
+  const platformCounts = (o.platformCounts ?? {}) as Record<string, unknown>;
+  return {
+    source: discoverySource(o.source),
+    queries: {
+      youtube: optionalStr(queries.youtube),
+      tiktok: optionalStr(queries.tiktok),
+      instagram: optionalStr(queries.instagram),
+    },
+    platformCounts: {
+      youtube: optionalNum(platformCounts.youtube),
+      tiktok: optionalNum(platformCounts.tiktok),
+      instagram: optionalNum(platformCounts.instagram),
+    },
+    creditsCharged: optionalNum(o.creditsCharged),
+    creditsRemaining: optionalNum(o.creditsRemaining),
+    enrichmentLevel: enrichmentLevel(o.enrichmentLevel),
+    maxCredits: optionalNum(o.maxCredits),
+    enrichmentCreditsCharged: optionalNum(o.enrichmentCreditsCharged),
+    enrichmentRequests: optionalNum(o.enrichmentRequests),
+    cacheHits: optionalNum(o.cacheHits),
+    authorsVerified: optionalNum(o.authorsVerified),
+    authorsEstimated: optionalNum(o.authorsEstimated),
+    authorsUnverified: optionalNum(o.authorsUnverified),
+    authorsSkippedBudget: optionalNum(o.authorsSkippedBudget),
+    warnings: Array.isArray(o.warnings) ? o.warnings.map(str).filter(Boolean) : [],
+    searchedAt: optionalStr(o.searchedAt),
+  };
+}
+
 function coerceHook(input: unknown): Hook {
   const o = (input ?? {}) as Record<string, unknown>;
   return { tipo: str(o.tipo), texto: str(o.texto), segundos: num(o.segundos) };
@@ -134,6 +282,8 @@ export function coerceViral(input: unknown): Viral {
     porQueFunciona: str(o.porQueFunciona),
     patronTransferible: str(o.patronTransferible),
     origen,
+    sourceProvider: o.sourceProvider === "scrapecreators" ? "scrapecreators" : o.sourceProvider === "web" ? "web" : undefined,
+    metrics: coerceMetrics(o.metrics),
   };
 }
 
@@ -151,6 +301,7 @@ export function coerceVirales(input: unknown): Virales {
   return {
     nicho: str(o.nicho),
     criterio: coerceCriterio(o.criterio),
+    discovery: coerceDiscovery(o.discovery),
     virales: Array.isArray(o.virales) ? o.virales.map(coerceViral) : [],
     patronesRecurrentes: Array.isArray(o.patronesRecurrentes)
       ? o.patronesRecurrentes.map(coercePatron)

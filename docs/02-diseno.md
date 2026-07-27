@@ -107,6 +107,16 @@
                                                   └─(b)→ [HeyGen] ────────────────┴→ [Montaje?] → [Validar] → [Publicar]
 ```
 
+**Selector de fuente para REQ-004 (virales):**
+
+- El encabezado de «Virales del nicho» permite elegir **Híbrido**, **Scrape Creators** o
+  **IA + web** antes de buscar, ampliar o regenerar.
+- Híbrido y Scrape Creators quedan deshabilitados con ayuda y enlace a Ajustes si falta la key.
+- La UI muestra una estimación de créditos antes del run y el registro muestra consultas,
+  resultados por plataforma, duplicados descartados, créditos consumidos y saldo devuelto.
+- Los resultados conservan una etiqueta de procedencia y distinguen métricas estructuradas de
+  ratios relativos todavía no verificados.
+
 ---
 
 ## 6. Carruseles 360º

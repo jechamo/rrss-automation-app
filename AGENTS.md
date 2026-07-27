@@ -160,10 +160,13 @@ prisma/schema.prisma          Modelo de datos multiproyecto
 - **REQ-003** (clientes potenciales + estrategia): **implementado** (DA-02 resuelta: negocios locales
   reales vía **IA+WebSearch**, solo datos públicos; estrategia IA editable). Pipeline `req003.ts`
   (`input → research → discover(web) → strategy`), motor con `--allowedTools WebSearch`. En pruebas del usuario.
-- **REQ-004** (virales del nicho YT/TikTok/IG): **implementado** (DA-03 resuelta: **IA+WebSearch**,
-  viral **relativo al autor** ≈5× mediana del canal, ventana 30d configurable, **Top 20**). Pipeline
-  `req004.ts` (`input → discover(web) → rank → analyze`), cada viral descompuesto (hook/estructura/
-  share-trigger/patrón transferible) para alimentar REQ-005. Apoyo: skill `rrss-viral-analysis`. En pruebas.
+- **REQ-004** (virales del nicho YT/TikTok/IG): **implementado** (DA-03 resuelta: fuente seleccionable
+  **IA+WebSearch / Scrape Creators / híbrida**, ventana configurable y **Top 20**). Pipeline
+  `req004.ts` (`input → discover → rank → enrich → analyze`). Scrape Creators ofrece modo rápido
+  (3 búsquedas base) o preciso: histórico por autor con caché de 7 días, tope de créditos y ratio
+  contra la mediana (`verified` ≥10 piezas, `estimated` 5–9, nunca inventado con <5). Cada viral se
+  descompone (hook/estructura/share-trigger/patrón transferible) para alimentar REQ-005. Apoyo:
+  skill `rrss-viral-analysis`. En pruebas.
   **Refinamiento (2026-07-18):** el análisis de patrones usa `timeoutMs=600_000` (no cortar por tiempo;
   el default del motor era 180s).
 - **REQ-005** (generación de contenido — clonado de viral): **implementado** (DA-04 resuelta:

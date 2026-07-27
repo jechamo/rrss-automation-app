@@ -1,21 +1,8 @@
 import { getEngine } from "@/core/ai";
 import { getSettings } from "@/core/settings";
 import type { Dossier } from "@/core/dossier/types";
-import { type CriterioViral, type Plataforma } from "./types";
-
-/** Candidato viral encontrado por la IA (metadatos aproximados de la web). */
-export interface ViralCandidato {
-  url: string;
-  plataforma: Plataforma;
-  titulo: string;
-  autor: string;
-  vistas: string;
-  fecha: string;
-  ratioAutor: number; // ~cuantas veces supera la mediana del autor
-  viralScore: number; // 0-100
-  formato: string;
-  motivo: string; // por que destaca / senal de viralidad
-}
+import { type CriterioViral, type Plataforma, type ViralCandidato } from "./types";
+export type { ViralCandidato } from "./types";
 
 // Buscamos mas candidatos de los que rankeamos, para tener margen al recortar a Top 20.
 const MAX_CANDIDATOS = 30;
@@ -101,6 +88,7 @@ No incluyas nada fuera del JSON final.`;
           viralScore: Math.min(100, Math.max(0, toNum(o.viralScore, 0))),
           formato: String(o.formato ?? "").trim(),
           motivo: String(o.motivo ?? "").trim(),
+          sourceProvider: "web" as const,
         };
       })
     : [];
