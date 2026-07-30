@@ -343,7 +343,8 @@ presenterPath, audioPath, clips[], recordingPath, externalUrl, logs[]}`), `runId
 - `elevenlabs.ts`: `listVoices()`, `tts(pieceId,text,voiceId)` (guarda `locucion.mp3`).
 - `gemini.ts`: `describeViral(...)` **multimodal** — YouTube público por `file_data.file_uri`
   nativo; otras redes vía `yt-dlp` (ver `ytdlp.ts`) + **Files API** (subida resumable → espera
-  `ACTIVE` → análisis → borrado remoto + temporal). Modelo `gemini-2.0-flash`. Degrada a REQ-004.
+  `ACTIVE` → análisis → borrado remoto + temporal). Modelo de vídeo predeterminado
+  `gemini-3.6-flash`, sustituible mediante `GEMINI_VIDEO_MODEL`. Degrada a REQ-004.
 - `ytdlp.ts`: `hasYtDlp()` + `downloadVideo()` — binario del sistema **opcional** (como FFmpeg).
 - `contracts.ts` → `resolveFalDuration(model, requested)`: duración de corte por modelo
   (Kling 5/10/15 · Seedance 5–12 · Luma 5s/9s), con segundos efectivos + etiqueta para UI/coste.
@@ -682,6 +683,33 @@ locución como pista maestra, mezcla música opcional, quema ASS y crea `mix-<id
 - `PipelineGraph` separa posición y ancho de nodo; scrollbars/cursor viven en tokens CSS globales y la
   sidebar conserva una clase de scrollbar compacta.
 
+### REQ-018 — Laboratorio de clips
+
+- Sección global `/clips` y APIs `/api/clips`, `/api/clips/:id`,
+  `/api/clips/:id/asset` y `/api/clips/:id/retry`.
+- Persistencia local sin migración: cada trabajo vive en `data/clips/<id>/manifest.json`, junto al
+  vídeo fuente, ASS, clips MP4 y miniaturas. Escritura atómica y rutas confinadas al directorio del
+  trabajo; `data/` continúa fuera de Git.
+- `core/clips/contracts.ts` coerciona el JSON multimodal, valida score/confianza, duración,
+  solapamiento y rankings. También normaliza el contrato editorial
+  `top_10_virales`/`top_10_polemicos` sin recalcular su orden y valida que cada cue de
+  `subtitulos_sincronizados` sea no vacío, ordenado, no solapado y esté dentro de su corte.
+- `core/clips/analyze.ts` usa Gemini Files API sobre el fichero local y exige JSON temporal con
+  transcripción y evidencia. La API key solo se lee desde el Secret Vault.
+- `core/clips/align.ts` es una ruta separada para JSON importado: Gemini recibe solo los intervalos
+  ya elegidos y devuelve cues literales absolutos. `applyImportedAlignment()` comprueba límites,
+  cobertura textual y coincidencia mínima antes de permitir el render.
+- `applyDirectImportedTranscript()` usa primero los cues absolutos aportados por el JSON, sin red ni
+  Gemini; solo genera cues proporcionales para manifiestos anteriores sin el campo nuevo. Mantiene
+  `momentId` para que dos cortes solapados no mezclen subtítulos y marca en cada momento
+  `subtitleSource:"synced_json"|"transcript_fallback"` para que UI/logs expliquen qué ocurrió.
+- `core/clips/processor.ts` orquesta ingestión YouTube con yt-dlp, análisis, selección y render,
+  persistiendo etapa/progreso/logs para polling.
+- `core/clips/render.ts` usa FFmpeg asíncrono: recorta por timecode, compone 1080×1920 con fondo
+  desenfocado, conserva el audio, quema ASS temporizado y genera miniatura.
+- `core/media/subtitles.ts` comparte un normalizador de cues que introduce un pequeño gap y evita
+  eventos ASS simultáneos tanto en montajes existentes como en REQ-018.
+
 ---
 
 ## 9. Arquitectura concreta de REQ-001 (primer requisito)
@@ -723,6 +751,7 @@ locución como pista maestra, mezcla música opcional, quema ASS y crea `mix-<id
 | REQ-014 | authenticated inspector, demo navigation, lead calibration, project context, resilient UI |
 | REQ-015 | navigation map, repo navigation evidence, Playwright route verifier, tree UI |
 | REQ-016 | auth session preflight, recorder/inspector, SSE reconnect, pipeline/sidebar/global UI |
+| REQ-018 | clips contracts/analyze/processor/render/storage, Gemini, yt-dlp, FFmpeg, clips UI/API |
 
 ---
 

@@ -10,8 +10,9 @@ import { hasYtDlp, downloadVideo } from "./ytdlp";
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta";
 const UPLOAD = "https://generativelanguage.googleapis.com/upload/v1beta/files";
-// Modelo con comprension de video. Fallback documentado: gemini-1.5-flash.
-const MODEL = "gemini-2.0-flash";
+// Modelo vigente con comprensión de vídeo. El override permite migrarlo sin tocar código
+// cuando Google anuncie otra sustitución.
+const MODEL = process.env.GEMINI_VIDEO_MODEL?.trim() || "gemini-3.6-flash";
 const ANALYZE_TIMEOUT = 300_000; // el analisis de video es lento
 
 function apiKey(): string {
@@ -66,7 +67,12 @@ interface UploadedFile {
 /** Sube un fichero local por la Files API (resumable) y devuelve su referencia. */
 async function uploadFile(absPath: string, key: string): Promise<UploadedFile> {
   const bytes = fs.readFileSync(absPath);
-  const mime = absPath.endsWith(".webm") ? "video/webm" : "video/mp4";
+  const lower = absPath.toLowerCase();
+  const mime = lower.endsWith(".webm")
+    ? "video/webm"
+    : lower.endsWith(".mov")
+      ? "video/quicktime"
+      : "video/mp4";
 
   // 1) Iniciar subida resumable: la respuesta trae la URL de subida en un header.
   const start = await fetchWithTimeout(`${UPLOAD}?key=${encodeURIComponent(key)}`, {
@@ -106,7 +112,7 @@ async function uploadFile(absPath: string, key: string): Promise<UploadedFile> {
 
 /** Espera a que el fichero subido pase a ACTIVE (procesado). */
 async function waitActive(name: string, key: string): Promise<UploadedFile> {
-  for (let i = 0; i < 30; i++) {
+  for (let i = 0; i < 100; i++) {
     const file = await fetchJson<UploadedFile>(
       `${BASE}/${name}?key=${encodeURIComponent(key)}`,
     );
@@ -180,4 +186,49 @@ export async function describeViral(sourceUrl: string, contexto: string): Promis
   return isYouTube(sourceUrl)
     ? analyzeYouTube(sourceUrl, prompt, key)
     : analyzeViaDownload(sourceUrl, prompt, key);
+}
+
+/**
+ * Analiza un vídeo local con una instrucción estructurada y devuelve el JSON de Gemini.
+ * Comparte la misma subida temporal y limpieza remota que el análisis de virales.
+ */
+export async function analyzeLocalVideoJson(absPath: string, prompt: string): Promise<unknown> {
+  const key = apiKey();
+  let remoteName = "";
+  try {
+    const file = await uploadFile(absPath, key);
+    remoteName = file.name;
+    const active = await waitActive(file.name, key);
+    const data = await fetchJson<GenResp>(
+      `${BASE}/models/${MODEL}:generateContent?key=${encodeURIComponent(key)}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { file_data: { mime_type: active.mimeType ?? "video/mp4", file_uri: active.uri } },
+              { text: prompt },
+            ],
+          }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.25,
+            maxOutputTokens: 32_768,
+          },
+        }),
+      },
+      ANALYZE_TIMEOUT,
+    );
+    const output = textFrom(data);
+    if (!output.trim()) throw new Error("Gemini no devolvió el análisis temporal del vídeo.");
+    try {
+      return JSON.parse(output);
+    } catch {
+      const cleaned = output.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
+      return JSON.parse(cleaned);
+    }
+  } finally {
+    if (remoteName) await deleteFile(remoteName, key);
+  }
 }
