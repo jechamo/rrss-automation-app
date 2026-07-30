@@ -25,12 +25,42 @@
 | REQ-014 | Confianza operativa y navegación autenticada | 🟡 Implementado — pendiente validar recorrido real en ChaFit tras login |
 | REQ-015 | Mapa funcional multimenú de la app | 🟡 Implementado — pendiente regenerar un proyecto y validar sus rutas privadas con login real |
 | REQ-016 | Pulido visual, SSE y login Playwright | 🟡 Implementado — dry-run ICG Vault validado; pendiente prueba del usuario con grabación real |
+| REQ-018 | Laboratorio de clips virales y polémicos | 🟡 Implementado — validación técnica completa; pendiente prueba real del usuario con una fuente y consumo Gemini |
 
 Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ---
 
 ## Historial
+
+### 2026-07-30 — REQ-018: laboratorio de clips virales y polémicos
+
+- Nueva sección global **Laboratorio de clips** para subir MP4/MOV/WebM/M4V o indicar una URL
+  pública de YouTube. Valida Gemini, FFmpeg, ffprobe y yt-dlp antes de iniciar.
+- El análisis multimodal exige hook, arco, evidencia literal, contexto, riesgo y timecodes; asigna
+  scores separados de viralidad, controversia y confianza. Los contratos descartan baja calidad,
+  duraciones inválidas y candidatos casi duplicados: Top 10 es un máximo, no material de relleno.
+- Variante excluyente **Usar mi JSON**: acepta texto pegado o fichero con
+  `top_10_virales`/`top_10_polemicos`, conserva orden, timecodes, hooks y justificaciones, y no
+  inventa scores. Un intervalo presente en ambos rankings se renderiza una sola vez.
+- Bajo JSON, **Directo · sin Gemini** temporiza los textos localmente y permite probar el render
+  completo sin key ni créditos; la UI y los logs advierten que el audio no fue comprobado.
+  **Verificar con Gemini** queda como opción precisa y separada.
+- Para evitar subtítulos desincronizados, Gemini no reselecciona en este modo: realiza alineación
+  forzada solo dentro de los cortes aportados. Si la coincidencia semántica/temporal es insuficiente,
+  bloquea el render y señala qué entrada debe corregirse.
+- Cada candidato único se recorta una sola vez a 1080×1920, conserva el encuadre sobre fondo
+  desenfocado, mantiene audio original, quema subtítulos temporizados y genera miniatura. Los
+  rankings Viral/Polémico muestran preview, explicación editorial y descarga.
+- Historial local con progreso, logs, errores por candidato, eliminación y reanálisis. Un reinicio
+  interrumpido se detecta y permite reintentar sin volver a subir el fichero; los previews aceptan
+  peticiones Range para reproducir y buscar con fluidez.
+- El conector de vídeo migra del modelo retirado `gemini-2.0-flash` a `gemini-3.6-flash`, con
+  override `GEMINI_VIDEO_MODEL`, y mantiene el borrado remoto best-effort.
+- Los subtítulos de todos los montajes introducen 120 ms de separación y eliminan eventos ASS
+  simultáneos; tamaño y zona segura inferior se conservan.
+- Verificación: TypeScript, 42/42 contratos, render ASS real con FFmpeg y build de producción.
+  Revisión visual local a 1280, 1024 y 768 px sin desbordamiento; no se consumieron créditos Gemini.
 
 ### 2026-07-27 — REQ-004: histórico por autor, confianza y presupuesto
 

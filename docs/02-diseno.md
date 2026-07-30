@@ -407,3 +407,26 @@ prompts y generar». El selector de modelo incluye versión, perfil y coste por 
   redundante para evitar scroll en alturas normales.
 - La grabación automática muestra logs diferenciados para sesión validada, reautenticación, formulario
   ausente y credenciales rechazadas. Nunca graba la pantalla donde se introducen usuario/contraseña.
+
+## 21. Laboratorio de clips (REQ-018)
+
+- Nueva entrada global **Laboratorio de clips**, independiente de un proyecto.
+- Cabecera con selector `Subir vídeo | URL de YouTube`, requisitos de herramientas visibles y CTA
+  «Analizar y crear clips». Nunca inicia si falta Gemini, FFmpeg/ffprobe o yt-dlp para YouTube.
+- Bloque excluyente `Descubrir con IA | Usar mi JSON`. El segundo ofrece textarea con ejemplo y
+  carga `.json`; deja claro que rankings/timecodes son autoritativos.
+- Bajo JSON aparecen `Directo · sin Gemini` (seleccionado inicialmente, badge 0 créditos IA) y
+  `Verificar con Gemini` (más preciso). Avisos y resultados distinguen timing local de sincronía
+  realmente comprobada.
+- El trabajo activo muestra cinco etapas: `Fuente → Comprensión → Selección → Render vertical →
+  Resultados`, progreso, logs y error accionable.
+- Resultado en dos pestañas: **Top virales** y **Top polémicos**, cada una con un contador real
+  `N/10`. No se crean tarjetas vacías ni candidatos débiles para llegar a diez.
+- Tarjetas profesionales con vídeo 9:16, puntuación principal, confianza, timecode de origen,
+  duración, hook, evidencia literal breve, justificación, riesgo/contexto y descarga.
+- Las tarjetas importadas sustituyen puntuaciones inventadas por `JSON #N` y muestran el porcentaje
+  de sincronía comprobado contra el audio.
+- Un bloque de historial permite recuperar análisis anteriores, reintentarlos o eliminarlos mediante
+  confirmación visual propia de la aplicación.
+- Los subtítulos usan frases cortas, zona segura inferior y una pequeña pausa entre cues para evitar
+  que dos bloques parezcan pegados o se solapen.

@@ -311,7 +311,8 @@ usan diálogos visuales de RRSS Studio, no `alert`/`confirm`/`prompt` del navega
 **Subtítulos — regla transversal:** todo vídeo final con voz incluye subtítulos quemados, inferiores,
 centrados y dentro de la zona segura de Shorts/Reels/TikTok. Un audio propio necesita texto antes
 de producir un final publicable. Si FFmpeg no puede renderizarlos se conserva el preview, pero nunca
-se degrada silenciosamente a un final sin subtítulos.
+se degrada silenciosamente a un final sin subtítulos. Los cues consecutivos reservan una separación
+temporal mínima y se acotan para que dos subtítulos nunca queden activos a la vez.
 
 **Guía integrada:** enlace global **Guía** con explicación detallada de cada sección y de los flujos
 viral+fal, viral+HeyGen, Playwright, subida, REC/STOP, MIX y publicación asistida.
@@ -535,6 +536,47 @@ servidor sigue trabajando.
 **Criterios de aceptación:** ICG Vault reconoce `input[name="identifier"]`; una sesión caducada fuerza
 nuevo login; una caída SSE temporal no obliga a volver al dashboard; el menú no muestra los textos
 «Automatización de contenido RRSS» ni «Proyecto activo».
+
+---
+
+### REQ-018 — Laboratorio de clips virales y polémicos
+
+**Objetivo:** convertir un vídeo largo aportado por el usuario en clips verticales de alta calidad
+editorial, priorizando por separado los momentos con mayor potencial **viral** y los de mayor
+**controversia**, sin cortar fragmentos arbitrarios para completar un cupo.
+
+**Entrada:** un fichero de vídeo local (MP4, MOV, WebM o M4V; máximo 500 MB) o una URL pública de
+YouTube. La elección de cortes es excluyente: **Descubrir con IA** o **Usar mi JSON**, mediante el
+esquema `top_10_virales`/`top_10_polemicos` con ranking, inicio, fin, hook, transcripción completa y
+justificación. El JSON puede pegarse o cargarse como fichero y ofrece dos temporizados: **Directo**
+sin Gemini o **Verificar con Gemini**. YouTube requiere yt-dlp; todo render requiere FFmpeg/ffprobe;
+el descubrimiento IA o la verificación precisa requieren Gemini configurado en Ajustes.
+
+**Proceso:**
+1. Ingestar y validar el vídeo; descargar YouTube a almacenamiento local para poder recortarlo.
+2. En modo IA, analizar imagen y audio con marcas temporales y proponer candidatos de 15–60 s
+   (hasta 90 s) con puntuaciones separadas, evidencia y explicación editorial.
+3. En modo JSON, conservar exactamente cortes, orden, hooks y justificaciones. **Directo** reparte
+   localmente el texto dentro de cada intervalo, sin llamada ni crédito IA. **Gemini** no vuelve a
+   seleccionar: escucha únicamente los intervalos indicados, corrige la transcripción literal y la
+   divide en cues; si texto y audio no coinciden, bloquea el trabajo con la causa.
+4. Validar tiempos contra la duración real, descartar baja confianza, fusionar solapamientos y no
+   rellenar el ranking con material débil. Un mismo momento puede pertenecer a ambos rankings.
+5. Renderizar cada candidato único a 1080×1920 conservando el encuadre completo sobre fondo
+   desenfocado, mantener el audio original y quemar subtítulos temporizados en zona segura.
+
+**Salida:** historial de análisis y dos rankings de máximo 10 resultados: **Top virales** y
+**Top polémicos**. Cada tarjeta muestra preview, scores, duración, timecode original, hook,
+evidencia, motivo, contexto/riesgo editorial y descarga. Si no existen diez momentos sólidos se
+muestra el número real y la razón.
+
+**Criterios de aceptación:** no hay cortes fuera de la duración real ni duplicados fuertemente
+solapados; ningún candidato con confianza o score insuficiente se presenta como Top; la UI
+diferencia análisis y render; los errores por herramienta/proveedor son accionables; los resultados
+persisten localmente y pueden eliminarse o reintentarse. En modo JSON no se inventan scores ni se
+reordenan rankings, y ningún subtítulo se quema si la coincidencia audio/texto es insuficiente.
+El modo directo debe declarar visualmente que no verificó el audio y permitir un montaje completo
+sin exigir una API key de Gemini.
 
 ---
 

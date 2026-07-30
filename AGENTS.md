@@ -219,6 +219,11 @@ prisma/schema.prisma          Modelo de datos multiproyecto
 - **REQ-016** (pulido UX/ejecución): **implementado**. Pipelines con mayor separación y SSE reconectable,
   cursor/scrollbars/sidebar compacta, y preflight de login compartido que reconoce `identifier`, valida
   sesiones y autentica fuera del vídeo. Dry-run real de ICG Vault `/my-list` verificado; falta grabación real.
+- **REQ-018** (laboratorio de clips): **implementado** en
+  `codex/viral-controversial-clips`. Entrada por vídeo local o YouTube, análisis multimodal temporal,
+  Top 10 viral/polémico con umbrales o JSON editorial excluyente, timing directo sin créditos o
+  alineación audio/texto Gemini, render vertical FFmpeg y subtítulos sin solapes. Pendiente
+  validación real con una fuente elegida por el usuario.
 - **Rediseño visual (2026-07-18):** componentes reutilizables `Carousel3D`/`ExpandableCarousel`/
   `ScoreBar`/`EntityLogo`/`MiniMap`/`CardArt`/`ProjectsCarousel` (sin paquetes ni keys). Dashboard y
   secciones competencia/leads/virales con **carrusel 360 + detalle desplegable**, scoring, logos por
