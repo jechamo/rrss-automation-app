@@ -99,14 +99,20 @@ async function processClipJob(id: string): Promise<void> {
           "Sincronía validada. Gemini no ha modificado cortes ni rankings; solo ha temporizado la transcripción literal.",
         );
       } else {
+        const synchronizedCount = selection.moments.filter(
+          (moment) => moment.sourceCues?.length,
+        ).length;
         appendClipLog(
           id,
-          `Fuente validada: ${formatDuration(duration)}. Modo directo sin Gemini: se respetan ${selection.moments.length} corte(s) y el texto se temporiza localmente.`,
+          `Fuente validada: ${formatDuration(duration)}. Modo directo sin Gemini: se respetan `
+          + `${selection.moments.length} corte(s); ${synchronizedCount} incluyen subtítulos sincronizados en el JSON.`,
         );
         selection = applyDirectImportedTranscript(selection);
         appendClipLog(
           id,
-          "JSON validado sin consumo de IA. La sincronía depende de los timecodes y la transcripción aportados.",
+          synchronizedCount === selection.moments.length
+            ? "JSON validado sin consumo de IA. Se usarán exactamente los cues y timecodes de subtítulos aportados."
+            : "JSON validado sin consumo de IA. Los cortes sin subtitulos_sincronizados usan el reparto proporcional compatible con el formato anterior.",
         );
       }
       updateClipJob(id, { selection, stage: "selection", progress: 52 });

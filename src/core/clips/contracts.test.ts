@@ -189,7 +189,33 @@ test("bloquea un JSON cuyo texto no coincide con el audio alineado", () => {
   }), /no coincide suficientemente/);
 });
 
-test("temporiza el JSON directamente sin inventar análisis ni cambiar intervalos", () => {
+test("usa directamente los subtítulos sincronizados del nuevo JSON sin Gemini", () => {
+  const plan = parseImportedClipPlan({
+    top_10_virales: [{
+      ranking: 1,
+      start_time: "00:01:00",
+      end_time: "00:01:20",
+      hook_inicial: "Esta es una prueba determinista.",
+      transcripcion_completa: "Esta es una prueba determinista con subtítulos ya temporizados.",
+      justificacion: "Permite probar el montaje sin consumir Gemini.",
+      subtitulos_sincronizados: [
+        { start_time: "00:01:00", end_time: "00:01:07", texto: "Esta es una prueba determinista." },
+        { start_time: "00:01:09", end_time: "00:01:20", texto: "Los tiempos vienen exactamente del JSON." },
+      ],
+    }],
+  });
+  const direct = applyDirectImportedTranscript(selectionFromImportedPlan(plan, 180));
+  const moment = direct.moments[0];
+  const cues = subtitleCuesForMoment(direct, moment);
+
+  assert.equal(moment.subtitleSource, "synced_json");
+  assert.deepEqual(cues.map((cue) => [cue.start, cue.end, cue.text]), [
+    [0, 7, "Esta es una prueba determinista."],
+    [9, 20, "Los tiempos vienen exactamente del JSON."],
+  ]);
+});
+
+test("mantiene el reparto proporcional para JSON anteriores sin cues sincronizados", () => {
   const plan = parseImportedClipPlan({
     top_10_virales: [{
       ranking: 1,
@@ -209,7 +235,68 @@ test("temporiza el JSON directamente sin inventar análisis ni cambiar intervalo
   assert.equal(moment.start, 60);
   assert.equal(moment.end, 80);
   assert.equal(moment.alignmentScore, undefined);
+  assert.equal(moment.subtitleSource, "transcript_fallback");
   assert.equal(cues[0].start, 0);
   assert.equal(cues.at(-1)?.end, 20);
   assert.equal(cues.map((cue) => cue.text).join(" "), moment.sourceTranscript);
+});
+
+test("rechaza subtítulos sincronizados solapados o fuera del corte", () => {
+  assert.throws(() => parseImportedClipPlan({
+    top_10_polemicos: [{
+      ranking: 1,
+      start_time: "00:00:20",
+      end_time: "00:00:40",
+      hook_inicial: "Un corte polémico.",
+      transcripcion_completa: "Texto suficiente para validar el corte polémico.",
+      justificacion: "Genera debate.",
+      subtitulos_sincronizados: [
+        { start_time: "00:00:20", end_time: "00:00:30", texto: "Primer cue." },
+        { start_time: "00:00:29", end_time: "00:00:35", texto: "Cue solapado." },
+      ],
+    }],
+  }), /solapan o no están ordenados/);
+
+  assert.throws(() => parseImportedClipPlan({
+    top_10_virales: [{
+      ranking: 1,
+      start_time: "00:00:20",
+      end_time: "00:00:40",
+      hook_inicial: "Un corte viral.",
+      transcripcion_completa: "Texto suficiente para validar el corte viral.",
+      justificacion: "Puede compartirse.",
+      subtitulos_sincronizados: [
+        { start_time: "00:00:19", end_time: "00:00:25", texto: "Cue fuera del corte." },
+      ],
+    }],
+  }), /queda fuera del corte/);
+});
+
+test("rechaza cues distintos para el mismo corte compartido por ambos rankings", () => {
+  const plan = parseImportedClipPlan({
+    top_10_virales: [{
+      ranking: 1,
+      start_time: "00:00:20",
+      end_time: "00:00:40",
+      hook_inicial: "El mismo corte.",
+      transcripcion_completa: "Una transcripción compartida por ambos rankings.",
+      justificacion: "Tiene potencial viral.",
+      subtitulos_sincronizados: [
+        { start_time: "00:00:20", end_time: "00:00:30", texto: "Versión viral." },
+      ],
+    }],
+    top_10_polemicos: [{
+      ranking: 1,
+      start_time: "00:00:20",
+      end_time: "00:00:40",
+      hook_inicial: "El mismo corte.",
+      transcripcion_completa: "Una transcripción compartida por ambos rankings.",
+      justificacion: "También genera debate.",
+      subtitulos_sincronizados: [
+        { start_time: "00:00:20", end_time: "00:00:30", texto: "Versión polémica." },
+      ],
+    }],
+  });
+
+  assert.throws(() => selectionFromImportedPlan(plan, 120), /subtítulos_sincronizados diferentes/);
 });

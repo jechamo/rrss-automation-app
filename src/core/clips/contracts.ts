@@ -32,6 +32,8 @@ export interface ClipMoment {
   importedRankViral?: number;
   importedRankControversial?: number;
   sourceTranscript?: string;
+  sourceCues?: TranscriptCue[];
+  subtitleSource?: "synced_json" | "transcript_fallback" | "gemini";
   alignedTranscript?: string;
   alignmentScore?: number;
   outputName?: string;
@@ -58,6 +60,7 @@ export interface ImportedClipEntry {
   hook: string;
   transcript: string;
   justification: string;
+  subtitles?: TranscriptCue[];
 }
 
 export interface ImportedClipPlan {
@@ -155,12 +158,20 @@ export function selectionFromImportedPlan(
         risk: "low",
         riskReason: "",
         sourceTranscript: entry.transcript,
+        sourceCues: entry.subtitles,
       };
       moments.push(moment);
     } else if ((moment.sourceTranscript?.length ?? 0) < entry.transcript.length) {
       moment.sourceTranscript = entry.transcript;
       moment.evidence = entry.transcript.slice(0, 500);
     }
+    if (moment.sourceCues?.length && entry.subtitles?.length && !sameCues(moment.sourceCues, entry.subtitles)) {
+      throw new Error(
+        `El intervalo ${formatTimestamp(entry.start)}–${formatTimestamp(entry.end)} aparece en ambos rankings `
+        + "con subtítulos_sincronizados diferentes. Usa los mismos cues para evitar un montaje ambiguo.",
+      );
+    }
+    if (!moment.sourceCues?.length && entry.subtitles?.length) moment.sourceCues = entry.subtitles;
 
     if (category === "viral") {
       moment.importedRankViral = entry.ranking;
@@ -245,6 +256,7 @@ export function applyImportedAlignment(
     return {
       ...moment,
       alignmentScore: Math.min(alignmentScore, Math.round(coverage * 100)),
+      subtitleSource: "gemini" as const,
       alignedTranscript,
       evidence: alignedTranscript.slice(0, 500),
     };
@@ -260,6 +272,19 @@ export function applyImportedAlignment(
 export function applyDirectImportedTranscript(selection: ClipSelection): ClipSelection {
   const transcript: TranscriptCue[] = [];
   const moments = selection.moments.map((moment) => {
+    if (moment.sourceCues?.length) {
+      transcript.push(...moment.sourceCues.map((cue) => ({
+        ...cue,
+        momentId: moment.id,
+      })));
+      const syncedText = moment.sourceCues.map((cue) => cue.text).join(" ");
+      return {
+        ...moment,
+        subtitleSource: "synced_json" as const,
+        alignedTranscript: syncedText,
+        evidence: syncedText.slice(0, 500),
+      };
+    }
     const groups = wordGroups(moment.sourceTranscript ?? "", 7);
     if (groups.length === 0) {
       throw new Error(`El JSON no contiene transcripción para «${moment.title}».`);
@@ -287,6 +312,7 @@ export function applyDirectImportedTranscript(selection: ClipSelection): ClipSel
     });
     return {
       ...moment,
+      subtitleSource: "transcript_fallback" as const,
       alignedTranscript: moment.sourceTranscript,
       evidence: (moment.sourceTranscript ?? "").slice(0, 500),
     };
@@ -473,11 +499,76 @@ function parseImportedEntries(input: unknown, label: string): ImportedClipEntry[
         `Faltan hook_inicial, transcripcion_completa o justificacion en top_10_${label}, ranking ${ranking}.`,
       );
     }
+    const subtitles = parseImportedSubtitles(
+      value.subtitulos_sincronizados,
+      start,
+      end,
+      label,
+      ranking,
+    );
     usedRanks.add(ranking);
     usedWindows.add(windowKey);
-    return { ranking, start, end, hook, transcript, justification };
+    return { ranking, start, end, hook, transcript, justification, subtitles };
   });
   return entries.sort((a, b) => a.ranking - b.ranking);
+}
+
+function parseImportedSubtitles(
+  input: unknown,
+  clipStart: number,
+  clipEnd: number,
+  label: string,
+  ranking: number,
+): TranscriptCue[] | undefined {
+  if (input === undefined) return undefined;
+  if (!Array.isArray(input) || input.length === 0) {
+    throw new Error(
+      `subtitulos_sincronizados debe contener al menos un cue en top_10_${label}, ranking ${ranking}.`,
+    );
+  }
+  if (input.length > 200) {
+    throw new Error(
+      `subtitulos_sincronizados supera el máximo de 200 cues en top_10_${label}, ranking ${ranking}.`,
+    );
+  }
+  let previousEnd = clipStart;
+  return input.map((entry, index): TranscriptCue => {
+    const value = obj(entry);
+    const start = parseTimestamp(value.start_time ?? value.start ?? value.desde);
+    const end = parseTimestamp(value.end_time ?? value.end ?? value.hasta);
+    const cueText = text(value.texto ?? value.text, 1_000);
+    if (!cueText || end - start < 0.08) {
+      throw new Error(
+        `Cue ${index + 1} inválido en subtitulos_sincronizados de top_10_${label}, ranking ${ranking}.`,
+      );
+    }
+    if (start < clipStart - 0.05 || end > clipEnd + 0.05) {
+      throw new Error(
+        `Cue ${index + 1} de top_10_${label}, ranking ${ranking}, queda fuera del corte `
+        + `${formatTimestamp(clipStart)}–${formatTimestamp(clipEnd)}.`,
+      );
+    }
+    if (start < previousEnd - 0.01) {
+      throw new Error(
+        `Los subtítulos se solapan o no están ordenados en top_10_${label}, ranking ${ranking}, cue ${index + 1}.`,
+      );
+    }
+    previousEnd = end;
+    return {
+      start: round2(Math.max(clipStart, start)),
+      end: round2(Math.min(clipEnd, end)),
+      text: cueText,
+    };
+  });
+}
+
+function sameCues(a: TranscriptCue[], b: TranscriptCue[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((cue, index) =>
+    Math.abs(cue.start - b[index].start) <= 0.01
+    && Math.abs(cue.end - b[index].end) <= 0.01
+    && cue.text === b[index].text
+  );
 }
 
 function validateImportedTime(

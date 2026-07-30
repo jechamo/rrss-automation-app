@@ -25,7 +25,7 @@
 | REQ-014 | Confianza operativa y navegación autenticada | 🟡 Implementado — pendiente validar recorrido real en ChaFit tras login |
 | REQ-015 | Mapa funcional multimenú de la app | 🟡 Implementado — pendiente regenerar un proyecto y validar sus rutas privadas con login real |
 | REQ-016 | Pulido visual, SSE y login Playwright | 🟡 Implementado — dry-run ICG Vault validado; pendiente prueba del usuario con grabación real |
-| REQ-018 | Laboratorio de clips virales y polémicos | 🟡 Implementado — validación técnica completa; pendiente prueba real del usuario con una fuente y consumo Gemini |
+| REQ-018 | Laboratorio de clips virales y polémicos | 🟡 Implementado — validación técnica completa; pendiente prueba real del usuario con una fuente |
 
 Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
@@ -46,6 +46,9 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 - Bajo JSON, **Directo · sin Gemini** temporiza los textos localmente y permite probar el render
   completo sin key ni créditos; la UI y los logs advierten que el audio no fue comprobado.
   **Verificar con Gemini** queda como opción precisa y separada.
+- El contrato actualizado del agente admite `subtitulos_sincronizados` por corte. Directo usa
+  exactamente esos textos y timecodes absolutos, valida límites/orden/solapes y deja el reparto
+  proporcional únicamente como compatibilidad explícita para JSON anteriores.
 - Para evitar subtítulos desincronizados, Gemini no reselecciona en este modo: realiza alineación
   forzada solo dentro de los cortes aportados. Si la coincidencia semántica/temporal es insuficiente,
   bloquea el render y señala qué entrada debe corregirse.
@@ -59,7 +62,7 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
   override `GEMINI_VIDEO_MODEL`, y mantiene el borrado remoto best-effort.
 - Los subtítulos de todos los montajes introducen 120 ms de separación y eliminan eventos ASS
   simultáneos; tamaño y zona segura inferior se conservan.
-- Verificación: TypeScript, 42/42 contratos, render ASS real con FFmpeg y build de producción.
+- Verificación: TypeScript, 45/45 contratos, render ASS real con FFmpeg y build de producción.
   Revisión visual local a 1280, 1024 y 768 px sin desbordamiento; no se consumieron créditos Gemini.
 
 ### 2026-07-27 — REQ-004: histórico por autor, confianza y presupuesto

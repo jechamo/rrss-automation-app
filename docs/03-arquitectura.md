@@ -692,15 +692,17 @@ locución como pista maestra, mezcla música opcional, quema ASS y crea `mix-<id
   trabajo; `data/` continúa fuera de Git.
 - `core/clips/contracts.ts` coerciona el JSON multimodal, valida score/confianza, duración,
   solapamiento y rankings. También normaliza el contrato editorial
-  `top_10_virales`/`top_10_polemicos` sin recalcular su orden.
+  `top_10_virales`/`top_10_polemicos` sin recalcular su orden y valida que cada cue de
+  `subtitulos_sincronizados` sea no vacío, ordenado, no solapado y esté dentro de su corte.
 - `core/clips/analyze.ts` usa Gemini Files API sobre el fichero local y exige JSON temporal con
   transcripción y evidencia. La API key solo se lee desde el Secret Vault.
 - `core/clips/align.ts` es una ruta separada para JSON importado: Gemini recibe solo los intervalos
   ya elegidos y devuelve cues literales absolutos. `applyImportedAlignment()` comprueba límites,
   cobertura textual y coincidencia mínima antes de permitir el render.
-- `applyDirectImportedTranscript()` genera cues proporcionales dentro de cada intervalo sin red ni
-  Gemini. Mantiene `momentId` para que dos cortes solapados no mezclen subtítulos y marca
-  `jsonTiming:"direct"` para que UI/logs nunca lo presenten como audio verificado.
+- `applyDirectImportedTranscript()` usa primero los cues absolutos aportados por el JSON, sin red ni
+  Gemini; solo genera cues proporcionales para manifiestos anteriores sin el campo nuevo. Mantiene
+  `momentId` para que dos cortes solapados no mezclen subtítulos y marca en cada momento
+  `subtitleSource:"synced_json"|"transcript_fallback"` para que UI/logs expliquen qué ocurrió.
 - `core/clips/processor.ts` orquesta ingestión YouTube con yt-dlp, análisis, selección y render,
   persistiendo etapa/progreso/logs para polling.
 - `core/clips/render.ts` usa FFmpeg asíncrono: recorta por timecode, compone 1080×1920 con fondo

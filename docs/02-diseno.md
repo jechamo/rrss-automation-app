@@ -416,8 +416,9 @@ prompts y generar». El selector de modelo incluye versión, perfil y coste por 
 - Bloque excluyente `Descubrir con IA | Usar mi JSON`. El segundo ofrece textarea con ejemplo y
   carga `.json`; deja claro que rankings/timecodes son autoritativos.
 - Bajo JSON aparecen `Directo · sin Gemini` (seleccionado inicialmente, badge 0 créditos IA) y
-  `Verificar con Gemini` (más preciso). Avisos y resultados distinguen timing local de sincronía
-  realmente comprobada.
+  `Verificar con Gemini` (más preciso). Directo usa literalmente `subtitulos_sincronizados` cuando
+  están presentes y muestra una confirmación verde; si recibe el formato anterior, avisa en ámbar
+  de que aplicó el reparto proporcional compatible. Gemini mantiene su etiqueta de audio comprobado.
 - El trabajo activo muestra cinco etapas: `Fuente → Comprensión → Selección → Render vertical →
   Resultados`, progreso, logs y error accionable.
 - Resultado en dos pestañas: **Top virales** y **Top polémicos**, cada una con un contador real

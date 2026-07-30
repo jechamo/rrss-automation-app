@@ -22,7 +22,14 @@ const JSON_PLACEHOLDER = `{
     "end_time": "00:13:05",
     "hook_inicial": "Frase exacta con la que empieza",
     "transcripcion_completa": "Texto completo del fragmento...",
-    "justificacion": "Por qué puede ser viral."
+    "justificacion": "Por qué puede ser viral.",
+    "subtitulos_sincronizados": [
+      {
+        "start_time": "00:12:30",
+        "end_time": "00:12:34",
+        "texto": "Primer subtítulo ya sincronizado."
+      }
+    ]
   }],
   "top_10_polemicos": []
 }`;
@@ -53,6 +60,12 @@ export function ClipLab() {
   const [confirmDelete, setConfirmDelete] = useState<string>("");
 
   const selected = jobs.find((job) => job.id === selectedId) ?? null;
+  const directUsesSyncedCues = Boolean(
+    selected?.selection?.source === "json"
+    && selected.selection.jsonTiming === "direct"
+    && selected.selection.moments.length > 0
+    && selected.selection.moments.every((moment) => moment.subtitleSource === "synced_json"),
+  );
 
   const load = useCallback(async () => {
     try {
@@ -247,8 +260,9 @@ export function ClipLab() {
                       <span className="rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] text-emerald-200">0 créditos IA</span>
                     </div>
                     <p className="mt-1 text-[11px] leading-relaxed text-white/45">
-                      Usa exactamente texto y tiempos del JSON. Los cues se reparten localmente;
-                      ideal para probar cuando ya sabes que la transcripción encaja.
+                      Usa exactamente <code className="text-emerald-100/70">subtitulos_sincronizados</code> y
+                      sus timecodes, sin escuchar el audio. El formato anterior sigue disponible
+                      como respaldo proporcional.
                     </p>
                   </button>
                   <button
@@ -304,13 +318,13 @@ export function ClipLab() {
                     </label>
                     <div className={`rounded-xl border p-3 text-[11px] leading-relaxed text-white/50 ${jsonTiming === "gemini" ? "border-cyan-300/15 bg-cyan-300/5" : "border-amber-300/15 bg-amber-300/5"}`}>
                       <div className={`font-semibold ${jsonTiming === "gemini" ? "text-cyan-100" : "text-amber-100"}`}>
-                        {jsonTiming === "gemini" ? "Protección de sincronía activa" : "Sin verificación del audio"}
+                        {jsonTiming === "gemini" ? "Protección de sincronía activa" : "Timing exacto del JSON"}
                       </div>
                       <p className="mt-1">
                         Cada corte debe durar 10–90 s y quedar dentro del vídeo.
                         {jsonTiming === "gemini"
                           ? " Si el texto no coincide con el audio, el render se bloquea."
-                          : " No se consumirá Gemini; revisa el resultado porque la sincronía depende de tu JSON."}
+                          : " No se consumirá Gemini; con subtitulos_sincronizados el resultado será totalmente determinista."}
                       </p>
                     </div>
                   </div>
@@ -407,10 +421,13 @@ export function ClipLab() {
                 </div>
               </div>
               {selected.selection.source === "json" && selected.selection.jsonTiming === "direct" && (
-                <div className="rounded-xl border border-amber-300/20 bg-amber-300/5 p-4 text-xs leading-relaxed text-amber-100/75">
-                  <span className="font-semibold">Modo directo sin Gemini.</span>{" "}
-                  Los subtítulos usan el texto y los intervalos del JSON sin escuchar el audio.
-                  Reproduce los clips para confirmar la sincronía o crea otro trabajo con verificación Gemini.
+                <div className={`rounded-xl border p-4 text-xs leading-relaxed ${directUsesSyncedCues ? "border-emerald-300/20 bg-emerald-300/5 text-emerald-100/75" : "border-amber-300/20 bg-amber-300/5 text-amber-100/75"}`}>
+                  <span className="font-semibold">
+                    {directUsesSyncedCues ? "Subtítulos sincronizados desde el JSON." : "Modo directo compatible."}
+                  </span>{" "}
+                  {directUsesSyncedCues
+                    ? "Se han respetado exactamente sus textos y timecodes, sin consumir Gemini."
+                    : "Algún corte no incluía subtitulos_sincronizados y se ha temporizado proporcionalmente desde transcripcion_completa."}
                 </div>
               )}
               {selected.selection.moments.some((moment) => moment.renderError) && (
@@ -491,7 +508,9 @@ function RankingTabs({ job, ranking, setRanking }: { job: ClipJob; ranking: Rank
           {selection.source === "json"
             ? selection.jsonTiming === "gemini"
               ? "Orden editorial importado · audio y texto sincronizados"
-              : "Orden editorial importado · temporizado local sin Gemini"
+              : selection.moments.every((moment) => moment.subtitleSource === "synced_json")
+                ? "Orden editorial importado · cues exactos del JSON · 0 créditos IA"
+                : "Orden editorial importado · compatibilidad proporcional · 0 créditos IA"
             : `${selection.rejectedCount} candidato(s) descartado(s) por calidad o solapamiento`}
         </span>
       </div>
@@ -554,7 +573,9 @@ function MomentCard({
             {imported
               ? jsonTiming === "gemini"
                 ? `sincronía ${moment.alignmentScore ?? 0}%`
-                : "timing del JSON"
+                : moment.subtitleSource === "synced_json"
+                  ? "cues sincronizados del JSON"
+                  : "timing proporcional compatible"
               : `confianza ${moment.confidence}%`}
           </div>
         </div>

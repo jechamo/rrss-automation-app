@@ -221,8 +221,9 @@ prisma/schema.prisma          Modelo de datos multiproyecto
   sesiones y autentica fuera del vídeo. Dry-run real de ICG Vault `/my-list` verificado; falta grabación real.
 - **REQ-018** (laboratorio de clips): **implementado** en
   `codex/viral-controversial-clips`. Entrada por vídeo local o YouTube, análisis multimodal temporal,
-  Top 10 viral/polémico con umbrales o JSON editorial excluyente, timing directo sin créditos o
-  alineación audio/texto Gemini, render vertical FFmpeg y subtítulos sin solapes. Pendiente
+  Top 10 viral/polémico con umbrales o JSON editorial excluyente, cues sincronizados aportados por
+  el agente para render directo sin créditos o alineación audio/texto Gemini, render vertical
+  FFmpeg y subtítulos sin solapes. Pendiente
   validación real con una fuente elegida por el usuario.
 - **Rediseño visual (2026-07-18):** componentes reutilizables `Carousel3D`/`ExpandableCarousel`/
   `ScoreBar`/`EntityLogo`/`MiniMap`/`CardArt`/`ProjectsCarousel` (sin paquetes ni keys). Dashboard y

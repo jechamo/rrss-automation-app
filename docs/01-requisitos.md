@@ -547,8 +547,9 @@ editorial, priorizando por separado los momentos con mayor potencial **viral** y
 
 **Entrada:** un fichero de vídeo local (MP4, MOV, WebM o M4V; máximo 500 MB) o una URL pública de
 YouTube. La elección de cortes es excluyente: **Descubrir con IA** o **Usar mi JSON**, mediante el
-esquema `top_10_virales`/`top_10_polemicos` con ranking, inicio, fin, hook, transcripción completa y
-justificación. El JSON puede pegarse o cargarse como fichero y ofrece dos temporizados: **Directo**
+esquema `top_10_virales`/`top_10_polemicos` con ranking, inicio, fin, hook, transcripción completa,
+justificación y `subtitulos_sincronizados[]` (`start_time`, `end_time`, `texto`). El JSON puede
+pegarse o cargarse como fichero y ofrece dos temporizados: **Directo**
 sin Gemini o **Verificar con Gemini**. YouTube requiere yt-dlp; todo render requiere FFmpeg/ffprobe;
 el descubrimiento IA o la verificación precisa requieren Gemini configurado en Ajustes.
 
@@ -556,10 +557,12 @@ el descubrimiento IA o la verificación precisa requieren Gemini configurado en 
 1. Ingestar y validar el vídeo; descargar YouTube a almacenamiento local para poder recortarlo.
 2. En modo IA, analizar imagen y audio con marcas temporales y proponer candidatos de 15–60 s
    (hasta 90 s) con puntuaciones separadas, evidencia y explicación editorial.
-3. En modo JSON, conservar exactamente cortes, orden, hooks y justificaciones. **Directo** reparte
-   localmente el texto dentro de cada intervalo, sin llamada ni crédito IA. **Gemini** no vuelve a
-   seleccionar: escucha únicamente los intervalos indicados, corrige la transcripción literal y la
-   divide en cues; si texto y audio no coinciden, bloquea el trabajo con la causa.
+3. En modo JSON, conservar exactamente cortes, orden, hooks y justificaciones. **Directo** usa sin
+   alteración los cues absolutos de `subtitulos_sincronizados`, sin llamada ni crédito IA; para JSON
+   anteriores que no tengan ese campo mantiene el reparto proporcional como compatibilidad visible.
+   Rechaza cues vacíos, solapados, desordenados o fuera del corte. **Gemini** no vuelve a seleccionar:
+   escucha únicamente los intervalos indicados, corrige la transcripción literal y la divide en cues;
+   si texto y audio no coinciden, bloquea el trabajo con la causa.
 4. Validar tiempos contra la duración real, descartar baja confianza, fusionar solapamientos y no
    rellenar el ranking con material débil. Un mismo momento puede pertenecer a ambos rankings.
 5. Renderizar cada candidato único a 1080×1920 conservando el encuadre completo sobre fondo
