@@ -3,6 +3,17 @@ import path from "node:path";
 import { execFile, execFileSync } from "node:child_process";
 import { promisify } from "node:util";
 import { systemToolPath } from "./bintools";
+import { ffprobeHasAudio, ffprobeHasVideo } from "./ffmpeg";
+import {
+  clipDownloadFormatSelector,
+  isClipDownloadArtifact,
+  isClipDownloadCandidate,
+} from "./ytdlp-contracts";
+
+export {
+  clipDownloadFormatSelector,
+  isClipDownloadCandidate,
+} from "./ytdlp-contracts";
 
 // yt-dlp: binario del sistema OPCIONAL (como ffmpeg) para descargar videos de
 // TikTok/Instagram/etc. y analizarlos con Gemini (Files API). Degradacion:
@@ -10,6 +21,7 @@ import { systemToolPath } from "./bintools";
 
 const TMP_DIR = path.join(process.cwd(), "data", "tmp");
 const execFileAsync = promisify(execFile);
+const CLIP_MAX_FILESIZE_MB = 2_048;
 
 /** ¿Esta yt-dlp disponible en PATH, override o WinGet? */
 export function hasYtDlp(): boolean {
@@ -51,37 +63,79 @@ export function downloadVideo(url: string, maxFilesizeMb = 200): string {
   return created[0];
 }
 
-/** Descarga asíncrona a un directorio concreto para procesos largos como REQ-017. */
+function cleanupPreviousClipDownload(outputDir: string): void {
+  for (const name of fs.readdirSync(outputDir)) {
+    if (!isClipDownloadArtifact(name)) continue;
+    fs.rmSync(path.join(outputDir, name), { force: true });
+  }
+}
+
+function partialDownloadBytes(outputDir: string): number {
+  return fs.readdirSync(outputDir)
+    .filter((name) => name.endsWith(".part") && isClipDownloadArtifact(name))
+    .reduce((total, name) => total + fs.statSync(path.join(outputDir, name)).size, 0);
+}
+
+/** Descarga asíncrona a un directorio concreto para procesos largos como REQ-018. */
 export async function downloadVideoTo(
   url: string,
   outputDir: string,
-  maxFilesizeMb = 500,
+  maxFilesizeMb = CLIP_MAX_FILESIZE_MB,
 ): Promise<string> {
   const binary = systemToolPath("yt-dlp");
   if (!binary) throw new Error("yt-dlp no está instalado.");
   fs.mkdirSync(outputDir, { recursive: true });
+  cleanupPreviousClipDownload(outputDir);
   const template = path.join(outputDir, "source.%(ext)s");
-  await execFileAsync(
-    binary,
-    [
-      "--no-playlist",
-      "--max-filesize", `${maxFilesizeMb}M`,
-      "--merge-output-format", "mp4",
-      "-f", "bv*+ba/b",
-      "-o", template,
-      url,
-    ],
-    {
-      timeout: 12 * 60_000,
-      maxBuffer: 16 * 1024 * 1024,
-      windowsHide: true,
-    },
-  );
-  const created = fs.readdirSync(outputDir)
-    .filter((name) => /^source\.(?:mp4|webm|mov|mkv|m4v)$/i.test(name))
-    .map((name) => path.join(outputDir, name));
-  if (created.length === 0) {
-    throw new Error("yt-dlp no produjo un vídeo utilizable. Comprueba que sea público.");
+  let stderr = "";
+  try {
+    const result = await execFileAsync(
+      binary,
+      [
+        "--no-playlist",
+        "--no-progress",
+        "--max-filesize", `${maxFilesizeMb}M`,
+        "--merge-output-format", "mp4",
+        "-f", clipDownloadFormatSelector(maxFilesizeMb),
+        "-o", template,
+        url,
+      ],
+      {
+        timeout: 30 * 60_000,
+        maxBuffer: 16 * 1024 * 1024,
+        windowsHide: true,
+        encoding: "utf8",
+      },
+    );
+    stderr = result.stderr;
+  } catch (error) {
+    const detail = error && typeof error === "object" && "stderr" in error
+      ? String((error as { stderr?: unknown }).stderr ?? "")
+      : "";
+    const concise = detail.trim().split(/\r?\n/).filter(Boolean).at(-1);
+    throw new Error(
+      concise
+        ? `yt-dlp no pudo completar la descarga: ${concise}`
+        : "yt-dlp no pudo completar la descarga de YouTube.",
+    );
   }
-  return created[0];
+  const created = fs.readdirSync(outputDir)
+    .filter(isClipDownloadCandidate)
+    .map((name) => path.join(outputDir, name))
+    .filter((file) => ffprobeHasVideo(file) && ffprobeHasAudio(file));
+  if (created.length === 0) {
+    const partialMb = Math.round(partialDownloadBytes(outputDir) / (1024 * 1024));
+    if (partialMb > 0) {
+      throw new Error(
+        `La descarga de YouTube quedó incompleta (${partialMb} MB parciales). `
+        + `El formato disponible supera el límite operativo de ${maxFilesizeMb} MB.`,
+      );
+    }
+    const lastDetail = stderr.trim().split(/\r?\n/).filter(Boolean).at(-1);
+    throw new Error(
+      "yt-dlp terminó sin generar un archivo final con vídeo y audio"
+      + (lastDetail ? `: ${lastDetail}` : "."),
+    );
+  }
+  return created.sort((a, b) => fs.statSync(b).size - fs.statSync(a).size)[0];
 }

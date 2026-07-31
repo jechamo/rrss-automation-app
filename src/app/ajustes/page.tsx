@@ -22,7 +22,7 @@ type SystemTool = {
   found: boolean;
   path: string;
   version: string;
-  source: "env" | "path" | "winget" | "missing";
+  source: "env" | "path" | "winget" | "project" | "missing";
   installHint: string;
 };
 

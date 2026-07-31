@@ -686,10 +686,19 @@ locución como pista maestra, mezcla música opcional, quema ASS y crea `mix-<id
 ### REQ-018 — Laboratorio de clips
 
 - Sección global `/clips` y APIs `/api/clips`, `/api/clips/:id`,
-  `/api/clips/:id/asset` y `/api/clips/:id/retry`.
+  `/api/clips/:id/asset`, `/api/clips/:id/retry`, `/api/clips/:id/regenerate` y
+  `/api/clips/:id/resume`, `/api/clips/:id/moments/:momentId/render`.
 - Persistencia local sin migración: cada trabajo vive en `data/clips/<id>/manifest.json`, junto al
   vídeo fuente, ASS, clips MP4 y miniaturas. Escritura atómica y rutas confinadas al directorio del
   trabajo; `data/` continúa fuera de Git.
+- `DELETE /api/clips?scope=outputs|history` separa la limpieza de derivados y el vaciado completo.
+  `outputs` elimina solo nombres generados desde el manifiesto y conserva la fuente y la selección;
+  `history` recorre IDs de trabajo validados y elimina sus directorios individualmente. Ambos se
+  rechazan si `processor` mantiene un trabajo activo.
+- `POST /regenerate` crea una nueva entrada y reutiliza `source.*` con hard link local (copia como
+  fallback), de modo que se conservan el original y todas las variantes de análisis sin descargar
+  nuevamente fuentes largas. `POST /moments/:momentId/render` serializa por trabajo y reemplaza
+  únicamente el derivado elegido con CC, Whisper o Gemini.
 - `core/clips/contracts.ts` coerciona el JSON multimodal, valida score/confianza, duración,
   solapamiento y rankings. También normaliza el contrato editorial
   `top_10_virales`/`top_10_polemicos` sin recalcular su orden y valida que cada cue de
@@ -699,14 +708,30 @@ locución como pista maestra, mezcla música opcional, quema ASS y crea `mix-<id
 - `core/clips/align.ts` es una ruta separada para JSON importado: Gemini recibe solo los intervalos
   ya elegidos y devuelve cues literales absolutos. `applyImportedAlignment()` comprueba límites,
   cobertura textual y coincidencia mínima antes de permitir el render.
-- `applyDirectImportedTranscript()` usa primero los cues absolutos aportados por el JSON, sin red ni
-  Gemini; solo genera cues proporcionales para manifiestos anteriores sin el campo nuevo. Mantiene
-  `momentId` para que dos cortes solapados no mezclen subtítulos y marca en cada momento
-  `subtitleSource:"synced_json"|"transcript_fallback"` para que UI/logs expliquen qué ocurrió.
+- `applyDirectImportedTranscript()` usa los cues absolutos aportados por el JSON, sin red ni Gemini.
+  Si faltan deja el momento pendiente para CC/Whisper: no fabrica tiempos proporcionales. Mantiene
+  `momentId` para que dos cortes solapados no mezclen subtítulos.
+- `core/clips/youtube-captions.ts` descarga JSON3 manual/automático con yt-dlp, prioriza español y
+  cachea cues normalizados. Si yt-dlp termina con código no cero después de escribir una pista
+  válida, recupera y valida primero el JSON3 producido; los errores incluyen la causa real y una
+  caché vacía nunca bloquea reintentos. Solo asigna CC a momentos sin cues editoriales.
+- `core/clips/local-transcription.ts` ejecuta `whisper.cpp` local con el modelo multilingüe `small`
+  sobre WAV mono 16 kHz del intervalo exacto. Interpreta su JSON temporal y no usa API.
+  `subtitleSource` distingue `synced_json`, `youtube_cc`, `local_whisper` y `gemini`.
 - `core/clips/processor.ts` orquesta ingestión YouTube con yt-dlp, análisis, selección y render,
-  persistiendo etapa/progreso/logs para polling.
-- `core/clips/render.ts` usa FFmpeg asíncrono: recorta por timecode, compone 1080×1920 con fondo
-  desenfocado, conserva el audio, quema ASS temporizado y genera miniatura.
+  persistiendo etapa/progreso/logs para polling. La ruta de reanudación reconstruye el conjunto
+  esperado desde ambos rankings, comprueba tamaño y duración de cada MP4 mediante ffprobe, descarta
+  referencias corruptas y renderiza solo IDs pendientes. No ejecuta análisis ni alineación Gemini;
+  reaprovecha CC y degrada a Whisper local cuando sea necesario.
+- `core/media/ytdlp.ts` usa para REQ-018 un selector acotado que prioriza vídeo 720p + audio M4A,
+  degrada a 480p/progresivo y admite hasta 2 GB. Antes de reintentar limpia solo artefactos
+  `source.*` del trabajo; después exige mediante ffprobe que el fichero final tenga vídeo y audio.
+  Los `.part` ya no se confunden con vídeos privados y producen un error de tamaño accionable.
+- `core/clips/render.ts` usa FFmpeg asíncrono: cuando no hay cues fiables extrae primero el audio
+  exacto y solicita la transcripción local; después recorta por timecode, compone 1080×1920 con
+  fondo desenfocado, conserva el audio, quema ASS temporizado y genera miniatura. Renderiza a nombres
+  temporales y sustituye los derivados al final, para que un fallo de regeneración individual no
+  destruya el último MP4 válido.
 - `core/media/subtitles.ts` comparte un normalizador de cues que introduce un pequeño gap y evita
   eventos ASS simultáneos tanto en montajes existentes como en REQ-018.
 

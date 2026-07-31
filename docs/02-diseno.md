@@ -418,7 +418,8 @@ prompts y generar». El selector de modelo incluye versión, perfil y coste por 
 - Bajo JSON aparecen `Directo · sin Gemini` (seleccionado inicialmente, badge 0 créditos IA) y
   `Verificar con Gemini` (más preciso). Directo usa literalmente `subtitulos_sincronizados` cuando
   están presentes y muestra una confirmación verde; si recibe el formato anterior, avisa en ámbar
-  de que aplicó el reparto proporcional compatible. Gemini mantiene su etiqueta de audio comprobado.
+  de que resolverá la sincronía mediante CC o Whisper local. Gemini mantiene su etiqueta de audio
+  comprobado.
 - El trabajo activo muestra cinco etapas: `Fuente → Comprensión → Selección → Render vertical →
   Resultados`, progreso, logs y error accionable.
 - Resultado en dos pestañas: **Top virales** y **Top polémicos**, cada una con un contador real
@@ -429,5 +430,18 @@ prompts y generar». El selector de modelo incluye versión, perfil y coste por 
   de sincronía comprobado contra el audio.
 - Un bloque de historial permite recuperar análisis anteriores, reintentarlos o eliminarlos mediante
   confirmación visual propia de la aplicación.
+- Cuando existen resultados sin MP4, historial y cabecera muestran el contador `N pendientes` y la
+  acción principal **Continuar N pendientes**. `Reiniciar desde cero` queda como alternativa explícita,
+  para no confundir una recuperación barata con repetir todo el análisis.
+- La cabecera del trabajo recuperado ofrece **Regenerar con opciones**. Abre un modal nativo
+  preconfigurado con la variante anterior, permite cambiar `IA | JSON`, `Directo | Gemini` y editar
+  el JSON. La ejecución resultante aparece como una nueva versión del historial.
+- Cada tarjeta incluye **Regenerar clip** con tres fuentes visibles: CC de YouTube, Whisper local o
+  Gemini. Las opciones no disponibles explican el requisito que falta y el trabajo mantiene visibles
+  sus otros resultados mientras se procesa la sustitución.
+- **Publicar en TikTok** abre un modal asistido con preview contextual, descripción/CTA/hashtags
+  editables, copiar al portapapeles, descargar MP4 y abrir `tiktok.com/upload`.
+- `Limpiar` distingue **Vídeos procesados** y **Todo el historial**, muestra qué se conservará y pide
+  confirmación dentro de la app.
 - Los subtítulos usan frases cortas, zona segura inferior y una pequeña pausa entre cues para evitar
   que dos bloques parezcan pegados o se solapen.

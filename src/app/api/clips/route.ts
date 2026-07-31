@@ -2,15 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   clipToolsStatus,
   isClipProcessing,
+  recoverInterruptedClipJob,
   startClipProcessing,
 } from "@/core/clips/processor";
 import {
   createClipJob,
+  deleteAllClipJobs,
+  deleteAllClipOutputs,
   deleteClipJob,
   listClipJobs,
   readClipJob,
   saveClipSource,
-  updateClipJob,
 } from "@/core/clips/storage";
 import {
   parseImportedClipPlan,
@@ -23,24 +25,36 @@ const MAX_BYTES = 500 * 1024 * 1024;
 const ALLOWED = new Set([".mp4", ".mov", ".webm", ".m4v"]);
 
 export async function GET() {
-  const jobs = listClipJobs().map((job) => {
-    const inactiveForMs = Date.now() - new Date(job.updatedAt).getTime();
-    if (
-      (job.status === "pending" || job.status === "processing")
-      && !isClipProcessing(job.id)
-      && inactiveForMs > 30_000
-    ) {
-      return updateClipJob(job.id, {
-        status: "error",
-        error: "El proceso se interrumpió al cerrar o reiniciar la app. Puedes reintentarlo sin volver a subir la fuente.",
-      });
-    }
-    return job;
-  });
+  const jobs = listClipJobs().map(recoverInterruptedClipJob);
   return NextResponse.json({
     jobs,
     tools: clipToolsStatus("youtube"),
   });
+}
+
+export async function DELETE(req: NextRequest) {
+  const scope = req.nextUrl.searchParams.get("scope");
+  if (scope !== "outputs" && scope !== "history") {
+    return NextResponse.json({ error: "Alcance de limpieza no válido." }, { status: 400 });
+  }
+  const jobs = listClipJobs();
+  if (jobs.some((job) => isClipProcessing(job.id))) {
+    return NextResponse.json(
+      { error: "Hay un vídeo procesándose. Espera a que termine antes de limpiar el laboratorio." },
+      { status: 409 },
+    );
+  }
+  try {
+    const summary = scope === "outputs"
+      ? deleteAllClipOutputs()
+      : deleteAllClipJobs();
+    return NextResponse.json({ ok: true, summary });
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "No se pudo completar la limpieza." },
+      { status: 500 },
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -72,6 +86,7 @@ export async function POST(req: NextRequest) {
     !tools.ffmpeg ? "FFmpeg" : "",
     !tools.ffprobe ? "ffprobe" : "",
     !tools.ytdlp ? "yt-dlp" : "",
+    !tools.whisper ? "Whisper local" : "",
   ].filter(Boolean);
   if (missing.length > 0) {
     return NextResponse.json(

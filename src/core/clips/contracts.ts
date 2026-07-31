@@ -1,6 +1,7 @@
 export type ClipSourceType = "upload" | "youtube";
 export type ClipSelectionMode = "ai" | "json";
 export type ClipJsonTimingMode = "direct" | "gemini";
+export type ClipSubtitleMode = "youtube_cc" | "local_whisper" | "gemini";
 export type ClipJobStatus = "pending" | "processing" | "ready" | "error";
 export type ClipStage = "source" | "understanding" | "selection" | "rendering" | "results";
 export type ClipRisk = "low" | "medium" | "high";
@@ -33,7 +34,7 @@ export interface ClipMoment {
   importedRankControversial?: number;
   sourceTranscript?: string;
   sourceCues?: TranscriptCue[];
-  subtitleSource?: "synced_json" | "transcript_fallback" | "gemini";
+  subtitleSource?: "synced_json" | "youtube_cc" | "local_whisper" | "gemini";
   alignedTranscript?: string;
   alignmentScore?: number;
   outputName?: string;
@@ -85,6 +86,13 @@ export interface ClipJob {
   selection?: ClipSelection;
   logs: string[];
   error?: string;
+  outputsDeletedAt?: string;
+  regeneratedFromId?: string;
+  activeOperation?: {
+    kind: "full" | "moment";
+    label: string;
+    momentId?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -285,35 +293,13 @@ export function applyDirectImportedTranscript(selection: ClipSelection): ClipSel
         evidence: syncedText.slice(0, 500),
       };
     }
-    const groups = wordGroups(moment.sourceTranscript ?? "", 7);
-    if (groups.length === 0) {
+    if (!(moment.sourceTranscript ?? "").trim()) {
       throw new Error(`El JSON no contiene transcripción para «${moment.title}».`);
     }
-    const weights = groups.map((group) => Math.max(1, group.length));
-    const totalWeight = weights.reduce((total, weight) => total + weight, 0);
-    let cursor = moment.start;
-    groups.forEach((group, index) => {
-      const remaining = moment.end - cursor;
-      const cueDuration = index === groups.length - 1
-        ? remaining
-        : moment.duration * (weights[index] / totalWeight);
-      const end = index === groups.length - 1
-        ? moment.end
-        : Math.min(moment.end, cursor + cueDuration);
-      if (end - cursor >= 0.18) {
-        transcript.push({
-          start: round2(cursor),
-          end: round2(end),
-          text: group,
-          momentId: moment.id,
-        });
-      }
-      cursor = end;
-    });
     return {
       ...moment,
-      subtitleSource: "transcript_fallback" as const,
-      alignedTranscript: moment.sourceTranscript,
+      subtitleSource: undefined,
+      alignedTranscript: undefined,
       evidence: (moment.sourceTranscript ?? "").slice(0, 500),
     };
   });
@@ -597,15 +583,6 @@ function validateImportedTime(
       + `para ${Math.round(clipDuration)} s. Revisa sus tiempos o el contenido.`,
     );
   }
-}
-
-function wordGroups(value: string, size: number): string[] {
-  const words = value.trim().replace(/\s+/g, " ").split(" ").filter(Boolean);
-  const groups: string[] = [];
-  for (let index = 0; index < words.length; index += size) {
-    groups.push(words.slice(index, index + size).join(" "));
-  }
-  return groups;
 }
 
 function tokenCoverage(expected: string, actual: string): number {

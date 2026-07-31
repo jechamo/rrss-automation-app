@@ -10,6 +10,12 @@ import type {
 
 const CLIPS_DIR = path.join(process.cwd(), "data", "clips");
 
+export interface ClipCleanupSummary {
+  jobs: number;
+  files: number;
+  bytes: number;
+}
+
 export function clipJobDir(id: string): string {
   const safeId = safeJobId(id);
   const dir = path.join(CLIPS_DIR, safeId);
@@ -62,6 +68,23 @@ export function adoptClipSource(id: string, absPath: string): string {
   const fileName = `source${extension.replace(/[^a-z0-9.]/g, "")}`;
   fs.copyFileSync(absPath, path.join(clipJobDir(id), fileName));
   updateClipJob(id, { sourceFile: fileName });
+  return fileName;
+}
+
+export function reuseClipSource(sourceId: string, targetId: string, sourceName: string): string {
+  const source = clipAssetPath(sourceId, sourceName);
+  if (!fs.existsSync(source) || !fs.statSync(source).isFile()) {
+    throw new Error("La fuente original ya no está disponible.");
+  }
+  const extension = path.extname(sourceName).toLowerCase() || ".mp4";
+  const fileName = `source${extension.replace(/[^a-z0-9.]/g, "")}`;
+  const target = path.join(clipJobDir(targetId), fileName);
+  try {
+    fs.linkSync(source, target);
+  } catch {
+    fs.copyFileSync(source, target);
+  }
+  updateClipJob(targetId, { sourceFile: fileName });
   return fileName;
 }
 
@@ -119,6 +142,82 @@ export function deleteClipJob(id: string): void {
     throw new Error("Análisis de clips no encontrado.");
   }
   fs.rmSync(dir, { recursive: true, force: true });
+}
+
+export function deleteAllClipOutputs(): ClipCleanupSummary {
+  const summary: ClipCleanupSummary = { jobs: 0, files: 0, bytes: 0 };
+  const deletedAt = new Date().toISOString();
+  for (const job of listClipJobs()) {
+    if (!job.selection) continue;
+    const generatedNames = new Set<string>();
+    for (const moment of job.selection.moments) {
+      if (moment.outputName) generatedNames.add(moment.outputName);
+      if (moment.thumbnailName) generatedNames.add(moment.thumbnailName);
+      const safeMomentId = moment.id.replace(/[^a-zA-Z0-9_-]/g, "-");
+      generatedNames.add(`clip-${safeMomentId}.mp4`);
+      generatedNames.add(`clip-${safeMomentId}.jpg`);
+      generatedNames.add(`subs-${safeMomentId}.ass`);
+      generatedNames.add(`audio-${safeMomentId}.wav`);
+    }
+    for (const name of fs.readdirSync(clipJobDir(job.id))) {
+      if (/^whisper-\d+-[a-zA-Z0-9_-]+\.json$/i.test(name)) {
+        generatedNames.add(name);
+      }
+      if (
+        /^render-.+\.(?:mp4|jpg)$/i.test(name)
+        || /^gemini-.+\.mp4$/i.test(name)
+        || /\.bak$/i.test(name)
+      ) {
+        generatedNames.add(name);
+      }
+    }
+
+    let deletedForJob = 0;
+    for (const name of generatedNames) {
+      const file = clipAssetPath(job.id, name);
+      if (!fs.existsSync(file) || !fs.statSync(file).isFile()) continue;
+      summary.bytes += fs.statSync(file).size;
+      fs.rmSync(file, { force: true });
+      summary.files += 1;
+      deletedForJob += 1;
+    }
+    if (deletedForJob === 0) continue;
+
+    summary.jobs += 1;
+    updateClipJob(job.id, {
+      outputsDeletedAt: deletedAt,
+      selection: {
+        ...job.selection,
+        moments: job.selection.moments.map((moment) => ({
+          ...moment,
+          outputName: undefined,
+          thumbnailName: undefined,
+          renderError: undefined,
+        })),
+      },
+      logs: [
+        ...job.logs,
+        "Los vídeos procesados, miniaturas y subtítulos renderizados se eliminaron. La fuente y el análisis se conservan.",
+      ].slice(-120),
+    });
+  }
+  return summary;
+}
+
+export function deleteAllClipJobs(): ClipCleanupSummary {
+  const summary: ClipCleanupSummary = { jobs: 0, files: 0, bytes: 0 };
+  for (const job of listClipJobs()) {
+    const dir = clipJobDir(job.id);
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (!entry.isFile()) continue;
+      const file = path.join(dir, entry.name);
+      summary.files += 1;
+      summary.bytes += fs.statSync(file).size;
+    }
+    deleteClipJob(job.id);
+    summary.jobs += 1;
+  }
+  return summary;
 }
 
 function writeClipJob(job: ClipJob): void {

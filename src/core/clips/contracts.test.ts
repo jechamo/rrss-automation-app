@@ -215,7 +215,7 @@ test("usa directamente los subtítulos sincronizados del nuevo JSON sin Gemini",
   ]);
 });
 
-test("mantiene el reparto proporcional para JSON anteriores sin cues sincronizados", () => {
+test("delega en Whisper local los JSON anteriores sin cues sincronizados", () => {
   const plan = parseImportedClipPlan({
     top_10_virales: [{
       ranking: 1,
@@ -229,16 +229,14 @@ test("mantiene el reparto proporcional para JSON anteriores sin cues sincronizad
   const base = selectionFromImportedPlan(plan, 180);
   const direct = applyDirectImportedTranscript(base);
   const moment = direct.moments[0];
-  const cues = subtitleCuesForMoment(direct, moment);
 
   assert.equal(direct.jsonTiming, "direct");
   assert.equal(moment.start, 60);
   assert.equal(moment.end, 80);
   assert.equal(moment.alignmentScore, undefined);
-  assert.equal(moment.subtitleSource, "transcript_fallback");
-  assert.equal(cues[0].start, 0);
-  assert.equal(cues.at(-1)?.end, 20);
-  assert.equal(cues.map((cue) => cue.text).join(" "), moment.sourceTranscript);
+  assert.equal(moment.subtitleSource, undefined);
+  assert.equal(direct.transcript.length, 0);
+  assert.equal(moment.sourceTranscript?.startsWith("Esta es una prueba directa"), true);
 });
 
 test("rechaza subtítulos sincronizados solapados o fuera del corte", () => {
