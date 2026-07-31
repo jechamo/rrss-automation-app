@@ -552,26 +552,39 @@ justificación y `subtitulos_sincronizados[]` (`start_time`, `end_time`, `texto`
 pegarse o cargarse como fichero y ofrece dos temporizados: **Directo**
 sin Gemini o **Verificar con Gemini**. YouTube requiere yt-dlp; todo render requiere FFmpeg/ffprobe;
 el descubrimiento IA o la verificación precisa requieren Gemini configurado en Ajustes.
+Para YouTube, yt-dlp selecciona una fuente adaptable de hasta 720p dentro de un presupuesto de
+2 GB y degrada a 480p/progresivo cuando la duración impide completar una calidad superior.
 
 **Proceso:**
 1. Ingestar y validar el vídeo; descargar YouTube a almacenamiento local para poder recortarlo.
 2. En modo IA, analizar imagen y audio con marcas temporales y proponer candidatos de 15–60 s
    (hasta 90 s) con puntuaciones separadas, evidencia y explicación editorial.
 3. En modo JSON, conservar exactamente cortes, orden, hooks y justificaciones. **Directo** usa sin
-   alteración los cues absolutos de `subtitulos_sincronizados`, sin llamada ni crédito IA; para JSON
-   anteriores que no tengan ese campo mantiene el reparto proporcional como compatibilidad visible.
-   Rechaza cues vacíos, solapados, desordenados o fuera del corte. **Gemini** no vuelve a seleccionar:
+   alteración los cues absolutos de `subtitulos_sincronizados`, sin llamada ni crédito IA. Cuando
+   falten, usa CC de YouTube o extrae el audio exacto del corte y lo transcribe con Whisper local;
+   ya no reparte el texto proporcionalmente. Rechaza cues vacíos, solapados, desordenados o fuera
+   del corte. **Gemini** no vuelve a seleccionar:
    escucha únicamente los intervalos indicados, corrige la transcripción literal y la divide en cues;
    si texto y audio no coinciden, bloquea el trabajo con la causa.
 4. Validar tiempos contra la duración real, descartar baja confianza, fusionar solapamientos y no
    rellenar el ranking con material débil. Un mismo momento puede pertenecer a ambos rankings.
-5. Renderizar cada candidato único a 1080×1920 conservando el encuadre completo sobre fondo
-   desenfocado, mantener el audio original y quemar subtítulos temporizados en zona segura.
+5. Resolver los subtítulos por prioridad: JSON sincronizado → CC de YouTube → Whisper local sobre
+   audio mono 16 kHz extraído del intervalo. Renderizar después cada candidato único a 1080×1920,
+   conservar el encuadre completo sobre fondo desenfocado y quemar los cues en zona segura.
 
 **Salida:** historial de análisis y dos rankings de máximo 10 resultados: **Top virales** y
 **Top polémicos**. Cada tarjeta muestra preview, scores, duración, timecode original, hook,
 evidencia, motivo, contexto/riesgo editorial y descarga. Si no existen diez momentos sólidos se
-muestra el número real y la razón.
+muestra el número real y la razón. La limpieza general permite borrar solo los artefactos procesados
+conservando fuente, JSON, selección y registro, o vaciar por completo el historial con confirmación.
+Desde cualquier entrada se puede crear una nueva versión completa reutilizando su fuente y eligiendo
+de nuevo todas las variantes (`IA | JSON` y, bajo JSON, `Directo | Gemini`). Cada resultado permite
+regenerar únicamente ese clip con una fuente de subtítulos explícita: CC de YouTube, Whisper local
+o Gemini. La acción **Publicar en TikTok** es asistida: prepara copy y hashtags editables, descarga
+el MP4 y abre la pantalla oficial de subida; no automatiza credenciales ni el selector de archivos.
+Si el servidor se cierra o recompila durante un lote, **Continuar pendientes** valida con ffprobe los
+MP4 conservados y procesa únicamente resultados ausentes, corruptos o incompletos. Esta recuperación
+reutiliza selección, fuente y subtítulos disponibles y no vuelve a llamar a Gemini.
 
 **Criterios de aceptación:** no hay cortes fuera de la duración real ni duplicados fuertemente
 solapados; ningún candidato con confianza o score insuficiente se presenta como Top; la UI
@@ -579,7 +592,13 @@ diferencia análisis y render; los errores por herramienta/proveedor son acciona
 persisten localmente y pueden eliminarse o reintentarse. En modo JSON no se inventan scores ni se
 reordenan rankings, y ningún subtítulo se quema si la coincidencia audio/texto es insuficiente.
 El modo directo debe declarar visualmente que no verificó el audio y permitir un montaje completo
-sin exigir una API key de Gemini.
+sin exigir una API key de Gemini. La limpieza debe bloquearse durante un proceso activo y no puede
+eliminar fuentes cuando el usuario elige borrar únicamente los vídeos procesados. Una regeneración
+completa debe crear una entrada independiente, conservar el original y evitar volver a descargar o
+subir la fuente cuando ya existe localmente. Una regeneración individual no puede modificar los
+otros clips y, si falla, debe conservar el último MP4 correcto y registrar una causa accionable.
+Una reanudación debe mantener cada render válido, reconstruir los derivados incompletos y poder
+repetirse hasta completar el lote sin volver a analizar ni consumir créditos de IA.
 
 ---
 

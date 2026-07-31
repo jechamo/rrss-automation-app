@@ -25,13 +25,42 @@
 | REQ-014 | Confianza operativa y navegación autenticada | 🟡 Implementado — pendiente validar recorrido real en ChaFit tras login |
 | REQ-015 | Mapa funcional multimenú de la app | 🟡 Implementado — pendiente regenerar un proyecto y validar sus rutas privadas con login real |
 | REQ-016 | Pulido visual, SSE y login Playwright | 🟡 Implementado — dry-run ICG Vault validado; pendiente prueba del usuario con grabación real |
-| REQ-018 | Laboratorio de clips virales y polémicos | 🟡 Implementado — validación técnica completa; pendiente prueba real del usuario con una fuente |
+| REQ-018 | Laboratorio de clips virales y polémicos | 🟡 Implementado — prueba real con fuente larga en curso; recuperación y regeneración granular añadidas |
 
 Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ---
 
 ## Historial
+
+### 2026-07-31 — REQ-018: historial recuperable, regeneración granular y TikTok
+
+- Historial ampliado: se puede eliminar un trabajo, borrar todos los derivados conservando fuente y
+  análisis, o vaciar por completo el laboratorio. Los candidatos sin MP4 siguen visibles y pueden
+  recuperarse individualmente.
+- **Regenerar con opciones** crea una versión independiente desde cualquier historial, permite
+  cambiar `IA | JSON` y `Directo | Gemini`, precarga un JSON editable y reutiliza `source.*` mediante
+  hard link local (copia segura como fallback). El original permanece intacto.
+- **Regenerar clip** ofrece CC de YouTube, Whisper local o Gemini. Gemini recibe únicamente un
+  fragmento temporal reducido; FFmpeg escribe MP4/miniatura provisionales y sólo sustituye los
+  anteriores al completar, evitando perder un resultado bueno por un fallo.
+- Publicación TikTok asistida por tarjeta: copy, CTA y hashtags deterministas/editables, descarga
+  del MP4 y acceso a la pantalla oficial de subida. No usa modelos, tokens ni automatiza credenciales.
+- Diagnóstico de la prueba `kIfzRTGeCRE`: yt-dlp sí escribió `captions.es.json3` y
+  `captions.es-orig.json3`; el código descartaba ambas si el proceso terminaba con código no cero
+  después de escribirlas. El cargador ahora valida primero cualquier JSON3 existente, aprovecha
+  pistas válidas aunque yt-dlp reporte otro fallo, no cachea vacíos y registra la causa concreta.
+- La prueba real dejó 17 MP4 válidos, un render parcial sin átomo `moov` y la fuente de 1,29 GB
+  intacta antes de que el servidor de desarrollo se cerrara/reiniciara. La UI ignora el parcial y
+  permite recuperar los tres pendientes sin regenerar los otros; la limpieza también elimina
+  derivados huérfanos.
+- **Continuar N pendientes** recupera lotes interrumpidos por cierre o recompilación del servidor:
+  ffprobe valida cada resultado existente, conserva los MP4 correctos y vuelve a generar únicamente
+  ausentes/corruptos con CC o Whisper local, sin repetir Gemini. `Reiniciar desde cero` permanece
+  separado para los casos en los que sí se quiera repetir toda la pipeline.
+- Verificación: 52/52 contratos, TypeScript sin errores, build de producción correcto y revisión
+  visual local de historial real + modales de regeneración completa, clip individual y TikTok. No
+  se iniciaron renders ni llamadas a Gemini durante la revisión.
 
 ### 2026-07-30 — REQ-018: laboratorio de clips virales y polémicos
 
@@ -47,8 +76,8 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
   completo sin key ni créditos; la UI y los logs advierten que el audio no fue comprobado.
   **Verificar con Gemini** queda como opción precisa y separada.
 - El contrato actualizado del agente admite `subtitulos_sincronizados` por corte. Directo usa
-  exactamente esos textos y timecodes absolutos, valida límites/orden/solapes y deja el reparto
-  proporcional únicamente como compatibilidad explícita para JSON anteriores.
+  exactamente esos textos y timecodes absolutos y valida límites/orden/solapes. Se elimina el
+  reparto proporcional: si faltan cues se usan CC o transcripción local del audio real.
 - Para evitar subtítulos desincronizados, Gemini no reselecciona en este modo: realiza alineación
   forzada solo dentro de los cortes aportados. Si la coincidencia semántica/temporal es insuficiente,
   bloquea el render y señala qué entrada debe corregirse.
@@ -62,8 +91,21 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
   override `GEMINI_VIDEO_MODEL`, y mantiene el borrado remoto best-effort.
 - Los subtítulos de todos los montajes introducen 120 ms de separación y eliminan eventos ASS
   simultáneos; tamaño y zona segura inferior se conservan.
-- Verificación: TypeScript, 45/45 contratos, render ASS real con FFmpeg y build de producción.
+- Verificación: TypeScript, 47/47 contratos, render ASS real con FFmpeg y build de producción.
   Revisión visual local a 1280, 1024 y 768 px sin desbordamiento; no se consumieron créditos Gemini.
+- Corrección de fuentes largas de YouTube: el límite anterior de 500 MB podía dejar una pista
+  `.part` y acabar con el mensaje falso «comprueba que sea público». El selector ahora prioriza
+  720p dentro de 2 GB, degrada de calidad de forma determinista, limpia fragmentos al reintentar y
+  verifica vídeo+audio con ffprobe. Para `kIfzRTGeCRE`, la consulta de metadatos elige `298+140`
+  (720p + M4A) sin descargar el vídeo ni llamar a modelos. Verificación ampliada: 47/47 contratos.
+- Limpieza global segura desde Historial: **Vídeos procesados** elimina solo clips MP4, miniaturas
+  y ASS generados, conservando fuente, JSON, selección y logs; **Todo el historial** elimina cada
+  trabajo completo. Ambas acciones tienen confirmación nativa, resumen de espacio liberado y se
+  bloquean mientras exista un proceso activo. TypeScript y 47/47 contratos correctos.
+- Subtitulado sin créditos por prioridad: cues sincronizados del JSON, CC JSON3 manuales/automáticos
+  de YouTube y `whisper.cpp small` local. Para Whisper, FFmpeg extrae WAV mono 16 kHz del intervalo
+  exacto antes del render final; no se usa el reparto proporcional ni una API de transcripción.
+  Prueba local sobre 12 s de audio español real: cuatro cues temporizados en unos 15 s.
 
 ### 2026-07-27 — REQ-004: histórico por autor, confianza y presupuesto
 
