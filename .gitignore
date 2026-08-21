@@ -50,7 +50,10 @@ pnpm-debug.log*
 # Sistema operativo / editor
 .DS_Store
 Thumbs.db
-.vscode/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/mcp.json
+!.vscode/settings.json
 .idea/
 
 # Datos locales del agente (memoria/sesiones), salvo los skills de proyecto (REQ-007)
@@ -58,3 +61,12 @@ Thumbs.db
 !.claude/skills/
 .cursor/*
 !.cursor/skills/
+
+# ─── SDD (instalado por sdd init) ───
+# Secretos y estado exclusivamente local
+.sdd/state/
+.sdd/conflicts/
+.claude/settings.local.json
+.claude/.cache/
+.cursor/local/
+# ─── fin SDD ───

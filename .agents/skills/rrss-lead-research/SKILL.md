@@ -1,10 +1,6 @@
 ---
 name: rrss-lead-research
-description: >-
-  Investiga y cualifica clientes potenciales (leads) para un negocio SaaS/appweb a partir de
-  su dossier y su analisis de competencia. Usar al identificar publico objetivo, segmentos,
-  señales de intencion de compra, buyer personas o listas de prospeccion para campañas de
-  RRSS/marketing. Aplica a RRSS Studio REQ-003 (scraping de clientes potenciales + estrategia).
+description: "Investiga y cualifica leads para RRSS Studio a partir del dossier y la competencia, para REQ-003 y su estrategia de captacion."
 ---
 
 # Investigacion y cualificacion de leads (RRSS)

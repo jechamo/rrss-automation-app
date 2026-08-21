@@ -1,0 +1,55 @@
+#!/usr/bin/env sh
+# Gates lentos antes del push: cobertura, E2E, auditoría de dependencias, documentación.
+# Se activan con:
+#   git config core.hooksPath .sdd/githooks
+#
+# Van aquí y no en pre-commit porque tardan minutos y el commit es frecuente. El reparto
+# es lo que hace que los gates locales se toleren en vez de esquivarse.
+#
+# Salida de emergencia: git push --no-verify
+
+set -eu
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "SDD docs-diff: NO EJECUTADO; node no está disponible." >&2
+  exit 1
+fi
+
+head_sha=$(git rev-parse HEAD)
+refs=0
+while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
+  refs=$((refs + 1))
+  case "$local_sha" in *[!0]*) ;; *) continue ;; esac
+  local_commit=$(git rev-parse "$local_sha^{commit}" 2>/dev/null) || {
+    echo "SDD docs-diff: NO EJECUTADO; $local_ref no apunta a un commit verificable." >&2
+    exit 1
+  }
+  if [ "$local_commit" != "$head_sha" ]; then
+    echo "SDD docs-diff: NO EJECUTADO; $local_ref apunta a $local_commit pero el árbol validado es HEAD=$head_sha." >&2
+    exit 1
+  fi
+  case "$local_ref" in
+    refs/tags/*)
+      echo "SDD · tag $local_ref apunta al HEAD ya validado; el diff documental corresponde a la rama."
+      continue ;;
+  esac
+  base=${SDD_DOCS_BASE:-$remote_sha}
+  case "$base" in
+    ''|*[!0]*) ;;
+    *)
+      echo "SDD docs-diff: NO EJECUTADO; $remote_ref no tiene base. Define SDD_DOCS_BASE=<sha>." >&2
+      exit 1 ;;
+  esac
+  if ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+    echo "SDD docs-diff: NO EJECUTADO; no se puede resolver la base $base." >&2
+    exit 1
+  fi
+  echo "SDD · diff documental de $local_ref contra $base"
+  node scripts/check-sdd.mjs --docs-diff --base "$base"
+done
+if [ "$refs" -eq 0 ]; then
+  echo "SDD docs-diff: NO EJECUTADO; Git no informó ninguna referencia a empujar." >&2
+  exit 1
+fi
+echo "SDD · gates lentos (pre-push)"
+node scripts/sdd-project.mjs run --slow

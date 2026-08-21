@@ -1,0 +1,1682 @@
+{
+  "schemaVersion": 7,
+  "version": "0.7.0",
+  "mode": "brownfield",
+  "installedAt": "2026-08-21T09:20:29.744Z",
+  "updatedAt": "2026-08-21T09:20:29.744Z",
+  "source": "jechamo/Estructura_inicial_claude",
+  "product": {
+    "schemaVersion": 1,
+    "status": "legacy-pending",
+    "approvedAt": null,
+    "approvedBy": null,
+    "enforceFromSpec": null,
+    "hashes": {}
+  },
+  "security": {
+    "schemaVersion": 1,
+    "status": "legacy-pending",
+    "standards": {
+      "owaspTop10": "2025",
+      "asvs": "5.0.0",
+      "level": "L2"
+    },
+    "enforceFromSpec": "001"
+  },
+  "usability": {
+    "schemaVersion": 1,
+    "status": "legacy-pending",
+    "standards": {
+      "wcag": "2.2",
+      "level": "AA",
+      "heuristics": "nielsen-10"
+    },
+    "enforceFromSpec": "001"
+  },
+  "documentation": {
+    "schemaVersion": 1,
+    "status": "legacy-pending",
+    "enforceFromSpec": "001"
+  },
+  "files": {
+    "docs/product/PRD.md": {
+      "hash": "c3c6111ed9e26e34",
+      "policy": "seed-once"
+    },
+    "docs/product/USE-CASES.md": {
+      "hash": "2df40e645f7bd452",
+      "policy": "seed-once"
+    },
+    "docs/product/FEATURE-MAP.md": {
+      "hash": "12acdaef064987ba",
+      "policy": "seed-once"
+    },
+    "docs/product/SOURCES.md": {
+      "hash": "034bd5d473accc2c",
+      "policy": "seed-once"
+    },
+    "CHANGELOG.md": {
+      "hash": "7838ad412700e1f9",
+      "policy": "seed-once"
+    },
+    "AGENTS.md": {
+      "hash": "8a6e3a7aa8249da9",
+      "policy": "managed-block"
+    },
+    "CLAUDE.md": {
+      "hash": "462b91c53ab857a5",
+      "policy": "managed-block"
+    },
+    "GEMINI.md": {
+      "hash": "853b2129a6f18cb1",
+      "policy": "managed-block"
+    },
+    ".github/copilot-instructions.md": {
+      "hash": "bd641a4a4d17ba18",
+      "policy": "managed-block"
+    },
+    "docs/README.md": {
+      "hash": "45518245607a9cff",
+      "policy": "seed-once"
+    },
+    "docs/agents/SKILLS-EXTERNAS.md": {
+      "hash": "279fdfb4967fa206",
+      "policy": "seed-once"
+    },
+    "docs/integrations/IDE-COMPATIBILITY.md": {
+      "hash": "38ba13c9a53f98e6",
+      "policy": "seed-once"
+    },
+    "docs/product/VISION.md": {
+      "hash": "4db7f722b3c26bee",
+      "policy": "seed-once"
+    },
+    "docs/architecture/constitution.md": {
+      "hash": "7ef39ac48f8aa69e",
+      "policy": "seed-once"
+    },
+    "docs/design/DIRECCION-VISUAL.md": {
+      "hash": "25e0c0d65fc58c90",
+      "policy": "seed-once"
+    },
+    "docs/security/THREAT-MODEL.md": {
+      "hash": "c66ad11b4176152b",
+      "policy": "seed-once"
+    },
+    "docs/bitacora/DECISIONS.md": {
+      "hash": "df9a061f22f2633f",
+      "policy": "seed-once"
+    },
+    ".sdd/agent-audit.jsonl": {
+      "hash": "e3b0c44298fc1c14",
+      "policy": "seed-once"
+    },
+    ".sdd/external-skills.json": {
+      "hash": "384509af73788394",
+      "policy": "seed-once"
+    },
+    ".sdd/territories.json": {
+      "hash": "e8a4424a3fe40905",
+      "policy": "seed-once"
+    },
+    ".sdd/checks.json": {
+      "hash": "e75855cad9da3302",
+      "policy": "seed-once"
+    },
+    ".sdd/docs.json": {
+      "hash": "ffcf2120d9997fe1",
+      "policy": "seed-once"
+    },
+    ".sdd/generators.json": {
+      "hash": "07a3d3bebf673be6",
+      "policy": "seed-once"
+    },
+    ".github/dependabot.yml": {
+      "hash": "eada67e1b7f73d16",
+      "policy": "seed-once"
+    },
+    ".gitignore": {
+      "hash": "9acaed84ed32b706",
+      "policy": "append-block"
+    },
+    ".agents/agents/api-designer.md": {
+      "hash": "601684eeaa5f6f7a",
+      "sourceHash": "601684eeaa5f6f7a",
+      "policy": "managed"
+    },
+    ".agents/agents/architect.md": {
+      "hash": "30b96e18121215ed",
+      "sourceHash": "30b96e18121215ed",
+      "policy": "managed"
+    },
+    ".agents/agents/backend-expert.md": {
+      "hash": "1dc4bae0d03a5af1",
+      "sourceHash": "1dc4bae0d03a5af1",
+      "policy": "managed"
+    },
+    ".agents/agents/bitacora-keeper.md": {
+      "hash": "6d39851abe981422",
+      "sourceHash": "6d39851abe981422",
+      "policy": "managed"
+    },
+    ".agents/agents/code-reviewer.md": {
+      "hash": "8cf0cdfec205e5c1",
+      "sourceHash": "8cf0cdfec205e5c1",
+      "policy": "managed"
+    },
+    ".agents/agents/database-expert.md": {
+      "hash": "2fe89686f0023ce2",
+      "sourceHash": "2fe89686f0023ce2",
+      "policy": "managed"
+    },
+    ".agents/agents/devops-expert.md": {
+      "hash": "ea97ae55df5ca7ba",
+      "sourceHash": "ea97ae55df5ca7ba",
+      "policy": "managed"
+    },
+    ".agents/agents/docs-writer.md": {
+      "hash": "f46e891a1e7e2137",
+      "sourceHash": "f46e891a1e7e2137",
+      "policy": "managed"
+    },
+    ".agents/agents/frontend-expert.md": {
+      "hash": "38e81cba291b1e25",
+      "sourceHash": "38e81cba291b1e25",
+      "policy": "managed"
+    },
+    ".agents/agents/implementer.md": {
+      "hash": "5ff82b69397c1d8e",
+      "sourceHash": "5ff82b69397c1d8e",
+      "policy": "managed"
+    },
+    ".agents/agents/orchestrator.md": {
+      "hash": "e04fe49ba44e3a0d",
+      "sourceHash": "e04fe49ba44e3a0d",
+      "policy": "managed"
+    },
+    ".agents/agents/performance-optimizer.md": {
+      "hash": "10619e54240abff5",
+      "sourceHash": "10619e54240abff5",
+      "policy": "managed"
+    },
+    ".agents/agents/planner.md": {
+      "hash": "c6ce06039f8885a0",
+      "sourceHash": "c6ce06039f8885a0",
+      "policy": "managed"
+    },
+    ".agents/agents/refactor-specialist.md": {
+      "hash": "832d312c474e1bdb",
+      "sourceHash": "832d312c474e1bdb",
+      "policy": "managed"
+    },
+    ".agents/agents/release-manager.md": {
+      "hash": "626324fbf7c65191",
+      "sourceHash": "626324fbf7c65191",
+      "policy": "managed"
+    },
+    ".agents/agents/research-analyst.md": {
+      "hash": "afee215ba2fe376c",
+      "sourceHash": "afee215ba2fe376c",
+      "policy": "managed"
+    },
+    ".agents/agents/security-auditor.md": {
+      "hash": "98c80a0a9f9ad896",
+      "sourceHash": "98c80a0a9f9ad896",
+      "policy": "managed"
+    },
+    ".agents/agents/spec-analyst.md": {
+      "hash": "2d1ffa620f1b9a92",
+      "sourceHash": "2d1ffa620f1b9a92",
+      "policy": "managed"
+    },
+    ".agents/agents/test-engineer.md": {
+      "hash": "60e9da5b51f24734",
+      "sourceHash": "60e9da5b51f24734",
+      "policy": "managed"
+    },
+    ".agents/agents/ux-designer.md": {
+      "hash": "e505ea8457f3beff",
+      "sourceHash": "e505ea8457f3beff",
+      "policy": "managed"
+    },
+    ".agents/hooks.json": {
+      "hash": "5a9ff3db2e3104f6",
+      "sourceHash": "5a9ff3db2e3104f6",
+      "policy": "json-merge"
+    },
+    ".agents/rules/00-core.md": {
+      "hash": "972ce3b4790b9803",
+      "sourceHash": "972ce3b4790b9803",
+      "policy": "managed"
+    },
+    ".agents/skills/adr/SKILL.md": {
+      "hash": "a659856ed8005d77",
+      "sourceHash": "a659856ed8005d77",
+      "policy": "managed"
+    },
+    ".agents/skills/bbdd/SKILL.md": {
+      "hash": "2f21517300289a76",
+      "sourceHash": "2f21517300289a76",
+      "policy": "managed"
+    },
+    ".agents/skills/bitacora/SKILL.md": {
+      "hash": "a98dbe7b17358f72",
+      "sourceHash": "a98dbe7b17358f72",
+      "policy": "managed"
+    },
+    ".agents/skills/design-sync/SKILL.md": {
+      "hash": "6ef7ae058a6d4b3a",
+      "sourceHash": "6ef7ae058a6d4b3a",
+      "policy": "managed"
+    },
+    ".agents/skills/docs-sync/evals/evals.json": {
+      "hash": "aef2ae04072f6d36",
+      "sourceHash": "aef2ae04072f6d36",
+      "policy": "managed"
+    },
+    ".agents/skills/docs-sync/SKILL.md": {
+      "hash": "a467631727f6b4a9",
+      "sourceHash": "a467631727f6b4a9",
+      "policy": "managed"
+    },
+    ".agents/skills/front/references/implementation-checklists.md": {
+      "hash": "22a6c1f76d4037e3",
+      "sourceHash": "22a6c1f76d4037e3",
+      "policy": "managed"
+    },
+    ".agents/skills/front/SKILL.md": {
+      "hash": "d236675acd133b1e",
+      "sourceHash": "d236675acd133b1e",
+      "policy": "managed"
+    },
+    ".agents/skills/middle/SKILL.md": {
+      "hash": "64f98bd578f6c1f8",
+      "sourceHash": "64f98bd578f6c1f8",
+      "policy": "managed"
+    },
+    ".agents/skills/observability/SKILL.md": {
+      "hash": "f433f88c3883626f",
+      "sourceHash": "f433f88c3883626f",
+      "policy": "managed"
+    },
+    ".agents/skills/onboard/SKILL.md": {
+      "hash": "1a3f7cb4506375b4",
+      "sourceHash": "1a3f7cb4506375b4",
+      "policy": "managed"
+    },
+    ".agents/skills/respond-incident/SKILL.md": {
+      "hash": "6a2e2b31f1d87563",
+      "sourceHash": "6a2e2b31f1d87563",
+      "policy": "managed"
+    },
+    ".agents/skills/sdd-clarify/SKILL.md": {
+      "hash": "3911f6c40ab70b63",
+      "sourceHash": "3911f6c40ab70b63",
+      "policy": "managed"
+    },
+    ".agents/skills/sdd-design/references/design-gates.md": {
+      "hash": "12be7dca8c7ecd4b",
+      "sourceHash": "12be7dca8c7ecd4b",
+      "policy": "managed"
+    },
+    ".agents/skills/sdd-design/SKILL.md": {
+      "hash": "930d5e137e1ff261",
+      "sourceHash": "930d5e137e1ff261",
+      "policy": "managed"
+    },
+    ".agents/skills/sdd-implement/SKILL.md": {
+      "hash": "515375d3a385dd45",
+      "sourceHash": "515375d3a385dd45",
+      "policy": "managed"
+    },
+    ".agents/skills/sdd-init/SKILL.md": {
+      "hash": "41778c7b89a6be40",
+      "sourceHash": "41778c7b89a6be40",
+      "policy": "managed"
+    },
+    ".agents/skills/sdd-intake/evals/evals.json": {
+      "hash": "3aa9c37b40456971",
+      "sourceHash": "3aa9c37b40456971",
+      "policy": "managed"
+    },
+    ".agents/skills/sdd-intake/SKILL.md": {
+      "hash": "1e94fc8f6496681c",
+      "sourceHash": "1e94fc8f6496681c",
+      "policy": "managed"
+    },
+    ".agents/skills/sdd-plan/references/coherence-and-gates.md": {
+      "hash": "b111cb2e3260ddcb",
+      "sourceHash": "b111cb2e3260ddcb",
+      "policy": "managed"
+    },
+    ".agents/skills/sdd-plan/SKILL.md": {
+      "hash": "83b9b325d95a8be6",
+      "sourceHash": "83b9b325d95a8be6",
+      "policy": "managed"
+    },
+    ".agents/skills/sdd-refresh/SKILL.md": {
+      "hash": "04938be95cd90004",
+      "sourceHash": "04938be95cd90004",
+      "policy": "managed"
+    },
+    ".agents/skills/sdd-ship/SKILL.md": {
+      "hash": "e411cf18f9ae40e5",
+      "sourceHash": "e411cf18f9ae40e5",
+      "policy": "managed"
+    },
+    ".agents/skills/sdd-specify/SKILL.md": {
+      "hash": "e8b7c863422ab35e",
+      "sourceHash": "e8b7c863422ab35e",
+      "policy": "managed"
+    },
+    ".agents/skills/sdd-start/SKILL.md": {
+      "hash": "29271ae04347cd43",
+      "sourceHash": "29271ae04347cd43",
+      "policy": "managed"
+    },
+    ".agents/skills/sdd-light/SKILL.md": {
+      "hash": "a1ea09dc84041359",
+      "sourceHash": "a1ea09dc84041359",
+      "policy": "managed"
+    },
+    ".agents/skills/sdd-status/SKILL.md": {
+      "hash": "6de7f4c15d2ff18c",
+      "sourceHash": "6de7f4c15d2ff18c",
+      "policy": "managed"
+    },
+    ".agents/skills/sdd-tasks/SKILL.md": {
+      "hash": "b336914e84af818b",
+      "sourceHash": "b336914e84af818b",
+      "policy": "managed"
+    },
+    ".agents/skills/sdd-verify/references/review-checklists.md": {
+      "hash": "8002ad5976563c21",
+      "sourceHash": "8002ad5976563c21",
+      "policy": "managed"
+    },
+    ".agents/skills/sdd-verify/SKILL.md": {
+      "hash": "81616e98edfd5127",
+      "sourceHash": "81616e98edfd5127",
+      "policy": "managed"
+    },
+    ".agents/skills/security-scan/SKILL.md": {
+      "hash": "4e51a147add600d7",
+      "sourceHash": "4e51a147add600d7",
+      "policy": "managed"
+    },
+    ".agents/skills/skill-creator/agents/analyzer.md": {
+      "hash": "bf68f4cac5a56c67",
+      "sourceHash": "bf68f4cac5a56c67",
+      "policy": "managed"
+    },
+    ".agents/skills/skill-creator/agents/comparator.md": {
+      "hash": "fe1fc9787c495d86",
+      "sourceHash": "fe1fc9787c495d86",
+      "policy": "managed"
+    },
+    ".agents/skills/skill-creator/agents/grader.md": {
+      "hash": "57134da0c1a4eea3",
+      "sourceHash": "57134da0c1a4eea3",
+      "policy": "managed"
+    },
+    ".agents/skills/skill-creator/assets/eval_review.html": {
+      "hash": "ce477dcc74dc1c0d",
+      "sourceHash": "ce477dcc74dc1c0d",
+      "policy": "managed"
+    },
+    ".agents/skills/skill-creator/eval-viewer/generate_review.py": {
+      "hash": "fc9d1b9243fe5ab6",
+      "sourceHash": "fc9d1b9243fe5ab6",
+      "policy": "managed"
+    },
+    ".agents/skills/skill-creator/eval-viewer/viewer.html": {
+      "hash": "a53213426ee11004",
+      "sourceHash": "a53213426ee11004",
+      "policy": "managed"
+    },
+    ".agents/skills/skill-creator/LICENSE.txt": {
+      "hash": "bc6b3af2f331cbc7",
+      "sourceHash": "bc6b3af2f331cbc7",
+      "policy": "managed"
+    },
+    ".agents/skills/skill-creator/references/schemas.md": {
+      "hash": "8e8876180a8989b4",
+      "sourceHash": "8e8876180a8989b4",
+      "policy": "managed"
+    },
+    ".agents/skills/skill-creator/scripts/aggregate_benchmark.py": {
+      "hash": "123ef128ea5ccc01",
+      "sourceHash": "123ef128ea5ccc01",
+      "policy": "managed"
+    },
+    ".agents/skills/skill-creator/scripts/generate_report.py": {
+      "hash": "13df7118a3c50c83",
+      "sourceHash": "13df7118a3c50c83",
+      "policy": "managed"
+    },
+    ".agents/skills/skill-creator/scripts/improve_description.py": {
+      "hash": "686f346cd682687f",
+      "sourceHash": "686f346cd682687f",
+      "policy": "managed"
+    },
+    ".agents/skills/skill-creator/scripts/package_skill.py": {
+      "hash": "1a33059b0db1ef73",
+      "sourceHash": "1a33059b0db1ef73",
+      "policy": "managed"
+    },
+    ".agents/skills/skill-creator/scripts/quick_validate.py": {
+      "hash": "faf8532dbfa0cb55",
+      "sourceHash": "faf8532dbfa0cb55",
+      "policy": "managed"
+    },
+    ".agents/skills/skill-creator/scripts/run_eval.py": {
+      "hash": "43e3b8f80dbf69c3",
+      "sourceHash": "43e3b8f80dbf69c3",
+      "policy": "managed"
+    },
+    ".agents/skills/skill-creator/scripts/run_loop.py": {
+      "hash": "7bd6f67420316852",
+      "sourceHash": "7bd6f67420316852",
+      "policy": "managed"
+    },
+    ".agents/skills/skill-creator/scripts/utils.py": {
+      "hash": "3af8ae62c40c73ab",
+      "sourceHash": "3af8ae62c40c73ab",
+      "policy": "managed"
+    },
+    ".agents/skills/skill-creator/scripts/__init__.py": {
+      "hash": "e3b0c44298fc1c14",
+      "sourceHash": "e3b0c44298fc1c14",
+      "policy": "managed"
+    },
+    ".agents/skills/skill-creator/SKILL.md": {
+      "hash": "dcd4803e61e913e6",
+      "sourceHash": "dcd4803e61e913e6",
+      "policy": "managed"
+    },
+    ".agents/skills/tdd/SKILL.md": {
+      "hash": "3daa00b217007043",
+      "sourceHash": "3daa00b217007043",
+      "policy": "managed"
+    },
+    ".agents/workflows/onboarding.md": {
+      "hash": "f73562213ac4c8f8",
+      "sourceHash": "f73562213ac4c8f8",
+      "policy": "managed"
+    },
+    ".agents/workflows/sdd-nueva-funcionalidad.md": {
+      "hash": "38d42a034b6c2a3a",
+      "sourceHash": "38d42a034b6c2a3a",
+      "policy": "managed"
+    },
+    ".agents/workflows/sdd-proyecto-nuevo.md": {
+      "hash": "01dfb1fecf925a8e",
+      "sourceHash": "01dfb1fecf925a8e",
+      "policy": "managed"
+    },
+    ".claude/agents/api-designer.md": {
+      "hash": "039084f8d77dd88e",
+      "sourceHash": "039084f8d77dd88e",
+      "policy": "managed"
+    },
+    ".claude/agents/architect.md": {
+      "hash": "77b77ecb64d4824b",
+      "sourceHash": "77b77ecb64d4824b",
+      "policy": "managed"
+    },
+    ".claude/agents/database-expert.md": {
+      "hash": "b911bff5fe531d9c",
+      "sourceHash": "b911bff5fe531d9c",
+      "policy": "managed"
+    },
+    ".claude/agents/research-analyst.md": {
+      "hash": "eadb8e1571dc85d0",
+      "sourceHash": "eadb8e1571dc85d0",
+      "policy": "managed"
+    },
+    ".claude/settings.json": {
+      "hash": "01746d8380d69309",
+      "sourceHash": "21e0dc6b5a6ed6fd",
+      "policy": "json-merge"
+    },
+    ".claude/skills/adr/SKILL.md": {
+      "hash": "84e3476e7a7b598c",
+      "sourceHash": "84e3476e7a7b598c",
+      "policy": "managed"
+    },
+    ".claude/skills/bbdd/SKILL.md": {
+      "hash": "19903827d6e097ce",
+      "sourceHash": "19903827d6e097ce",
+      "policy": "managed"
+    },
+    ".claude/skills/bitacora/SKILL.md": {
+      "hash": "215cf5f6b3f4908b",
+      "sourceHash": "215cf5f6b3f4908b",
+      "policy": "managed"
+    },
+    ".claude/skills/design-sync/SKILL.md": {
+      "hash": "ac8c3f43953a1698",
+      "sourceHash": "ac8c3f43953a1698",
+      "policy": "managed"
+    },
+    ".claude/skills/docs-sync/SKILL.md": {
+      "hash": "d879e8e676e232e4",
+      "sourceHash": "d879e8e676e232e4",
+      "policy": "managed"
+    },
+    ".claude/skills/front/SKILL.md": {
+      "hash": "d5a15eda5221fb8e",
+      "sourceHash": "d5a15eda5221fb8e",
+      "policy": "managed"
+    },
+    ".claude/skills/middle/SKILL.md": {
+      "hash": "ba54cf966e485971",
+      "sourceHash": "ba54cf966e485971",
+      "policy": "managed"
+    },
+    ".claude/skills/observability/SKILL.md": {
+      "hash": "cdf9933b3562f60c",
+      "sourceHash": "cdf9933b3562f60c",
+      "policy": "managed"
+    },
+    ".claude/skills/onboard/SKILL.md": {
+      "hash": "af92301daa50c146",
+      "sourceHash": "af92301daa50c146",
+      "policy": "managed"
+    },
+    ".claude/skills/respond-incident/SKILL.md": {
+      "hash": "326cba5ca7a5dfc0",
+      "sourceHash": "326cba5ca7a5dfc0",
+      "policy": "managed"
+    },
+    ".claude/skills/sdd-clarify/SKILL.md": {
+      "hash": "8645429c7f908ecb",
+      "sourceHash": "8645429c7f908ecb",
+      "policy": "managed"
+    },
+    ".claude/skills/sdd-design/SKILL.md": {
+      "hash": "5de241a8abcef710",
+      "sourceHash": "5de241a8abcef710",
+      "policy": "managed"
+    },
+    ".claude/skills/sdd-implement/SKILL.md": {
+      "hash": "31468fc6a24f03bf",
+      "sourceHash": "31468fc6a24f03bf",
+      "policy": "managed"
+    },
+    ".claude/skills/sdd-init/SKILL.md": {
+      "hash": "05f33248cfc645eb",
+      "sourceHash": "05f33248cfc645eb",
+      "policy": "managed"
+    },
+    ".claude/skills/sdd-intake/SKILL.md": {
+      "hash": "2ae09d32ea94f628",
+      "sourceHash": "2ae09d32ea94f628",
+      "policy": "managed"
+    },
+    ".claude/skills/sdd-plan/SKILL.md": {
+      "hash": "2b97d424d7b5a4c9",
+      "sourceHash": "2b97d424d7b5a4c9",
+      "policy": "managed"
+    },
+    ".claude/skills/sdd-refresh/SKILL.md": {
+      "hash": "229ba524d509227e",
+      "sourceHash": "229ba524d509227e",
+      "policy": "managed"
+    },
+    ".claude/skills/sdd-ship/SKILL.md": {
+      "hash": "79f412714cf5393c",
+      "sourceHash": "79f412714cf5393c",
+      "policy": "managed"
+    },
+    ".claude/skills/sdd-specify/SKILL.md": {
+      "hash": "c4e3c4f3753e25cb",
+      "sourceHash": "c4e3c4f3753e25cb",
+      "policy": "managed"
+    },
+    ".claude/skills/sdd-start/SKILL.md": {
+      "hash": "77d66675f6994aac",
+      "sourceHash": "77d66675f6994aac",
+      "policy": "managed"
+    },
+    ".claude/skills/sdd-light/SKILL.md": {
+      "hash": "ff06b892870a0c94",
+      "sourceHash": "ff06b892870a0c94",
+      "policy": "managed"
+    },
+    ".claude/skills/sdd-status/SKILL.md": {
+      "hash": "f74e387a76790fdb",
+      "sourceHash": "f74e387a76790fdb",
+      "policy": "managed"
+    },
+    ".claude/skills/sdd-tasks/SKILL.md": {
+      "hash": "129409581870cd9d",
+      "sourceHash": "129409581870cd9d",
+      "policy": "managed"
+    },
+    ".claude/skills/sdd-verify/SKILL.md": {
+      "hash": "26310a33414d2b75",
+      "sourceHash": "26310a33414d2b75",
+      "policy": "managed"
+    },
+    ".claude/skills/security-scan/SKILL.md": {
+      "hash": "c25bb532fa37c3bb",
+      "sourceHash": "c25bb532fa37c3bb",
+      "policy": "managed"
+    },
+    ".claude/skills/skill-creator/SKILL.md": {
+      "hash": "fd867adfb22a3732",
+      "sourceHash": "fd867adfb22a3732",
+      "policy": "managed"
+    },
+    ".claude/skills/tdd/SKILL.md": {
+      "hash": "f8c2f2c59d44771c",
+      "sourceHash": "f8c2f2c59d44771c",
+      "policy": "managed"
+    },
+    ".codex/agents/api-designer.toml": {
+      "hash": "fbe279607a10bbc6",
+      "sourceHash": "fbe279607a10bbc6",
+      "policy": "managed"
+    },
+    ".codex/agents/architect.toml": {
+      "hash": "44ed93f620f49efc",
+      "sourceHash": "44ed93f620f49efc",
+      "policy": "managed"
+    },
+    ".codex/agents/backend-expert.toml": {
+      "hash": "348e4eb2750e1da9",
+      "sourceHash": "348e4eb2750e1da9",
+      "policy": "managed"
+    },
+    ".codex/agents/bitacora-keeper.toml": {
+      "hash": "6badf5eaf9a818fc",
+      "sourceHash": "6badf5eaf9a818fc",
+      "policy": "managed"
+    },
+    ".codex/agents/code-reviewer.toml": {
+      "hash": "20b208c98a66e512",
+      "sourceHash": "20b208c98a66e512",
+      "policy": "managed"
+    },
+    ".codex/agents/database-expert.toml": {
+      "hash": "05a97b7bae68abd6",
+      "sourceHash": "05a97b7bae68abd6",
+      "policy": "managed"
+    },
+    ".codex/agents/devops-expert.toml": {
+      "hash": "bc210d329e1aa18f",
+      "sourceHash": "bc210d329e1aa18f",
+      "policy": "managed"
+    },
+    ".codex/agents/docs-writer.toml": {
+      "hash": "f1ffccaf9962b488",
+      "sourceHash": "f1ffccaf9962b488",
+      "policy": "managed"
+    },
+    ".codex/agents/frontend-expert.toml": {
+      "hash": "8d515f4ae330c037",
+      "sourceHash": "8d515f4ae330c037",
+      "policy": "managed"
+    },
+    ".codex/agents/implementer.toml": {
+      "hash": "0579288007eed3d1",
+      "sourceHash": "0579288007eed3d1",
+      "policy": "managed"
+    },
+    ".codex/agents/orchestrator.toml": {
+      "hash": "54d8d6f2cba6a149",
+      "sourceHash": "54d8d6f2cba6a149",
+      "policy": "managed"
+    },
+    ".codex/agents/performance-optimizer.toml": {
+      "hash": "bb6f3a83ad2cf31a",
+      "sourceHash": "bb6f3a83ad2cf31a",
+      "policy": "managed"
+    },
+    ".codex/agents/planner.toml": {
+      "hash": "4f2977aca5bc563a",
+      "sourceHash": "4f2977aca5bc563a",
+      "policy": "managed"
+    },
+    ".codex/agents/refactor-specialist.toml": {
+      "hash": "73026980e0e24381",
+      "sourceHash": "73026980e0e24381",
+      "policy": "managed"
+    },
+    ".codex/agents/release-manager.toml": {
+      "hash": "818469df2f1b23bd",
+      "sourceHash": "818469df2f1b23bd",
+      "policy": "managed"
+    },
+    ".codex/agents/research-analyst.toml": {
+      "hash": "95c1ee9cdc998a94",
+      "sourceHash": "95c1ee9cdc998a94",
+      "policy": "managed"
+    },
+    ".codex/agents/security-auditor.toml": {
+      "hash": "fb54e6471b233085",
+      "sourceHash": "fb54e6471b233085",
+      "policy": "managed"
+    },
+    ".codex/agents/spec-analyst.toml": {
+      "hash": "e50dc3ff595ac9d6",
+      "sourceHash": "e50dc3ff595ac9d6",
+      "policy": "managed"
+    },
+    ".codex/agents/test-engineer.toml": {
+      "hash": "2268c84c0da71986",
+      "sourceHash": "2268c84c0da71986",
+      "policy": "managed"
+    },
+    ".codex/agents/ux-designer.toml": {
+      "hash": "0e273ae40a80662c",
+      "sourceHash": "0e273ae40a80662c",
+      "policy": "managed"
+    },
+    ".codex/config.toml": {
+      "hash": "0d4cde6e4a8e4d44",
+      "sourceHash": "0d4cde6e4a8e4d44",
+      "policy": "managed"
+    },
+    ".codex/hooks.json": {
+      "hash": "15fa7f2cd368bbad",
+      "sourceHash": "15fa7f2cd368bbad",
+      "policy": "json-merge"
+    },
+    ".cursor/agents/api-designer.md": {
+      "hash": "ee77bd3ddc13c022",
+      "sourceHash": "ee77bd3ddc13c022",
+      "policy": "managed"
+    },
+    ".cursor/agents/architect.md": {
+      "hash": "848634893862286a",
+      "sourceHash": "848634893862286a",
+      "policy": "managed"
+    },
+    ".cursor/agents/backend-expert.md": {
+      "hash": "a0d5c55874cb2239",
+      "sourceHash": "a0d5c55874cb2239",
+      "policy": "managed"
+    },
+    ".cursor/agents/bitacora-keeper.md": {
+      "hash": "7a5adbfedb039e27",
+      "sourceHash": "7a5adbfedb039e27",
+      "policy": "managed"
+    },
+    ".cursor/agents/code-reviewer.md": {
+      "hash": "d42ffe10123fcda0",
+      "sourceHash": "d42ffe10123fcda0",
+      "policy": "managed"
+    },
+    ".cursor/agents/database-expert.md": {
+      "hash": "c4d50266f4ef5cc6",
+      "sourceHash": "c4d50266f4ef5cc6",
+      "policy": "managed"
+    },
+    ".cursor/agents/devops-expert.md": {
+      "hash": "afc5ae2f0cbe73de",
+      "sourceHash": "afc5ae2f0cbe73de",
+      "policy": "managed"
+    },
+    ".cursor/agents/frontend-expert.md": {
+      "hash": "a0e26807c77784a1",
+      "sourceHash": "a0e26807c77784a1",
+      "policy": "managed"
+    },
+    ".cursor/agents/performance-optimizer.md": {
+      "hash": "734fa06bf3558bbd",
+      "sourceHash": "734fa06bf3558bbd",
+      "policy": "managed"
+    },
+    ".cursor/agents/refactor-specialist.md": {
+      "hash": "bd6f815e877e42d3",
+      "sourceHash": "bd6f815e877e42d3",
+      "policy": "managed"
+    },
+    ".cursor/agents/release-manager.md": {
+      "hash": "b9a733265bec597e",
+      "sourceHash": "b9a733265bec597e",
+      "policy": "managed"
+    },
+    ".cursor/agents/research-analyst.md": {
+      "hash": "d691568ffd61d09b",
+      "sourceHash": "d691568ffd61d09b",
+      "policy": "managed"
+    },
+    ".cursor/agents/test-engineer.md": {
+      "hash": "313b2edf6b50e734",
+      "sourceHash": "313b2edf6b50e734",
+      "policy": "managed"
+    },
+    ".cursor/hooks.json": {
+      "hash": "adcc9169b4e12268",
+      "sourceHash": "9fcf7be806029032",
+      "policy": "json-merge"
+    },
+    ".cursor/rules/10-tdd.mdc": {
+      "hash": "d81231dfb8925084",
+      "sourceHash": "d81231dfb8925084",
+      "policy": "managed"
+    },
+    ".cursor/rules/30-architecture.mdc": {
+      "hash": "9376674f7cc98b26",
+      "sourceHash": "9376674f7cc98b26",
+      "policy": "managed"
+    },
+    ".cursor/rules/40-usability.mdc": {
+      "hash": "6b1123afce667662",
+      "sourceHash": "6b1123afce667662",
+      "policy": "managed"
+    },
+    ".editorconfig": {
+      "hash": "68cb8ae675d491ed",
+      "sourceHash": "68cb8ae675d491ed",
+      "policy": "managed"
+    },
+    ".gemini/agents/api-designer.md": {
+      "hash": "ca95ed7a40dcb960",
+      "sourceHash": "ca95ed7a40dcb960",
+      "policy": "managed"
+    },
+    ".gemini/agents/architect.md": {
+      "hash": "2fdbde8551f587bf",
+      "sourceHash": "2fdbde8551f587bf",
+      "policy": "managed"
+    },
+    ".gemini/agents/backend-expert.md": {
+      "hash": "903b2e256c14f3f8",
+      "sourceHash": "903b2e256c14f3f8",
+      "policy": "managed"
+    },
+    ".gemini/agents/bitacora-keeper.md": {
+      "hash": "045f6ced81f02023",
+      "sourceHash": "045f6ced81f02023",
+      "policy": "managed"
+    },
+    ".gemini/agents/code-reviewer.md": {
+      "hash": "8e5f71fbff64ecb3",
+      "sourceHash": "8e5f71fbff64ecb3",
+      "policy": "managed"
+    },
+    ".gemini/agents/database-expert.md": {
+      "hash": "c495c414faaab914",
+      "sourceHash": "c495c414faaab914",
+      "policy": "managed"
+    },
+    ".gemini/agents/devops-expert.md": {
+      "hash": "779fd0ee56673a43",
+      "sourceHash": "779fd0ee56673a43",
+      "policy": "managed"
+    },
+    ".gemini/agents/docs-writer.md": {
+      "hash": "8dc1d917d911ce34",
+      "sourceHash": "8dc1d917d911ce34",
+      "policy": "managed"
+    },
+    ".gemini/agents/frontend-expert.md": {
+      "hash": "0cb2ce5fcbf73519",
+      "sourceHash": "0cb2ce5fcbf73519",
+      "policy": "managed"
+    },
+    ".gemini/agents/implementer.md": {
+      "hash": "388d6f7b7cff2014",
+      "sourceHash": "388d6f7b7cff2014",
+      "policy": "managed"
+    },
+    ".gemini/agents/orchestrator.md": {
+      "hash": "f344a59d47a8d6a0",
+      "sourceHash": "f344a59d47a8d6a0",
+      "policy": "managed"
+    },
+    ".gemini/agents/performance-optimizer.md": {
+      "hash": "d8e81841937e4d4a",
+      "sourceHash": "d8e81841937e4d4a",
+      "policy": "managed"
+    },
+    ".gemini/agents/planner.md": {
+      "hash": "19629a9be16f99fb",
+      "sourceHash": "19629a9be16f99fb",
+      "policy": "managed"
+    },
+    ".gemini/agents/refactor-specialist.md": {
+      "hash": "41596f6f9ad7b895",
+      "sourceHash": "41596f6f9ad7b895",
+      "policy": "managed"
+    },
+    ".gemini/agents/release-manager.md": {
+      "hash": "74ccc0d6d29de11d",
+      "sourceHash": "74ccc0d6d29de11d",
+      "policy": "managed"
+    },
+    ".gemini/agents/research-analyst.md": {
+      "hash": "9460ca0ed94360a5",
+      "sourceHash": "9460ca0ed94360a5",
+      "policy": "managed"
+    },
+    ".gemini/agents/security-auditor.md": {
+      "hash": "f930937d4d7864bb",
+      "sourceHash": "f930937d4d7864bb",
+      "policy": "managed"
+    },
+    ".gemini/agents/spec-analyst.md": {
+      "hash": "2eb47387cb86fc42",
+      "sourceHash": "2eb47387cb86fc42",
+      "policy": "managed"
+    },
+    ".gemini/agents/test-engineer.md": {
+      "hash": "28482d65af73a91a",
+      "sourceHash": "28482d65af73a91a",
+      "policy": "managed"
+    },
+    ".gemini/agents/ux-designer.md": {
+      "hash": "0eb9e03a4d060220",
+      "sourceHash": "0eb9e03a4d060220",
+      "policy": "managed"
+    },
+    ".gitattributes": {
+      "hash": "fc02e45b31f33898",
+      "sourceHash": "fc02e45b31f33898",
+      "policy": "managed"
+    },
+    ".github/agents/api-designer.agent.md": {
+      "hash": "a94cbf387e1645b1",
+      "sourceHash": "a94cbf387e1645b1",
+      "policy": "managed"
+    },
+    ".github/agents/architect.agent.md": {
+      "hash": "6b222584f9e1b138",
+      "sourceHash": "6b222584f9e1b138",
+      "policy": "managed"
+    },
+    ".github/agents/backend-expert.agent.md": {
+      "hash": "3330ddaff76a3c5a",
+      "sourceHash": "3330ddaff76a3c5a",
+      "policy": "managed"
+    },
+    ".github/agents/bitacora-keeper.agent.md": {
+      "hash": "d8f1e02bef789363",
+      "sourceHash": "d8f1e02bef789363",
+      "policy": "managed"
+    },
+    ".github/agents/code-reviewer.agent.md": {
+      "hash": "ac61ebe72097b9d1",
+      "sourceHash": "ac61ebe72097b9d1",
+      "policy": "managed"
+    },
+    ".github/agents/database-expert.agent.md": {
+      "hash": "3e02e9aa9a712717",
+      "sourceHash": "3e02e9aa9a712717",
+      "policy": "managed"
+    },
+    ".github/agents/devops-expert.agent.md": {
+      "hash": "cb8f6f97903fe77d",
+      "sourceHash": "cb8f6f97903fe77d",
+      "policy": "managed"
+    },
+    ".github/agents/docs-writer.agent.md": {
+      "hash": "750ff1160703f697",
+      "sourceHash": "750ff1160703f697",
+      "policy": "managed"
+    },
+    ".github/agents/frontend-expert.agent.md": {
+      "hash": "aa861199640767ae",
+      "sourceHash": "aa861199640767ae",
+      "policy": "managed"
+    },
+    ".github/agents/implementer.agent.md": {
+      "hash": "c2d019da74c74a0e",
+      "sourceHash": "c2d019da74c74a0e",
+      "policy": "managed"
+    },
+    ".github/agents/orchestrator.agent.md": {
+      "hash": "d23e345dd2785a33",
+      "sourceHash": "d23e345dd2785a33",
+      "policy": "managed"
+    },
+    ".github/agents/performance-optimizer.agent.md": {
+      "hash": "b49376e71c789a43",
+      "sourceHash": "b49376e71c789a43",
+      "policy": "managed"
+    },
+    ".github/agents/planner.agent.md": {
+      "hash": "b151e39acf05588c",
+      "sourceHash": "b151e39acf05588c",
+      "policy": "managed"
+    },
+    ".github/agents/README.md": {
+      "hash": "6ffcc69893c74e85",
+      "sourceHash": "6ffcc69893c74e85",
+      "policy": "managed"
+    },
+    ".github/agents/refactor-specialist.agent.md": {
+      "hash": "bdb0db4b6f73ac98",
+      "sourceHash": "bdb0db4b6f73ac98",
+      "policy": "managed"
+    },
+    ".github/agents/release-manager.agent.md": {
+      "hash": "da02135bdd3d2af7",
+      "sourceHash": "da02135bdd3d2af7",
+      "policy": "managed"
+    },
+    ".github/agents/research-analyst.agent.md": {
+      "hash": "573fdb3c60b46791",
+      "sourceHash": "573fdb3c60b46791",
+      "policy": "managed"
+    },
+    ".github/agents/security-auditor.agent.md": {
+      "hash": "74a90c5a71c7edda",
+      "sourceHash": "74a90c5a71c7edda",
+      "policy": "managed"
+    },
+    ".github/agents/spec-analyst.agent.md": {
+      "hash": "52a5b41a4547dea3",
+      "sourceHash": "52a5b41a4547dea3",
+      "policy": "managed"
+    },
+    ".github/agents/test-engineer.agent.md": {
+      "hash": "c3a038d3b7d9444c",
+      "sourceHash": "c3a038d3b7d9444c",
+      "policy": "managed"
+    },
+    ".github/agents/ux-designer.agent.md": {
+      "hash": "eab4c74d5919e11f",
+      "sourceHash": "eab4c74d5919e11f",
+      "policy": "managed"
+    },
+    ".github/hooks/sdd.json": {
+      "hash": "43ad72f1d29762f2",
+      "sourceHash": "43ad72f1d29762f2",
+      "policy": "json-merge"
+    },
+    ".github/instructions/domain.instructions.md": {
+      "hash": "0391a63244789f12",
+      "sourceHash": "0391a63244789f12",
+      "policy": "managed"
+    },
+    ".github/instructions/security.instructions.md": {
+      "hash": "f8e4a9475843aaf7",
+      "sourceHash": "f8e4a9475843aaf7",
+      "policy": "managed"
+    },
+    ".github/instructions/tests.instructions.md": {
+      "hash": "a97a2edd1b092c8c",
+      "sourceHash": "a97a2edd1b092c8c",
+      "policy": "managed"
+    },
+    ".github/instructions/usability.instructions.md": {
+      "hash": "d3e61bb22ad70ed0",
+      "sourceHash": "d3e61bb22ad70ed0",
+      "policy": "managed"
+    },
+    ".github/workflows/sdd-gates.yml": {
+      "hash": "27d1dcfa89c07b0f",
+      "sourceHash": "27d1dcfa89c07b0f",
+      "policy": "managed"
+    },
+    ".sdd/githooks/pre-commit": {
+      "hash": "5efb54616007c472",
+      "sourceHash": "5efb54616007c472",
+      "policy": "managed"
+    },
+    ".sdd/githooks/pre-push": {
+      "hash": "442b89fc4e744785",
+      "sourceHash": "442b89fc4e744785",
+      "policy": "managed"
+    },
+    ".sdd/githooks/README.md": {
+      "hash": "670193f7ef320d11",
+      "sourceHash": "670193f7ef320d11",
+      "policy": "managed"
+    },
+    ".sdd/hooks/format-and-lint.mjs": {
+      "hash": "72ede70c98cf305f",
+      "sourceHash": "72ede70c98cf305f",
+      "policy": "managed"
+    },
+    ".sdd/hooks/guard-bash.mjs": {
+      "hash": "2714edb3f410c3d5",
+      "sourceHash": "2714edb3f410c3d5",
+      "policy": "managed"
+    },
+    ".sdd/hooks/guard-write.mjs": {
+      "hash": "7a94889e1f632f76",
+      "sourceHash": "7a94889e1f632f76",
+      "policy": "managed"
+    },
+    ".sdd/hooks/README.md": {
+      "hash": "a2446e7763e07aba",
+      "sourceHash": "a2446e7763e07aba",
+      "policy": "managed"
+    },
+    ".sdd/hooks/sdd-router.mjs": {
+      "hash": "d516ceceaf0b1b97",
+      "sourceHash": "d516ceceaf0b1b97",
+      "policy": "managed"
+    },
+    ".sdd/hooks/session-context.mjs": {
+      "hash": "fa5f65d1b060ab42",
+      "sourceHash": "fa5f65d1b060ab42",
+      "policy": "managed"
+    },
+    ".sdd/hooks/session-log.mjs": {
+      "hash": "3c95520d5728ce28",
+      "sourceHash": "3c95520d5728ce28",
+      "policy": "managed"
+    },
+    ".sdd/hooks/subagent-log.mjs": {
+      "hash": "a74cee61094dcdee",
+      "sourceHash": "a74cee61094dcdee",
+      "policy": "managed"
+    },
+    ".sdd/hooks/_lib.mjs": {
+      "hash": "a875f9a6e29bd43f",
+      "sourceHash": "a875f9a6e29bd43f",
+      "policy": "managed"
+    },
+    ".sdd/README.md": {
+      "hash": "7aa47e2e0b0cdce9",
+      "sourceHash": "7aa47e2e0b0cdce9",
+      "policy": "managed"
+    },
+    ".vscode/settings.json": {
+      "hash": "2b3f4963334af35d",
+      "sourceHash": "0ebbdce5dec03695",
+      "policy": "json-merge"
+    },
+    "CONTRIBUTING.md": {
+      "hash": "cf5a6abb5a58bc93",
+      "sourceHash": "cf5a6abb5a58bc93",
+      "policy": "managed"
+    },
+    "docs/agents/CATALOG.md": {
+      "hash": "5a74881e071b3956",
+      "sourceHash": "5a74881e071b3956",
+      "policy": "managed"
+    },
+    "docs/architecture/adr/_TEMPLATE.md": {
+      "hash": "0570124c78f17027",
+      "sourceHash": "0570124c78f17027",
+      "policy": "managed"
+    },
+    "docs/architecture/DECISION-GUIDE.md": {
+      "hash": "2e6fb439ab4bd6b5",
+      "sourceHash": "2e6fb439ab4bd6b5",
+      "policy": "managed"
+    },
+    "docs/architecture/PATTERNS.md": {
+      "hash": "a3702aa8f658cf18",
+      "sourceHash": "a3702aa8f658cf18",
+      "policy": "managed"
+    },
+    "docs/architecture/_TEMPLATE.constitution.md": {
+      "hash": "73a26e79e2470456",
+      "sourceHash": "73a26e79e2470456",
+      "policy": "managed"
+    },
+    "docs/bitacora/TEMPLATE.md": {
+      "hash": "fad6acc8f1b01f7f",
+      "sourceHash": "fad6acc8f1b01f7f",
+      "policy": "managed"
+    },
+    "docs/design/A11Y-CHECKLIST.md": {
+      "hash": "9fc31048a379e763",
+      "sourceHash": "9fc31048a379e763",
+      "policy": "managed"
+    },
+    "docs/design/DIRECTION-GUIDE.md": {
+      "hash": "25ed227404af3f6c",
+      "sourceHash": "25ed227404af3f6c",
+      "policy": "managed"
+    },
+    "docs/design/USABILITY-CHECKLIST.md": {
+      "hash": "7bd3e8a367d671e3",
+      "sourceHash": "7bd3e8a367d671e3",
+      "policy": "managed"
+    },
+    "docs/guides/COMO-TRABAJAR-CON-LOS-AGENTES.md": {
+      "hash": "4172835ebd386b5d",
+      "sourceHash": "4172835ebd386b5d",
+      "policy": "managed"
+    },
+    "docs/guides/DOCUMENTACION.md": {
+      "hash": "e979bfe2a922810c",
+      "sourceHash": "e979bfe2a922810c",
+      "policy": "managed"
+    },
+    "docs/ops/OBSERVABILITY.md": {
+      "hash": "c75b9d513e503089",
+      "sourceHash": "c75b9d513e503089",
+      "policy": "managed"
+    },
+    "docs/ops/runbooks/_TEMPLATE.md": {
+      "hash": "051acdc3a09f9ad2",
+      "sourceHash": "051acdc3a09f9ad2",
+      "policy": "managed"
+    },
+    "docs/quality/DEFINITION-OF-DONE.md": {
+      "hash": "296ca9cc901228f4",
+      "sourceHash": "296ca9cc901228f4",
+      "policy": "managed"
+    },
+    "docs/quality/METRICS.md": {
+      "hash": "798398bbbeb757ee",
+      "sourceHash": "798398bbbeb757ee",
+      "policy": "managed"
+    },
+    "docs/quality/TECH-DEBT.md": {
+      "hash": "53d50fcebc5a5865",
+      "sourceHash": "53d50fcebc5a5865",
+      "policy": "managed"
+    },
+    "docs/quality/TEST-STRATEGY.md": {
+      "hash": "c6ab85be4f0f2c7b",
+      "sourceHash": "c6ab85be4f0f2c7b",
+      "policy": "managed"
+    },
+    "docs/quality/_TEMPLATE.executive-summary.md": {
+      "hash": "e2aa5a78b366e375",
+      "sourceHash": "e2aa5a78b366e375",
+      "policy": "managed"
+    },
+    "docs/sdd/OPERATING-MODEL.md": {
+      "hash": "008fc27f0b8c163f",
+      "sourceHash": "008fc27f0b8c163f",
+      "policy": "managed"
+    },
+    "docs/security/AUTH-TOKENS.md": {
+      "hash": "3fbc2fc1a8662bcd",
+      "sourceHash": "3fbc2fc1a8662bcd",
+      "policy": "managed"
+    },
+    "docs/security/MCP-SECURITY.md": {
+      "hash": "aa7520d69d2767c4",
+      "sourceHash": "aa7520d69d2767c4",
+      "policy": "managed"
+    },
+    "docs/security/SECURITY-CHECKLIST.md": {
+      "hash": "e0e9ce18e1555b11",
+      "sourceHash": "e0e9ce18e1555b11",
+      "policy": "managed"
+    },
+    "docs/security/_TEMPLATE.threat-model.md": {
+      "hash": "85dd736caa945738",
+      "sourceHash": "85dd736caa945738",
+      "policy": "managed"
+    },
+    "docs/specs/_TEMPLATE/clarifications.md": {
+      "hash": "fe4d43618ed02dc4",
+      "sourceHash": "fe4d43618ed02dc4",
+      "policy": "managed"
+    },
+    "docs/specs/_TEMPLATE/contracts/.gitkeep": {
+      "hash": "e3b0c44298fc1c14",
+      "sourceHash": "e3b0c44298fc1c14",
+      "policy": "managed"
+    },
+    "docs/specs/_TEMPLATE/data-model.md": {
+      "hash": "1b6ab2dbe1ba427c",
+      "sourceHash": "1b6ab2dbe1ba427c",
+      "policy": "managed"
+    },
+    "docs/specs/_TEMPLATE/design.md": {
+      "hash": "30e93996c346a0ab",
+      "sourceHash": "30e93996c346a0ab",
+      "policy": "managed"
+    },
+    "docs/specs/_TEMPLATE/evidence.md": {
+      "hash": "a34f7091634b207b",
+      "sourceHash": "a34f7091634b207b",
+      "policy": "managed"
+    },
+    "docs/specs/_TEMPLATE/plan.md": {
+      "hash": "a779cdfb5b810ccb",
+      "sourceHash": "a779cdfb5b810ccb",
+      "policy": "managed"
+    },
+    "docs/specs/_TEMPLATE/research.md": {
+      "hash": "90f6bf1ffa3cdb53",
+      "sourceHash": "90f6bf1ffa3cdb53",
+      "policy": "managed"
+    },
+    "docs/specs/_TEMPLATE/spec.md": {
+      "hash": "69dffa4662330f39",
+      "sourceHash": "69dffa4662330f39",
+      "policy": "managed"
+    },
+    "docs/specs/_TEMPLATE/tasks.md": {
+      "hash": "8cd12b0737141867",
+      "sourceHash": "8cd12b0737141867",
+      "policy": "managed"
+    },
+    "docs/specs/_TEMPLATE/test-plan.md": {
+      "hash": "c4d27f9209f265e7",
+      "sourceHash": "c4d27f9209f265e7",
+      "policy": "managed"
+    },
+    "scripts/check-sdd.mjs": {
+      "hash": "91aa8778f984686d",
+      "sourceHash": "91aa8778f984686d",
+      "policy": "managed"
+    },
+    "scripts/check-syntax.mjs": {
+      "hash": "ad0f360e2a9a68f5",
+      "sourceHash": "ad0f360e2a9a68f5",
+      "policy": "managed"
+    },
+    "scripts/lib/docs-contract.mjs": {
+      "hash": "34a90b5f85f73a8f",
+      "sourceHash": "34a90b5f85f73a8f",
+      "policy": "managed"
+    },
+    "scripts/lib/jsonc.mjs": {
+      "hash": "44a5b4067171482d",
+      "sourceHash": "44a5b4067171482d",
+      "policy": "managed"
+    },
+    "scripts/scan-secrets.mjs": {
+      "hash": "13ab0c6f86e8dc19",
+      "sourceHash": "13ab0c6f86e8dc19",
+      "policy": "managed"
+    },
+    "scripts/sdd-project.mjs": {
+      "hash": "826dbda3552c1515",
+      "sourceHash": "826dbda3552c1515",
+      "policy": "managed"
+    },
+    "scripts/skills-sync.mjs": {
+      "hash": "6e4584204bb7d78b",
+      "sourceHash": "6e4584204bb7d78b",
+      "policy": "managed"
+    },
+    "scripts/test-hooks.mjs": {
+      "hash": "62e917b15b677ca4",
+      "sourceHash": "62e917b15b677ca4",
+      "policy": "managed"
+    },
+    "SECURITY.md": {
+      "hash": "e066905e85ed37c8",
+      "sourceHash": "e066905e85ed37c8",
+      "policy": "managed"
+    }
+  },
+  "ficheros": {
+    "docs/product/PRD.md": "c3c6111ed9e26e34",
+    "docs/product/USE-CASES.md": "2df40e645f7bd452",
+    "docs/product/FEATURE-MAP.md": "12acdaef064987ba",
+    "docs/product/SOURCES.md": "034bd5d473accc2c",
+    "CHANGELOG.md": "7838ad412700e1f9",
+    "AGENTS.md": "8a6e3a7aa8249da9",
+    "CLAUDE.md": "462b91c53ab857a5",
+    "GEMINI.md": "853b2129a6f18cb1",
+    ".github/copilot-instructions.md": "bd641a4a4d17ba18",
+    "docs/README.md": "45518245607a9cff",
+    "docs/agents/SKILLS-EXTERNAS.md": "279fdfb4967fa206",
+    "docs/integrations/IDE-COMPATIBILITY.md": "38ba13c9a53f98e6",
+    "docs/product/VISION.md": "4db7f722b3c26bee",
+    "docs/architecture/constitution.md": "7ef39ac48f8aa69e",
+    "docs/design/DIRECCION-VISUAL.md": "25e0c0d65fc58c90",
+    "docs/security/THREAT-MODEL.md": "c66ad11b4176152b",
+    "docs/bitacora/DECISIONS.md": "df9a061f22f2633f",
+    ".sdd/agent-audit.jsonl": "e3b0c44298fc1c14",
+    ".sdd/external-skills.json": "384509af73788394",
+    ".sdd/territories.json": "e8a4424a3fe40905",
+    ".sdd/checks.json": "e75855cad9da3302",
+    ".sdd/docs.json": "ffcf2120d9997fe1",
+    ".sdd/generators.json": "07a3d3bebf673be6",
+    ".github/dependabot.yml": "eada67e1b7f73d16",
+    ".gitignore": "9acaed84ed32b706",
+    ".agents/agents/api-designer.md": "601684eeaa5f6f7a",
+    ".agents/agents/architect.md": "30b96e18121215ed",
+    ".agents/agents/backend-expert.md": "1dc4bae0d03a5af1",
+    ".agents/agents/bitacora-keeper.md": "6d39851abe981422",
+    ".agents/agents/code-reviewer.md": "8cf0cdfec205e5c1",
+    ".agents/agents/database-expert.md": "2fe89686f0023ce2",
+    ".agents/agents/devops-expert.md": "ea97ae55df5ca7ba",
+    ".agents/agents/docs-writer.md": "f46e891a1e7e2137",
+    ".agents/agents/frontend-expert.md": "38e81cba291b1e25",
+    ".agents/agents/implementer.md": "5ff82b69397c1d8e",
+    ".agents/agents/orchestrator.md": "e04fe49ba44e3a0d",
+    ".agents/agents/performance-optimizer.md": "10619e54240abff5",
+    ".agents/agents/planner.md": "c6ce06039f8885a0",
+    ".agents/agents/refactor-specialist.md": "832d312c474e1bdb",
+    ".agents/agents/release-manager.md": "626324fbf7c65191",
+    ".agents/agents/research-analyst.md": "afee215ba2fe376c",
+    ".agents/agents/security-auditor.md": "98c80a0a9f9ad896",
+    ".agents/agents/spec-analyst.md": "2d1ffa620f1b9a92",
+    ".agents/agents/test-engineer.md": "60e9da5b51f24734",
+    ".agents/agents/ux-designer.md": "e505ea8457f3beff",
+    ".agents/hooks.json": "5a9ff3db2e3104f6",
+    ".agents/rules/00-core.md": "972ce3b4790b9803",
+    ".agents/skills/adr/SKILL.md": "a659856ed8005d77",
+    ".agents/skills/bbdd/SKILL.md": "2f21517300289a76",
+    ".agents/skills/bitacora/SKILL.md": "a98dbe7b17358f72",
+    ".agents/skills/design-sync/SKILL.md": "6ef7ae058a6d4b3a",
+    ".agents/skills/docs-sync/evals/evals.json": "aef2ae04072f6d36",
+    ".agents/skills/docs-sync/SKILL.md": "a467631727f6b4a9",
+    ".agents/skills/front/references/implementation-checklists.md": "22a6c1f76d4037e3",
+    ".agents/skills/front/SKILL.md": "d236675acd133b1e",
+    ".agents/skills/middle/SKILL.md": "64f98bd578f6c1f8",
+    ".agents/skills/observability/SKILL.md": "f433f88c3883626f",
+    ".agents/skills/onboard/SKILL.md": "1a3f7cb4506375b4",
+    ".agents/skills/respond-incident/SKILL.md": "6a2e2b31f1d87563",
+    ".agents/skills/sdd-clarify/SKILL.md": "3911f6c40ab70b63",
+    ".agents/skills/sdd-design/references/design-gates.md": "12be7dca8c7ecd4b",
+    ".agents/skills/sdd-design/SKILL.md": "930d5e137e1ff261",
+    ".agents/skills/sdd-implement/SKILL.md": "515375d3a385dd45",
+    ".agents/skills/sdd-init/SKILL.md": "41778c7b89a6be40",
+    ".agents/skills/sdd-intake/evals/evals.json": "3aa9c37b40456971",
+    ".agents/skills/sdd-intake/SKILL.md": "1e94fc8f6496681c",
+    ".agents/skills/sdd-plan/references/coherence-and-gates.md": "b111cb2e3260ddcb",
+    ".agents/skills/sdd-plan/SKILL.md": "83b9b325d95a8be6",
+    ".agents/skills/sdd-refresh/SKILL.md": "04938be95cd90004",
+    ".agents/skills/sdd-ship/SKILL.md": "e411cf18f9ae40e5",
+    ".agents/skills/sdd-specify/SKILL.md": "e8b7c863422ab35e",
+    ".agents/skills/sdd-start/SKILL.md": "29271ae04347cd43",
+    ".agents/skills/sdd-light/SKILL.md": "a1ea09dc84041359",
+    ".agents/skills/sdd-status/SKILL.md": "6de7f4c15d2ff18c",
+    ".agents/skills/sdd-tasks/SKILL.md": "b336914e84af818b",
+    ".agents/skills/sdd-verify/references/review-checklists.md": "8002ad5976563c21",
+    ".agents/skills/sdd-verify/SKILL.md": "81616e98edfd5127",
+    ".agents/skills/security-scan/SKILL.md": "4e51a147add600d7",
+    ".agents/skills/skill-creator/agents/analyzer.md": "bf68f4cac5a56c67",
+    ".agents/skills/skill-creator/agents/comparator.md": "fe1fc9787c495d86",
+    ".agents/skills/skill-creator/agents/grader.md": "57134da0c1a4eea3",
+    ".agents/skills/skill-creator/assets/eval_review.html": "ce477dcc74dc1c0d",
+    ".agents/skills/skill-creator/eval-viewer/generate_review.py": "fc9d1b9243fe5ab6",
+    ".agents/skills/skill-creator/eval-viewer/viewer.html": "a53213426ee11004",
+    ".agents/skills/skill-creator/LICENSE.txt": "bc6b3af2f331cbc7",
+    ".agents/skills/skill-creator/references/schemas.md": "8e8876180a8989b4",
+    ".agents/skills/skill-creator/scripts/aggregate_benchmark.py": "123ef128ea5ccc01",
+    ".agents/skills/skill-creator/scripts/generate_report.py": "13df7118a3c50c83",
+    ".agents/skills/skill-creator/scripts/improve_description.py": "686f346cd682687f",
+    ".agents/skills/skill-creator/scripts/package_skill.py": "1a33059b0db1ef73",
+    ".agents/skills/skill-creator/scripts/quick_validate.py": "faf8532dbfa0cb55",
+    ".agents/skills/skill-creator/scripts/run_eval.py": "43e3b8f80dbf69c3",
+    ".agents/skills/skill-creator/scripts/run_loop.py": "7bd6f67420316852",
+    ".agents/skills/skill-creator/scripts/utils.py": "3af8ae62c40c73ab",
+    ".agents/skills/skill-creator/scripts/__init__.py": "e3b0c44298fc1c14",
+    ".agents/skills/skill-creator/SKILL.md": "dcd4803e61e913e6",
+    ".agents/skills/tdd/SKILL.md": "3daa00b217007043",
+    ".agents/workflows/onboarding.md": "f73562213ac4c8f8",
+    ".agents/workflows/sdd-nueva-funcionalidad.md": "38d42a034b6c2a3a",
+    ".agents/workflows/sdd-proyecto-nuevo.md": "01dfb1fecf925a8e",
+    ".claude/agents/api-designer.md": "039084f8d77dd88e",
+    ".claude/agents/architect.md": "77b77ecb64d4824b",
+    ".claude/agents/database-expert.md": "b911bff5fe531d9c",
+    ".claude/agents/research-analyst.md": "eadb8e1571dc85d0",
+    ".claude/settings.json": "01746d8380d69309",
+    ".claude/skills/adr/SKILL.md": "84e3476e7a7b598c",
+    ".claude/skills/bbdd/SKILL.md": "19903827d6e097ce",
+    ".claude/skills/bitacora/SKILL.md": "215cf5f6b3f4908b",
+    ".claude/skills/design-sync/SKILL.md": "ac8c3f43953a1698",
+    ".claude/skills/docs-sync/SKILL.md": "d879e8e676e232e4",
+    ".claude/skills/front/SKILL.md": "d5a15eda5221fb8e",
+    ".claude/skills/middle/SKILL.md": "ba54cf966e485971",
+    ".claude/skills/observability/SKILL.md": "cdf9933b3562f60c",
+    ".claude/skills/onboard/SKILL.md": "af92301daa50c146",
+    ".claude/skills/respond-incident/SKILL.md": "326cba5ca7a5dfc0",
+    ".claude/skills/sdd-clarify/SKILL.md": "8645429c7f908ecb",
+    ".claude/skills/sdd-design/SKILL.md": "5de241a8abcef710",
+    ".claude/skills/sdd-implement/SKILL.md": "31468fc6a24f03bf",
+    ".claude/skills/sdd-init/SKILL.md": "05f33248cfc645eb",
+    ".claude/skills/sdd-intake/SKILL.md": "2ae09d32ea94f628",
+    ".claude/skills/sdd-plan/SKILL.md": "2b97d424d7b5a4c9",
+    ".claude/skills/sdd-refresh/SKILL.md": "229ba524d509227e",
+    ".claude/skills/sdd-ship/SKILL.md": "79f412714cf5393c",
+    ".claude/skills/sdd-specify/SKILL.md": "c4e3c4f3753e25cb",
+    ".claude/skills/sdd-start/SKILL.md": "77d66675f6994aac",
+    ".claude/skills/sdd-light/SKILL.md": "ff06b892870a0c94",
+    ".claude/skills/sdd-status/SKILL.md": "f74e387a76790fdb",
+    ".claude/skills/sdd-tasks/SKILL.md": "129409581870cd9d",
+    ".claude/skills/sdd-verify/SKILL.md": "26310a33414d2b75",
+    ".claude/skills/security-scan/SKILL.md": "c25bb532fa37c3bb",
+    ".claude/skills/skill-creator/SKILL.md": "fd867adfb22a3732",
+    ".claude/skills/tdd/SKILL.md": "f8c2f2c59d44771c",
+    ".codex/agents/api-designer.toml": "fbe279607a10bbc6",
+    ".codex/agents/architect.toml": "44ed93f620f49efc",
+    ".codex/agents/backend-expert.toml": "348e4eb2750e1da9",
+    ".codex/agents/bitacora-keeper.toml": "6badf5eaf9a818fc",
+    ".codex/agents/code-reviewer.toml": "20b208c98a66e512",
+    ".codex/agents/database-expert.toml": "05a97b7bae68abd6",
+    ".codex/agents/devops-expert.toml": "bc210d329e1aa18f",
+    ".codex/agents/docs-writer.toml": "f1ffccaf9962b488",
+    ".codex/agents/frontend-expert.toml": "8d515f4ae330c037",
+    ".codex/agents/implementer.toml": "0579288007eed3d1",
+    ".codex/agents/orchestrator.toml": "54d8d6f2cba6a149",
+    ".codex/agents/performance-optimizer.toml": "bb6f3a83ad2cf31a",
+    ".codex/agents/planner.toml": "4f2977aca5bc563a",
+    ".codex/agents/refactor-specialist.toml": "73026980e0e24381",
+    ".codex/agents/release-manager.toml": "818469df2f1b23bd",
+    ".codex/agents/research-analyst.toml": "95c1ee9cdc998a94",
+    ".codex/agents/security-auditor.toml": "fb54e6471b233085",
+    ".codex/agents/spec-analyst.toml": "e50dc3ff595ac9d6",
+    ".codex/agents/test-engineer.toml": "2268c84c0da71986",
+    ".codex/agents/ux-designer.toml": "0e273ae40a80662c",
+    ".codex/config.toml": "0d4cde6e4a8e4d44",
+    ".codex/hooks.json": "15fa7f2cd368bbad",
+    ".cursor/agents/api-designer.md": "ee77bd3ddc13c022",
+    ".cursor/agents/architect.md": "848634893862286a",
+    ".cursor/agents/backend-expert.md": "a0d5c55874cb2239",
+    ".cursor/agents/bitacora-keeper.md": "7a5adbfedb039e27",
+    ".cursor/agents/code-reviewer.md": "d42ffe10123fcda0",
+    ".cursor/agents/database-expert.md": "c4d50266f4ef5cc6",
+    ".cursor/agents/devops-expert.md": "afc5ae2f0cbe73de",
+    ".cursor/agents/frontend-expert.md": "a0e26807c77784a1",
+    ".cursor/agents/performance-optimizer.md": "734fa06bf3558bbd",
+    ".cursor/agents/refactor-specialist.md": "bd6f815e877e42d3",
+    ".cursor/agents/release-manager.md": "b9a733265bec597e",
+    ".cursor/agents/research-analyst.md": "d691568ffd61d09b",
+    ".cursor/agents/test-engineer.md": "313b2edf6b50e734",
+    ".cursor/hooks.json": "adcc9169b4e12268",
+    ".cursor/rules/10-tdd.mdc": "d81231dfb8925084",
+    ".cursor/rules/30-architecture.mdc": "9376674f7cc98b26",
+    ".cursor/rules/40-usability.mdc": "6b1123afce667662",
+    ".editorconfig": "68cb8ae675d491ed",
+    ".gemini/agents/api-designer.md": "ca95ed7a40dcb960",
+    ".gemini/agents/architect.md": "2fdbde8551f587bf",
+    ".gemini/agents/backend-expert.md": "903b2e256c14f3f8",
+    ".gemini/agents/bitacora-keeper.md": "045f6ced81f02023",
+    ".gemini/agents/code-reviewer.md": "8e5f71fbff64ecb3",
+    ".gemini/agents/database-expert.md": "c495c414faaab914",
+    ".gemini/agents/devops-expert.md": "779fd0ee56673a43",
+    ".gemini/agents/docs-writer.md": "8dc1d917d911ce34",
+    ".gemini/agents/frontend-expert.md": "0cb2ce5fcbf73519",
+    ".gemini/agents/implementer.md": "388d6f7b7cff2014",
+    ".gemini/agents/orchestrator.md": "f344a59d47a8d6a0",
+    ".gemini/agents/performance-optimizer.md": "d8e81841937e4d4a",
+    ".gemini/agents/planner.md": "19629a9be16f99fb",
+    ".gemini/agents/refactor-specialist.md": "41596f6f9ad7b895",
+    ".gemini/agents/release-manager.md": "74ccc0d6d29de11d",
+    ".gemini/agents/research-analyst.md": "9460ca0ed94360a5",
+    ".gemini/agents/security-auditor.md": "f930937d4d7864bb",
+    ".gemini/agents/spec-analyst.md": "2eb47387cb86fc42",
+    ".gemini/agents/test-engineer.md": "28482d65af73a91a",
+    ".gemini/agents/ux-designer.md": "0eb9e03a4d060220",
+    ".gitattributes": "fc02e45b31f33898",
+    ".github/agents/api-designer.agent.md": "a94cbf387e1645b1",
+    ".github/agents/architect.agent.md": "6b222584f9e1b138",
+    ".github/agents/backend-expert.agent.md": "3330ddaff76a3c5a",
+    ".github/agents/bitacora-keeper.agent.md": "d8f1e02bef789363",
+    ".github/agents/code-reviewer.agent.md": "ac61ebe72097b9d1",
+    ".github/agents/database-expert.agent.md": "3e02e9aa9a712717",
+    ".github/agents/devops-expert.agent.md": "cb8f6f97903fe77d",
+    ".github/agents/docs-writer.agent.md": "750ff1160703f697",
+    ".github/agents/frontend-expert.agent.md": "aa861199640767ae",
+    ".github/agents/implementer.agent.md": "c2d019da74c74a0e",
+    ".github/agents/orchestrator.agent.md": "d23e345dd2785a33",
+    ".github/agents/performance-optimizer.agent.md": "b49376e71c789a43",
+    ".github/agents/planner.agent.md": "b151e39acf05588c",
+    ".github/agents/README.md": "6ffcc69893c74e85",
+    ".github/agents/refactor-specialist.agent.md": "bdb0db4b6f73ac98",
+    ".github/agents/release-manager.agent.md": "da02135bdd3d2af7",
+    ".github/agents/research-analyst.agent.md": "573fdb3c60b46791",
+    ".github/agents/security-auditor.agent.md": "74a90c5a71c7edda",
+    ".github/agents/spec-analyst.agent.md": "52a5b41a4547dea3",
+    ".github/agents/test-engineer.agent.md": "c3a038d3b7d9444c",
+    ".github/agents/ux-designer.agent.md": "eab4c74d5919e11f",
+    ".github/hooks/sdd.json": "43ad72f1d29762f2",
+    ".github/instructions/domain.instructions.md": "0391a63244789f12",
+    ".github/instructions/security.instructions.md": "f8e4a9475843aaf7",
+    ".github/instructions/tests.instructions.md": "a97a2edd1b092c8c",
+    ".github/instructions/usability.instructions.md": "d3e61bb22ad70ed0",
+    ".github/workflows/sdd-gates.yml": "27d1dcfa89c07b0f",
+    ".sdd/githooks/pre-commit": "5efb54616007c472",
+    ".sdd/githooks/pre-push": "442b89fc4e744785",
+    ".sdd/githooks/README.md": "670193f7ef320d11",
+    ".sdd/hooks/format-and-lint.mjs": "72ede70c98cf305f",
+    ".sdd/hooks/guard-bash.mjs": "2714edb3f410c3d5",
+    ".sdd/hooks/guard-write.mjs": "7a94889e1f632f76",
+    ".sdd/hooks/README.md": "a2446e7763e07aba",
+    ".sdd/hooks/sdd-router.mjs": "d516ceceaf0b1b97",
+    ".sdd/hooks/session-context.mjs": "fa5f65d1b060ab42",
+    ".sdd/hooks/session-log.mjs": "3c95520d5728ce28",
+    ".sdd/hooks/subagent-log.mjs": "a74cee61094dcdee",
+    ".sdd/hooks/_lib.mjs": "a875f9a6e29bd43f",
+    ".sdd/README.md": "7aa47e2e0b0cdce9",
+    ".vscode/settings.json": "2b3f4963334af35d",
+    "CONTRIBUTING.md": "cf5a6abb5a58bc93",
+    "docs/agents/CATALOG.md": "5a74881e071b3956",
+    "docs/architecture/adr/_TEMPLATE.md": "0570124c78f17027",
+    "docs/architecture/DECISION-GUIDE.md": "2e6fb439ab4bd6b5",
+    "docs/architecture/PATTERNS.md": "a3702aa8f658cf18",
+    "docs/architecture/_TEMPLATE.constitution.md": "73a26e79e2470456",
+    "docs/bitacora/TEMPLATE.md": "fad6acc8f1b01f7f",
+    "docs/design/A11Y-CHECKLIST.md": "9fc31048a379e763",
+    "docs/design/DIRECTION-GUIDE.md": "25ed227404af3f6c",
+    "docs/design/USABILITY-CHECKLIST.md": "7bd3e8a367d671e3",
+    "docs/guides/COMO-TRABAJAR-CON-LOS-AGENTES.md": "4172835ebd386b5d",
+    "docs/guides/DOCUMENTACION.md": "e979bfe2a922810c",
+    "docs/ops/OBSERVABILITY.md": "c75b9d513e503089",
+    "docs/ops/runbooks/_TEMPLATE.md": "051acdc3a09f9ad2",
+    "docs/quality/DEFINITION-OF-DONE.md": "296ca9cc901228f4",
+    "docs/quality/METRICS.md": "798398bbbeb757ee",
+    "docs/quality/TECH-DEBT.md": "53d50fcebc5a5865",
+    "docs/quality/TEST-STRATEGY.md": "c6ab85be4f0f2c7b",
+    "docs/quality/_TEMPLATE.executive-summary.md": "e2aa5a78b366e375",
+    "docs/sdd/OPERATING-MODEL.md": "008fc27f0b8c163f",
+    "docs/security/AUTH-TOKENS.md": "3fbc2fc1a8662bcd",
+    "docs/security/MCP-SECURITY.md": "aa7520d69d2767c4",
+    "docs/security/SECURITY-CHECKLIST.md": "e0e9ce18e1555b11",
+    "docs/security/_TEMPLATE.threat-model.md": "85dd736caa945738",
+    "docs/specs/_TEMPLATE/clarifications.md": "fe4d43618ed02dc4",
+    "docs/specs/_TEMPLATE/contracts/.gitkeep": "e3b0c44298fc1c14",
+    "docs/specs/_TEMPLATE/data-model.md": "1b6ab2dbe1ba427c",
+    "docs/specs/_TEMPLATE/design.md": "30e93996c346a0ab",
+    "docs/specs/_TEMPLATE/evidence.md": "a34f7091634b207b",
+    "docs/specs/_TEMPLATE/plan.md": "a779cdfb5b810ccb",
+    "docs/specs/_TEMPLATE/research.md": "90f6bf1ffa3cdb53",
+    "docs/specs/_TEMPLATE/spec.md": "69dffa4662330f39",
+    "docs/specs/_TEMPLATE/tasks.md": "8cd12b0737141867",
+    "docs/specs/_TEMPLATE/test-plan.md": "c4d27f9209f265e7",
+    "scripts/check-sdd.mjs": "91aa8778f984686d",
+    "scripts/check-syntax.mjs": "ad0f360e2a9a68f5",
+    "scripts/lib/docs-contract.mjs": "34a90b5f85f73a8f",
+    "scripts/lib/jsonc.mjs": "44a5b4067171482d",
+    "scripts/scan-secrets.mjs": "13ab0c6f86e8dc19",
+    "scripts/sdd-project.mjs": "826dbda3552c1515",
+    "scripts/skills-sync.mjs": "6e4584204bb7d78b",
+    "scripts/test-hooks.mjs": "62e917b15b677ca4",
+    "SECURITY.md": "e066905e85ed37c8"
+  }
+}

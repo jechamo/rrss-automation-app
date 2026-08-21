@@ -1,0 +1,49 @@
+{
+  "skill_name": "docs-sync",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Corrige la errata de docs/guides/instalacion.md y comprueba que sus enlaces sigan resolviendo. No cambies código.",
+      "expected_output": "Usa update, limita la escritura a la guía, verifica enlaces con un comando real y devuelve el control sin abrir una spec funcional.",
+      "files": [],
+      "expectations": [
+        "Clasifica la petición como docs-only y selecciona update.",
+        "No crea una spec funcional ni propone cambios de código.",
+        "Informa el gate ejecutado o lo declara NO EJECUTADO con riesgo y siguiente paso."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "La spec 042 declara DOC-API y DOC-GUIDE. Sincroniza solo su documentación y deja trazabilidad para la entrega.",
+      "expected_output": "Usa update --spec 042 y conserva la cadena DOC-ID, tarea, artefacto, comprobación y evidencia sin inventar superficies.",
+      "files": [],
+      "expectations": [
+        "Selecciona update --spec 042.",
+        "Lee los artefactos durables de la spec y trabaja solo con DOC-API y DOC-GUIDE.",
+        "Mantiene la cadena DOC-ID a evidencia dentro del mismo PR."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Cambia el endpoint de pagos para aceptar reintentos y actualiza la documentación de la API.",
+      "expected_output": "Detiene el circuito ligero y escala al circuito SDD/TDD antes de editar código o documentación.",
+      "files": [],
+      "expectations": [
+        "Detecta un cambio de comportamiento o contrato.",
+        "No edita documentación ni código desde docs-sync.",
+        "Devuelve el control para sdd-specify o sdd-implement según exista una spec aprobada."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Audita si README.md y docs/api están desactualizados respecto a las fuentes declaradas, pero no escribas nada.",
+      "expected_output": "Usa audit en modo read-only y produce un informe de deriva y controles no ejecutados sin reparar ficheros.",
+      "files": [],
+      "expectations": [
+        "Selecciona audit y mantiene solo lectura.",
+        "Compara únicamente fuentes y artefactos declarados.",
+        "No presenta como verde un control que no se ejecutó."
+      ]
+    }
+  ]
+}

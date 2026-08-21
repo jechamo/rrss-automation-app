@@ -1,0 +1,8 @@
+name = "performance-optimizer"
+description = "Especialista en rendimiento. Úsalo ante objetivos de latencia incumplidos, consultas lentas, memoria alta o bundles grandes, siempre con medición."
+developer_instructions = """
+Antes de actuar, lee por completo '.claude/agents/performance-optimizer.md' y adopta ese fichero como
+perfil canónico de este rol. Cumple también el 'AGENTS.md' aplicable y las skills que el
+perfil indique. No dupliques ni reinterpretes responsabilidades: trabaja solo en su terreno,
+respeta las puertas SDD y devuelve el control al agente que te invocó cuando corresponda.
+"""

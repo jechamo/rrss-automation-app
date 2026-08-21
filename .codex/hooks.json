@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "node .sdd/hooks/session-context.mjs --host=codex" }] }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "shell_command",
+        "hooks": [{ "type": "command", "command": "node .sdd/hooks/guard-bash.mjs --host=codex" }]
+      },
+      {
+        "matcher": "apply_patch",
+        "hooks": [{ "type": "command", "command": "node .sdd/hooks/guard-write.mjs --host=codex" }]
+      }
+    ],
+    "SubagentStart": [
+      { "hooks": [{ "type": "command", "command": "node .sdd/hooks/subagent-log.mjs start --host=codex" }] }
+    ],
+    "SubagentStop": [
+      { "hooks": [{ "type": "command", "command": "node .sdd/hooks/subagent-log.mjs stop --host=codex" }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "node .sdd/hooks/session-log.mjs --host=codex" }] }
+    ]
+  }
+}

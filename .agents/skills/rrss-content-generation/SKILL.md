@@ -1,10 +1,6 @@
 ---
 name: rrss-content-generation
-description: >-
-  Genera guiones de video y copy para redes sociales (YouTube, TikTok, Instagram/Reels,
-  LinkedIn, X) con hooks, estructura de retencion, CTAs y tono de marca. Usar al escribir
-  guiones, captions, hilos, anuncios o calendarios de contenido para un negocio. Aplica a
-  RRSS Studio REQ-005 (clonado de viral) y REQ-006 (contenido propio de la app).
+description: "Genera guiones y copy para RRSS Studio, con hooks, retencion, CTA y tono de marca para REQ-005 y REQ-006."
 ---
 
 # Generacion de contenido para RRSS

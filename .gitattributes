@@ -1,0 +1,26 @@
+# Normaliza finales de línea: evita diffs fantasma entre Windows, macOS y Linux.
+* text=auto eol=lf
+
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.pdf  binary
+*.woff binary
+*.woff2 binary
+
+# Los lockfiles se regeneran: no los revises línea a línea.
+package-lock.json  linguist-generated=true -diff
+pnpm-lock.yaml     linguist-generated=true -diff
+yarn.lock          linguist-generated=true -diff
+poetry.lock        linguist-generated=true -diff
+Cargo.lock         linguist-generated=true -diff
+
+# Bitácora append-only: en un conflicto se conservan ambas partes, no se elige una.
+*.jsonl merge=union

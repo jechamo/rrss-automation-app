@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "modo": "audit",
+  "descripcion": "Sin territorios de aplicación hasta /sdd-init o /onboard.",
+  "territories": [
+    { "agent": "architect", "paths": ["docs/architecture/**"] },
+    { "agent": "spec-analyst", "paths": ["docs/product/PRD.md", "docs/product/USE-CASES.md", "docs/product/FEATURE-MAP.md", "docs/product/SOURCES.md", "docs/specs/**/spec.md", "docs/specs/**/clarifications.md"] },
+    { "agent": "ux-designer", "paths": ["docs/design/**"] }
+  ]
+}

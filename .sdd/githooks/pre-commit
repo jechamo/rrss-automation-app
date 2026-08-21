@@ -1,0 +1,20 @@
+#!/usr/bin/env sh
+# Gates rápidos antes del commit. Se activan con:
+#   git config core.hooksPath .sdd/githooks
+#
+# Opt-in a propósito: un instalador que reconfigura git sin permiso es un instalador
+# que la gente desinstala.
+#
+# Salida de emergencia: git commit --no-verify
+# Si la usas, abre la tarea de seguimiento en el mismo momento. Un bypass sin tarea
+# no es una excepción, es deuda que nadie ha registrado.
+
+set -e
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "SDD: node no está disponible; se omiten los gates locales." >&2
+  exit 0
+fi
+
+echo "SDD · gates rápidos (pre-commit)"
+node scripts/sdd-project.mjs run --fast

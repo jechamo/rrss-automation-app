@@ -1,10 +1,6 @@
 ---
 name: rrss-viral-analysis
-description: >-
-  Analiza contenido viral de redes sociales (YouTube, TikTok, Instagram/Reels) para extraer
-  los patrones que lo hacen funcionar: hook, retencion, estructura, formato y duracion. Usar
-  al estudiar virales de un nicho, decidir que replicar, o definir criterios de "viral".
-  Aplica a RRSS Studio REQ-004 (scraping de virales del nicho).
+description: "Analiza contenido viral para RRSS Studio y extrae patrones de hook, retencion, estructura y formato para REQ-004."
 ---
 
 # Analisis de contenido viral (RRSS)

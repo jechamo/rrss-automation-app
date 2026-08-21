@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      { "type": "command", "command": "node .sdd/hooks/session-context.mjs --host=copilot" }
+    ],
+    "preToolUse": [
+      {
+        "matcher": "runInTerminal|editFiles|createFile|applyPatch",
+        "type": "command",
+        "command": "node .sdd/hooks/guard-write.mjs --host=copilot"
+      }
+    ],
+    "postToolUse": [
+      {
+        "matcher": "editFiles|createFile|applyPatch",
+        "type": "command",
+        "command": "node .sdd/hooks/format-and-lint.mjs --host=copilot"
+      }
+    ],
+    "stop": [
+      { "type": "command", "command": "node .sdd/hooks/session-log.mjs --host=copilot" }
+    ]
+  }
+}
