@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "registro": "docs/agents/SKILLS-EXTERNAS.md",
+  "politica": "Toda skill externa requiere revisión, licencia verificada y una referencia inmutable antes de aprobarse.",
+  "skills": [
+    {
+      "id": "anthropic-skill-creator",
+      "ref": "anthropics/skills:skill-creator",
+      "publicador": "Anthropic (oficial)",
+      "terreno": "meta",
+      "aporta": "Creación, evaluación y empaquetado de Agent Skills",
+      "licencia": "Apache-2.0",
+      "cuando": { "siempre": true },
+      "pin": "b29e7cf65e5cb78a5ac33d582270551bc74a14eb",
+      "estado": "aprobada",
+      "vendorizada": true,
+      "local": "skill-creator",
+      "comando": "npx --yes skills@1.5.21 add https://github.com/anthropics/skills/tree/b29e7cf65e5cb78a5ac33d582270551bc74a14eb/skills/skill-creator --skill skill-creator --agent universal --copy --yes",
+      "notas": "Skill base vendorizada y auditada; no se instala ni se actualiza automáticamente."
+    }
+  ]
+}

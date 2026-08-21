@@ -1,0 +1,25 @@
+{
+  "sonarlint.connectedMode.project": {
+    "connectionId": "jechamo",
+    "projectKey": "jechamo_rrss-automation-app"
+  },
+  "chat.agentFilesLocations": {
+    ".github/agents": true,
+    ".claude/agents": false
+  },
+  "chat.agentSkillsLocations": {
+    ".claude/skills": false,
+    ".agents/skills": true
+  },
+  "chat.promptFilesLocations": {
+    ".github/prompts": true
+  },
+  "files.associations": {
+    "*.agent.md": "markdown",
+    "SKILL.md": "markdown"
+  },
+  "chat.hookFilesLocations": {
+    ".github/hooks": true,
+    ".claude/settings.json": false
+  }
+}

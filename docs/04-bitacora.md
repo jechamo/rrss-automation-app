@@ -33,6 +33,25 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ## Historial
 
+### 2026-08-21 — Actualización del marco SDD/TDD v0.7.0
+
+- Instalación brownfield desde `jechamo/Estructura_inicial_claude#v0.7.0`: preserva el contexto
+  de RRSS y añade el circuito SDD/TDD, perfiles multi-host, hooks, gates y documentación durable.
+- Se migraron los perfiles de intake y las referencias de hooks heredadas; se retiraron seis
+  comandos Cursor que duplicaban skills nativas.
+- Catálogo actualizado a **27 skills base**, incluida `/sdd-light`, más las tres skills propias
+  de RRSS conservadas fuera del contrato instalado. La frontera ligera nace vacía y por tanto no
+  habilita atajos hasta aprobar rutas concretas.
+- Se normalizó el manifiesto de skills externas para la copia vendorizada y auditada de
+  `skill-creator`, sin instalar ni actualizar dependencias de terceros.
+- Verificación: `node scripts/check-sdd.mjs`, `node scripts/test-hooks.mjs` (85/85),
+  `node scripts/skills-sync.mjs --check`, gate rápido y `npm run build` correctos. `npm run lint`
+  permanece no ejecutable en modo no interactivo porque `next lint` solicita crear una
+  configuración de ESLint; no se creó automáticamente.
+- Estado posterior: baseline de producto, seguridad, usabilidad y documentación en
+  `legacy-pending`; corresponde ejecutar `/sdd-intake` antes de exigir trazabilidad nueva desde
+  la spec 001.
+
 ### 2026-07-31 — REQ-018: historial recuperable, regeneración granular y TikTok
 
 - Historial ampliado: se puede eliminar un trabajo, borrar todos los derivados conservando fuente y

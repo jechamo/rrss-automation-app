@@ -237,3 +237,34 @@ prisma/schema.prisma          Modelo de datos multiproyecto
   e iconos IA por nodo con spinner CSS y badges de estado.
 - **Siguiente:** roadmap **REQ-001→010 implementado** + pase visual. Queda el **visto bueno end-to-end
   del usuario** (pruebas reales con red+keys+`npx playwright install chromium` en su máquina) para cerrar v1.
+
+<!-- sdd:start -->
+## Flujo SDD gestionado
+
+La política operativa completa está en [`docs/sdd/OPERATING-MODEL.md`](docs/sdd/OPERATING-MODEL.md).
+
+- Ningún código se implementa sin una spec aprobada en `docs/specs/NNN-slug/`.
+- Producto se aprueba con `/sdd-intake` antes de arquitectura greenfield o de specs derivadas de un PRD global.
+- Circuito: intake → init/onboard → specify → clarify → design cuando haya UI → plan → tasks → implement → verify → ship.
+- La implementación sigue TDD: RED demostrado → GREEN mínimo → REFACTOR con la suite verde.
+- Toda spec nueva declara `Impacto de seguridad`; si es sensible, cada `SEC-*` enlaza decisión, tarea, test y evidencia.
+- `security-auditor` es de solo lectura. Un `GO` exige informe parseable sin CRÍTICO/ALTO ni controles no ejecutados.
+- Toda spec nueva declara `Impacto de usabilidad`; si es aplicable, cada `UX-*` enlaza decisión, tarea, test y evidencia.
+- `ux-designer` diseña y escribe; quien audita usabilidad en `/sdd-verify` es `code-reviewer`, en solo lectura. Nadie audita su propio diseño.
+- `orchestrator` es la entrada; solo `orchestrator`, `planner` e `implementer` delegan.
+- La profundidad máxima es de dos saltos; los especialistas siempre devuelven el control.
+- Las decisiones viven en la bitácora o en un ADR, nunca únicamente en el chat.
+
+### HANDOFF
+- Agente origen:
+- Fase completada:
+- Fuentes consultadas:
+- Artefactos:
+- Requisitos / casos cubiertos:
+- Discrepancias:
+- Decisiones tomadas:
+- Supuestos:
+- Bloqueos:
+- Siguiente agente sugerido:
+- Comando / contexto durable:
+<!-- sdd:end -->

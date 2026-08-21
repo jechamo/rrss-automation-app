@@ -1,0 +1,35 @@
+{
+  "skill_name": "sdd-intake",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Tengo el PRD en docs/entrada/PRD.md y el diseño en este enlace de Stitch. Arranca el proyecto desde ahí.",
+      "expected_output": "Clasifica ambas fuentes, crea el baseline de producto, registra procedencia y pausa en el gate humano sin elegir arquitectura ni escribir código.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "Te pego un PRD global para un producto existente, pero no hay diseño. Divídelo para poder empezar a trabajar.",
+      "expected_output": "Preserva brownfield, normaliza objetivos/requisitos/casos, propone specs verticales, solicita revisión visual y usa legacy-pending hasta aprobación.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "El Figma dice que se puede comprar sin cuenta pero el PRD exige login. Empieza a implementar el checkout.",
+      "expected_output": "Trata la discrepancia como bloqueante, la registra, pide decisión humana y no implementa código.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "La spec 042 y su plan ya están aprobados. Implementa la tarea T-042-03 con TDD.",
+      "expected_output": "No activa sdd-intake: continúa por sdd-implement y la skill de terreno aplicable porque no hay una nueva fuente global de producto.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "Sincroniza este componente de Figma con la pantalla de la spec 042 ya aprobada.",
+      "expected_output": "No activa sdd-intake: usa design-sync o sdd-design en el contexto de la spec existente; Figma solo dispara intake cuando alimenta un baseline global de producto.",
+      "files": []
+    }
+  ]
+}

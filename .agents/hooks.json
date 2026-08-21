@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "hooks": {
+    "sdd-guard-bash": {
+      "event": "preToolUse",
+      "matcher": { "toolNames": ["run_command", "run_terminal_command", "execute_command"] },
+      "command": "node ./.sdd/hooks/guard-bash.mjs --host=antigravity"
+    },
+    "sdd-guard-write": {
+      "event": "preToolUse",
+      "matcher": { "toolNames": ["write_file", "create_file", "edit_file", "replace_file_content", "delete_file"] },
+      "command": "node ./.sdd/hooks/guard-write.mjs --host=antigravity"
+    },
+    "sdd-format": {
+      "event": "postToolUse",
+      "matcher": { "toolNames": ["write_file", "create_file", "edit_file", "replace_file_content"] },
+      "command": "node ./.sdd/hooks/format-and-lint.mjs --host=antigravity"
+    },
+    "sdd-session-log": {
+      "event": "stop",
+      "command": "node ./.sdd/hooks/session-log.mjs --host=antigravity"
+    }
+  }
+}
