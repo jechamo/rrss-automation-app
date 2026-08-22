@@ -89,3 +89,47 @@ El negocio no decide sobre complejidad ciclomática. Decide sobre tiempo y riesg
 
 Traducir no es maquillar: la cifra sigue estando en `evidence.md`. Es elegir la unidad que permite
 a quien decide, decidir.
+
+---
+
+## Registro evidenciado
+
+### TD-001 · Fronteras de persistencia incompletas en pipelines
+
+- **Tipo / efecto**: accidental / manejable.
+- **Evidencia**: `src/core/pipeline/req001.ts`, `req005.ts` y `req006.ts` importan `@/lib/prisma`
+	y actualizan modelos de Prisma desde los nodos. Esto mezcla la orquestación de casos de uso con
+	el adaptador de persistencia y dificulta sustituirlo o probar reglas sin infraestructura.
+- **Impacto**: un cambio de almacenamiento o de consistencia puede requerir tocar varios pipelines
+	en vez de un límite de repositorio por contexto.
+- **Límite actual**: no obliga a refactorizar el brownfield; los cambios nuevos no deben aumentar
+	este acoplamiento sin justificación de plan.
+- **Revisión**: 2026-11-21, al planificar una modificación transversal de persistencia o pipeline.
+
+### TD-002 · Ejecución y progreso locales no sobreviven al proceso
+
+- **Tipo / efecto**: deliberada / manejable.
+- **Evidencia**: las rutas de ejecución lanzan `void executeRun(...)`; `src/core/pipeline/bus.ts`
+	usa `EventEmitter` en `globalThis`, y `src/core/clips/processor.ts` conserva trabajos activos en
+	un `Set` en memoria y marca trabajos interrumpidos como error al volver a leerlos.
+- **Impacto**: al cerrar, recompilar o reiniciar el servidor se pierde el progreso vivo y no hay
+	reanudación automática de pipelines. Los estados persistidos sirven para informar, no para
+	reconstruir un trabajo en curso.
+- **Límite actual**: no introducir broker o worker por esta deuda sin necesidad demostrada, ADR,
+	idempotencia y operación preparada.
+- **Revisión**: 2026-11-21, si aparece un requisito de reanudación fiable o ejecución separada.
+
+### TD-003 · Arranque heredado con efectos globales no apto para instalación guiada
+
+- **Tipo / efecto**: accidental / crítica para RF-05 de la spec 001.
+- **Evidencia**: `iniciar.bat` ejecuta `taskkill /F /IM node.exe`, termina cualquier listener del
+	puerto 3000 y elimina `.next` antes de iniciar Next. `src/lib/prisma.ts` instancia Prisma sin
+	preparación ni diagnóstico de esquema, mientras `prisma/schema.prisma` depende de
+	`DATABASE_URL`.
+- **Impacto**: una clonación limpia no dispone de comprobación previa ni de un resultado seguro;
+	el script puede afectar procesos ajenos y caché, y no clasifica datos existentes antes de
+	operaciones sobre persistencia.
+- **Límite actual**: no reutilizar estos efectos como asistente de instalación. La spec 001 debe
+	preservar datos, detectar antes de cambiar y exigir confirmaciones separadas, conforme a su
+	RF-05 y al ADR-0001.
+- **Revisión**: 2026-11-21 o al cerrar la verificación de la spec 001, lo que ocurra primero.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PipelineGraph, type GraphNode, type NodeState } from "@/components/PipelineGraph";
 import { GenerateContentModal } from "@/components/GenerateContentModal";
 import { DemoContentModal } from "@/components/DemoContentModal";
@@ -8,6 +8,7 @@ import { PieceCarousel } from "@/components/PieceCarousel";
 import { PublishModal } from "@/components/PublishModal";
 import { SelfRecordModal } from "@/components/SelfRecordModal";
 import { useAppDialog } from "@/components/AppDialog";
+import { reconcileActivePiece } from "@/core/content/selection";
 import type { ContentPiece, DemoConfig, MediaConfig } from "@/core/content/types";
 import { friendlyProviderFailure, sanitizeProviderMessage } from "@/core/media/contracts";
 
@@ -102,14 +103,37 @@ export function ContentTray({
   const [view, setView] = useState<"lista" | "carrusel">("lista");
   const [focusedPieceId, setFocusedPieceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const esRef = useRef<Map<string, EventSource>>(new Map());
+  const lastActiveIndexRef = useRef(0);
+  const lastProjectIdRef = useRef(projectId);
   const appDialog = useAppDialog();
+
+  if (lastProjectIdRef.current !== projectId) {
+    lastProjectIdRef.current = projectId;
+    lastActiveIndexRef.current = 0;
+  }
+
+  const pieceIds = useMemo(() => pieces.map((piece) => piece.id), [pieces]);
+  const selection = reconcileActivePiece(
+    focusedPieceId,
+    lastActiveIndexRef.current,
+    pieceIds,
+  );
+  const activePiece =
+    selection.pieceId === null
+      ? null
+      : pieces.find((piece) => piece.id === selection.pieceId) ?? null;
+  if (selection.pieceId) {
+    lastActiveIndexRef.current = Math.max(0, pieceIds.indexOf(selection.pieceId));
+  }
 
   const load = useCallback(async () => {
     const r = await fetch(`/api/content/${projectId}`);
     if (!r.ok) {
       setLoading(false);
+      setLoadError(true);
       return;
     }
     const d = (await r.json()) as {
@@ -117,6 +141,7 @@ export function ContentTray({
       runs: Record<string, RunSnapshot>;
     };
     setLoading(false);
+    setLoadError(false);
     setPieces(d.pieces);
     const nodesMap: Record<string, GraphNode[]> = {};
     const logsMap: Record<string, string[]> = {};
@@ -144,6 +169,12 @@ export function ContentTray({
       return merged;
     });
     setRunLogs((previous) => ({ ...previous, ...logsMap }));
+  }, [projectId]);
+
+  useEffect(() => {
+    setFocusedPieceId(null);
+    setExpanded({});
+    lastActiveIndexRef.current = 0;
   }, [projectId]);
 
   const loadVirales = useCallback(async () => {
@@ -327,9 +358,11 @@ export function ContentTray({
   }
 
   async function removePiece(pieceId: string) {
+    const target = pieces.find((piece) => piece.id === pieceId);
+    const title = target?.titulo || target?.content.guion.gancho || "la pieza";
     if (!await appDialog.confirm({
-      title: "Eliminar pieza de contenido",
-      message: "Se eliminará la pieza y dejará de aparecer en esta bandeja.",
+      title: `Eliminar ${title} de la colección`,
+      message: "La pieza dejará de aparecer en esta bandeja.",
       confirmLabel: "Eliminar pieza",
       tone: "danger",
     })) return;
@@ -379,10 +412,20 @@ export function ContentTray({
         </div>
       </div>
 
+      <div className="sr-only" aria-live="polite">
+        {selection.outcome === "empty" && !loading
+          ? "La colección ya no tiene piezas."
+          : selection.outcome === "replaced"
+            ? `La pieza que revisabas ya no está disponible. Se ha abierto ${activePiece?.titulo || "la pieza vecina"}.`
+            : activePiece
+              ? `Pieza activa: ${activePiece.titulo || "la pieza activa"}. Detalle actualizado.`
+              : ""}
+      </div>
       {!ready && (
-        <div className="glass p-4 text-sm text-white/50">
-          Genera el dossier para crear contenido. Para clonar virales necesitas además analizar
-          los virales del nicho.
+        <div role="alert" aria-live="assertive" className="glass p-4 text-sm text-white/50">
+          {view === "lista"
+            ? "Esta pieza no está disponible para revisión desde aquí. Comprueba su acceso y vuelve a cargarla."
+            : "No puedes abrir este recurso desde aquí. Comprueba que sigue disponible y vuelve a intentarlo."}
         </div>
       )}
       {ready && virales.length === 0 && (
@@ -394,7 +437,12 @@ export function ContentTray({
 
       {loading && (
         <div className="flex flex-col gap-3">
-          {[0, 1].map((i) => (
+          <p className="sr-only" aria-live="polite">
+            {view === "carrusel"
+              ? "Cargando la colección y su detalle…"
+              : "Preparando las piezas de la colección…"}
+          </p>
+          {[0, 1, 2].map((i) => (
             <div key={i} className="glass p-4">
               <div className="flex items-center gap-2">
                 <div className="skeleton h-5 w-24" />
@@ -407,10 +455,41 @@ export function ContentTray({
         </div>
       )}
 
+      {loadError && (
+        <div className="glass flex flex-col items-start gap-2 p-4 text-sm text-white/70">
+          <p>
+            {view === "carrusel"
+              ? "No se pudo actualizar la colección. Vuelve a intentarlo; tus piezas ya cargadas siguen disponibles."
+              : "No se pudo actualizar parte de la lista. Vuelve a intentarlo sin perder las piezas ya cargadas."}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setLoading(pieces.length === 0);
+              void load();
+            }}
+            className="rounded-lg border border-white/15 px-3 py-1.5 text-xs hover:bg-white/5"
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
+
       {!loading && pieces.length === 0 && ready && (
         <div className="glass p-4 text-xs text-white/40">
-          Sin piezas todavía. «Clonar viral» reinterpreta un viral; «Contenido propio» muestra tu app.
+          {view === "carrusel"
+            ? "Aún no hay piezas para revisar. Crea una pieza para empezar la colección."
+            : "No hay piezas en esta colección. Crea una para revisar su guion y recursos aquí."}
         </div>
+      )}
+
+      {!loading && pieces.length > 0 && view === "lista" && (
+        <p className="sr-only">Colección lista. Abre solo las piezas que necesites revisar.</p>
+      )}
+      {!loading && pieces.some((piece) => !piece.assets.videoPath && !piece.assets.recordingPath) && (
+        <p className="text-xs text-white/45">
+          Algunas piezas necesitan atención. Las demás están listas para revisar.
+        </p>
       )}
 
       {view === "carrusel" && pieces.length > 0 ? (
@@ -418,30 +497,40 @@ export function ContentTray({
           <PieceCarousel
             projectId={projectId}
             pieces={pieces}
-            onSelect={(id) => setFocusedPieceId(id)}
+            activeId={activePiece?.id ?? null}
+            onSelect={setFocusedPieceId}
           />
-          {(() => {
-            const focus = pieces.find((p) => p.id === focusedPieceId) ?? pieces[0];
-            return (
+          {activePiece && (
+            <div className="flex flex-col gap-1 text-sm">
+              <p className="text-xs text-white/55">
+                {`Activa ${pieces.findIndex((piece) => piece.id === activePiece.id) + 1}/${pieces.length} · ${activePiece.titulo || "sin título"} · ${STATUS_META[activePiece.status]?.text ?? activePiece.status}`}
+              </p>
+              <p className="font-medium">Revisando: {activePiece.titulo || "la pieza activa"}</p>
+            </div>
+          )}
+          {activePiece ? (
               <PieceCard
-                key={focus.id}
+                key={activePiece.id}
                 projectId={projectId}
-                piece={focus}
-                nodes={focus.runId ? runNodes[focus.runId] : undefined}
-                runLogs={focus.runId ? runLogs[focus.runId] : undefined}
-                expanded={!!expanded[focus.id]}
-                onToggle={() => setExpanded((e) => ({ ...e, [focus.id]: !e[focus.id] }))}
-                onRegenerate={() => (focus.origin === "own" ? setShowDemoModal(true) : setShowModal(true))}
-                onDelete={() => removePiece(focus.id)}
-                onUpload={(file) => uploadScreencast(focus.id, file)}
-                onRecord={() => setRecordingPieceId(focus.id)}
-                onClearRecording={() => clearRecording(focus.id)}
-                onRefreshNavigation={() => refreshOwnPiece(focus.id, "auto")}
-                onRemount={() => refreshOwnPiece(focus.id, "existing")}
+                piece={activePiece}
+                nodes={activePiece.runId ? runNodes[activePiece.runId] : undefined}
+                runLogs={activePiece.runId ? runLogs[activePiece.runId] : undefined}
+                expanded={!!expanded[activePiece.id]}
+                onToggle={() => setExpanded((e) => ({ ...e, [activePiece.id]: !e[activePiece.id] }))}
+                onRegenerate={() => (activePiece.origin === "own" ? setShowDemoModal(true) : setShowModal(true))}
+                onDelete={() => removePiece(activePiece.id)}
+                onUpload={(file) => uploadScreencast(activePiece.id, file)}
+                onRecord={() => setRecordingPieceId(activePiece.id)}
+                onClearRecording={() => clearRecording(activePiece.id)}
+                onRefreshNavigation={() => refreshOwnPiece(activePiece.id, "auto")}
+                onRemount={() => refreshOwnPiece(activePiece.id, "existing")}
                 onReload={load}
               />
-            );
-          })()}
+          ) : (
+            <div className="glass p-4 text-xs text-white/40">
+              La colección ya no tiene piezas.
+            </div>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-4">
@@ -452,6 +541,7 @@ export function ContentTray({
                 piece={p}
                 nodes={p.runId ? runNodes[p.runId] : undefined}
                 runLogs={p.runId ? runLogs[p.runId] : undefined}
+                compact
                 expanded={!!expanded[p.id]}
                 onToggle={() => setExpanded((e) => ({ ...e, [p.id]: !e[p.id] }))}
                 onRegenerate={() => (p.origin === "own" ? setShowDemoModal(true) : setShowModal(true))}
@@ -508,6 +598,7 @@ function PieceCard({
   piece,
   nodes,
   runLogs,
+  compact = false,
   expanded,
   onToggle,
   onRegenerate,
@@ -523,6 +614,7 @@ function PieceCard({
   piece: ContentPiece;
   nodes?: GraphNode[];
   runLogs?: string[];
+  compact?: boolean;
   expanded: boolean;
   onToggle: () => void;
   onRegenerate: () => void;
@@ -600,16 +692,33 @@ function PieceCard({
           <div className="mt-1 truncate text-sm font-semibold">
             {piece.titulo || g.gancho || "(sin título)"}
           </div>
-          {piece.sourceUrl && (
-            <a
-              href={piece.sourceUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs text-[var(--color-accent-2)] hover:underline"
-            >
-              viral fuente ↗
-            </a>
-          )}
+          <div className="mt-3 flex flex-col items-start">
+            {compact && (
+              <button
+                type="button"
+                onClick={onToggle}
+                aria-expanded={expanded}
+                aria-label={`${expanded ? "Cerrar" : "Abrir"} detalle de ${piece.titulo || g.gancho || "la pieza"}, ${piece.status}`}
+                className="min-h-8 py-1 text-xs text-[var(--color-accent-2)] hover:underline"
+              >
+                {expanded ? "Cerrar detalle" : "Abrir detalle"}
+              </button>
+            )}
+            {compact && piece.sourceUrl && (
+              <div className="my-2 h-px w-28 bg-white/20" aria-hidden="true" />
+            )}
+            {piece.sourceUrl && (
+              <a
+                href={piece.sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`Abrir viral fuente de ${piece.titulo || g.gancho || "la pieza"}`}
+                className="min-h-8 py-1 text-xs text-[var(--color-accent-2)] hover:underline"
+              >
+                Ver viral fuente ↗
+              </a>
+            )}
+          </div>
         </div>
         <div className="flex shrink-0 gap-1">
           {(piece.status === "listo" || piece.status === "publicado") && (
@@ -635,17 +744,17 @@ function PieceCard({
         </div>
       </div>
 
-      {displayNodes && displayNodes.length > 0 && (
+      {(!compact || expanded) && displayNodes && displayNodes.length > 0 && (
         <div className="mb-3">
           <PipelineGraph nodes={displayNodes} />
         </div>
       )}
-      {piece.status === "generando" && (!nodes || nodes.length === 0) && (
+      {(!compact || expanded) && piece.status === "generando" && (!nodes || nodes.length === 0) && (
         <div className="mb-3 rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-white/45">
           Preparando pipeline…
         </div>
       )}
-      {piece.status === "error" && (
+      {(!compact || expanded) && piece.status === "error" && (
         <div className="mb-3 rounded-lg border border-[var(--color-state-error)]/45 bg-[var(--color-state-error)]/10 p-3 text-xs">
           <div className="font-semibold text-[var(--color-state-error)]">
             Falló {errorNode ? `en «${errorNode.label}»` : "la generación"}
@@ -656,8 +765,12 @@ function PieceCard({
         </div>
       )}
 
-      {/* Reproductores de lo generado */}
-      {piece.assets.videoPath && (
+      {(!compact || expanded) && !piece.assets.videoPath && !piece.assets.recordingPath && (
+        <p className="mb-3 text-xs text-white/50">
+          La pieza está disponible, pero falta su previsualización. Puedes seguir revisando el guion.
+        </p>
+      )}
+      {(!compact || expanded) && piece.assets.videoPath && (
         <div className="mb-3">
           <div className="mb-1 text-[11px] font-medium text-white/55">
             {isMounted ? "Vídeo final montado" : "Preview provisional"}
@@ -671,10 +784,10 @@ function PieceCard({
           />
         </div>
       )}
-      {piece.assets.audioPath && (
+      {(!compact || expanded) && piece.assets.audioPath && (
         <audio key={piece.assets.audioPath} controls className="mb-3 w-full" src={asset(piece.assets.audioPath)} />
       )}
-      {generatedResourceTotal > 0 && (
+      {(!compact || expanded) && generatedResourceTotal > 0 && (
         <div className="mb-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
           <button
             type="button"
@@ -722,7 +835,7 @@ function PieceCard({
           )}
         </div>
       )}
-      {allLogs.length > 0 && (
+      {(!compact || expanded) && allLogs.length > 0 && (
         <div
           className={[
             "mb-3 rounded-lg border p-3 text-xs",
@@ -746,7 +859,7 @@ function PieceCard({
       )}
 
       {/* Grabación real de la app (REQ-006) + subida manual */}
-      {isOwn && (
+      {(!compact || expanded) && isOwn && (
         <div
           className={[
             "mb-3 rounded-lg p-3",
@@ -831,13 +944,13 @@ function PieceCard({
         </div>
       )}
 
-      {(g.gancho || piece.content.escaleta.length > 0) && (
+      {(!compact || expanded) && (g.gancho || piece.content.escaleta.length > 0) && !compact && (
         <button onClick={onToggle} className="text-xs text-[var(--color-accent-2)] hover:underline">
           {expanded ? "Ocultar guion" : "Ver guion y escaleta"}
         </button>
       )}
 
-      {expanded && (
+      {(!compact || expanded) && expanded && (
         <div className="mt-3 flex flex-col gap-2 text-sm">
           <Field label="Gancho" value={g.gancho} />
           <Field label="Desarrollo" value={g.desarrollo} />

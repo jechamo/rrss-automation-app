@@ -16,18 +16,26 @@ const STATUS_COLOR: Record<string, string> = {
 export function PieceCarousel({
   projectId,
   pieces,
+  activeId,
   onSelect,
 }: {
   projectId: string;
   pieces: ContentPiece[];
+  activeId?: string | null;
   onSelect?: (pieceId: string) => void;
 }) {
   const asset = (pieceId: string, rel: string) =>
     `/api/content/${projectId}/${pieceId}/asset?path=${encodeURIComponent(rel)}`;
+  const active = Math.max(0, pieces.findIndex((piece) => piece.id === activeId));
 
   return (
     <Carousel3D
       items={pieces}
+      active={active}
+      onActive={(index) => {
+        const nextId = pieces[index]?.id;
+        if (nextId) onSelect?.(nextId);
+      }}
       getKey={(p) => p.id}
       onSelectCenter={(p) => onSelect?.(p.id)}
       renderCard={(p, isCenter) => {

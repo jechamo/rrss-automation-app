@@ -1,5 +1,22 @@
 {
   "schemaVersion": 1,
   "mode": "audit",
-  "documentSets": []
+  "documentSets": [
+    {
+      "id": "DOC-README-INSTALACION",
+      "kind": "developer-readme",
+      "audience": "Personas que instalan RRSS Studio localmente en Windows 11",
+      "sources": [
+        "docs/product/PRD.md",
+        "docs/specs/001-content-tray-local-installation/spec.md",
+        "docs/specs/001-content-tray-local-installation/research.md"
+      ],
+      "artifacts": [
+        "README.md"
+      ],
+      "generated": false,
+      "owner": "docs-writer",
+      "gate": "sdd"
+    }
+  ]
 }
