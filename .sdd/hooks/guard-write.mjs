@@ -9,9 +9,10 @@
  */
 import {
   readHookInput, decide, gatesEnabled, toolCall, rutasDe, hostDestino,
-  projectRoot, readIfExists, agenteActivo, globARegExp,
-  PATRONES_SECRETO, RUTAS_PROHIBIDAS, esPlantillaEnv,
+  projectRoot, readIfExists, agenteActivo, logEjecucion, marcarAutoria,
+  PATRONES_SECRETO, motivoRutaProhibida,
 } from './_lib.mjs';
+import { decidirTerritorio, cargarTerritorios } from './territorios.mjs';
 import { join } from 'node:path';
 
 const input = await readHookInput();
@@ -27,7 +28,6 @@ if (!rutas.length) decide('allow', 'Sin ruta que evaluar.', host);
 // Las de secretos y material criptográfico vienen de `_lib.mjs`, compartidas con el escáner de
 // CI: si divergen, el que miente es el que no se ejecuta en tu máquina.
 const prohibidas = [
-  ...RUTAS_PROHIBIDAS,
   { re: /(^|\/)node_modules\//, motivo: 'Dependencias instaladas: edita el manifiesto.' },
   { re: /(^|\/)(dist|build|out|\.next|target|coverage)\//, motivo: 'Artefacto generado: edita la fuente.' },
   { re: /(^|\/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|poetry\.lock|Cargo\.lock)$/,
@@ -39,7 +39,10 @@ const prohibidas = [
 ];
 
 for (const r of rutas) {
-  if (esPlantillaEnv(r)) continue;
+  const motivoCompartido = motivoRutaProhibida(r);
+  if (motivoCompartido) {
+    decide('deny', `Escritura bloqueada en \`${r}\`. ${motivoCompartido}`, host);
+  }
   for (const p of prohibidas) {
     if (p.re.test(r)) decide('deny', `Escritura bloqueada en \`${r}\`. ${p.motivo}`, host);
   }
@@ -101,49 +104,50 @@ if (gatesEnabled()) {
 // toca. Eso lo impide esto: se cruza el agente activo (que registran SubagentStart/
 // SubagentStop) con la ruta que intenta escribir.
 //
-// La regla es "no entres en el territorio de otro", no "quédate en el tuyo": una ruta
-// que no pertenece a nadie se permite. En un repo recién creado nadie sabe todavía
-// dónde vive cada cosa, y una guarda que bloquea lo desconocido se desactiva el primer día.
+// La regla vive en `territorios.mjs`, no aquí. Este bloque es el adaptador: traduce la
+// entrada del host a una llamada y convierte la respuesta en una decisión. Duplicar la
+// regla haría que verificarla dejara de significar nada.
+const agente = gatesEnabled() ? agenteActivo(root, input.session_id || 'default') : null;
+
 if (gatesEnabled()) {
-  const cfg = (() => {
-    try {
-      return JSON.parse(readIfExists(join(root, '.sdd/territories.json')) || 'null');
-    } catch {
-      return null; // un mapa ilegible no debe bloquear el trabajo; check-sdd lo denuncia
-    }
-  })();
+  const reparto = cargarTerritorios(readIfExists(join(root, '.sdd/territories.json')));
 
-  const agente = agenteActivo(root, input.session_id || 'default');
-  const modo = cfg?.modo || 'deny';
-
-  // Sin agente identificado es el hilo principal —el humano y su agente—, no un especialista.
-  if (cfg && agente && !['off', 'audit'].includes(modo) && !(cfg.coordinadores || []).includes(agente)) {
-    const territorios = Array.isArray(cfg.territories)
-      ? cfg.territories.map((t, i) => [
-          t.name || `territory-${i + 1}`,
-          { duenos: [t.agent].filter(Boolean), patrones: t.paths || [] },
-        ])
-      : Object.entries(cfg.territorios || {});
-    for (const [nombre, t] of territorios) {
-      const duenos = t.duenos || [];
-      if (duenos.includes(agente)) continue;
-
-      for (const r of rutas) {
-        if (!(t.patrones || []).some((p) => globARegExp(p).test(r))) continue;
-        decide(
-          modo,
-          `\`${r}\` es territorio de **${nombre}** (${duenos.join(', ') || 'sin dueño declarado'}) ` +
-            `y quien escribe es **${agente}**.\n` +
-            `Cada capa tiene su procedimiento —puertas de entrada, ciclo TDD y comprobaciones ` +
-            `propias— y saltárselo es la forma habitual de colar un fallo. Devuelve el control a ` +
-            `quien te invocó y que delegue en el especialista.\n` +
-            `Si el reparto es incorrecto, se corrige en \`.sdd/territories.json\`, no ignorándolo.`,
-          host,
-        );
-      }
-    }
+  for (const r of rutas) {
+    const veredicto = decidirTerritorio({
+      agente,
+      ruta: r,
+      modo: reparto.modo,
+      config: reparto.config,
+    });
+    if (veredicto.decision !== 'allow') decide(veredicto.decision, veredicto.motivo, host);
   }
 }
+
+// ── autoría de fichero, observada por la propia guarda ───────────────────────
+//
+// Llegar aquí significa que la escritura está permitida y va a ocurrir. Registrarla ahora
+// deja evidencia de «este agente tocó este fichero» sin depender de que el host emita el
+// ciclo de vida del subagente: la pre-escritura corre en cinco de los seis entornos, el
+// ciclo de subagente solo en dos. Una línea por agente y fichero, no por pulsación.
+//
+// El límite: la guarda ve la intención de escribir, no la escritura consumada. Si el host
+// aborta después, quedará una autoría de algo que no llegó a pasar. Se prefiere ese falso
+// positivo a no tener rastro en cuatro de los seis entornos.
+if (agente) {
+  for (const r of rutas) {
+    if (!marcarAutoria(root, { sesion: input.session_id || 'default', agente, ruta: r })) continue;
+    try {
+      logEjecucion(root, {
+        evento: 'autoria',
+        agente,
+        sesion: String(input.session_id || 'default').slice(0, 8) || null,
+        fichero: r,
+        verificacion: 'observed-write',
+      });
+    } catch { /* la bitácora no puede impedir una escritura legítima */ }
+  }
+}
+
 
 // ── aviso que no bloquea ─────────────────────────────────────────────────────
 const esNucleo = rutas.some(

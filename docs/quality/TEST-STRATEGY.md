@@ -249,38 +249,75 @@ esa línea no está probada.
 
 ## 10. Gates de este repositorio
 
-La plantilla se aplica a sí misma lo que exige a los proyectos que la instalan. Estos son los
-gates declarados en [`.sdd/checks.json`](../../.sdd/checks.json):
+RRSS Studio aplica estos gates reales declarados en
+[`.sdd/checks.json`](../../.sdd/checks.json):
 
 | Gate | Velocidad | Comando | Qué verifica |
 |---|---|---|---|
 | `sdd` | fast | `node scripts/check-sdd.mjs` | estructura, trazabilidad y evidencia del circuito |
 | `lint` | fast | `npm run lint` | sintaxis de los módulos y reglas de `.editorconfig` |
-| `test` | fast | `npm run test` | hooks compartidos y autotest del verificador de sintaxis |
-| `build` | fast | `npm run build` | sincronía de las skills canónicas con los seis formatos de IDE |
+| `typecheck` | fast | `npm run typecheck` | contratos TypeScript sin emitir artefactos |
+| `test` | fast | `npm test` | componentes, contratos e instalador local |
+| `build` | fast | `npm run build` | compilación limpia de Next.js, incluidas todas las rutas API |
 | `security` | slow | `node scripts/scan-secrets.mjs --json` | secretos en el árbol versionado |
-| `e2e` | slow | `npm run e2e` | contrato completo del instalador sobre destinos reales |
+| `deps-audit` | slow | `npm audit --audit-level=high` | vulnerabilidades altas o críticas en producción y tooling ejecutado por CI/build |
 
-`build` no compila: el artefacto construido de esta plantilla son los adaptadores de skills por
-IDE, y `skills-sync --check` es exactamente la comprobación de que ese artefacto está al día.
+CI ejecuta además `npm ci` en Ubuntu y un smoke limpio en Windows 11, dentro de una ruta con
+espacios: crea SQLite sin seeds, exige cero filas de negocio, compila, arranca, consulta
+`/api/health/ready` y carga `/ajustes`.
+
+### Overrides de seguridad acotados
+
+Mientras Next 15 y Prisma 6 no publiquen una revisión compatible que eleve sus dependencias
+transitivas, el lock fuerza `postcss@8.5.26`, `sharp@0.35.3` y `deepmerge-ts@8.0.0` para corregir
+avisos HIGH. No se adopta Next 16 ni Prisma 7 dentro de este parche porque supondría una migración
+mayor fuera de alcance. `npm run smoke:dependency-overrides`, `prisma db push`, el build y el smoke
+HTTP de Windows verifican respectivamente CSS, procesamiento de imagen, configuración Prisma y
+arranque de Next antes de aceptar esas sustituciones.
 
 ### Gates no configurados y por qué
 
-Un gate vacío sin explicación es indistinguible de un descuido. Cada ausencia declarada en
-`unconfigured` tiene un motivo material:
+Un gate vacío sin explicación es indistinguible de un descuido. Pero decir solo "no configurado"
+mete en el mismo saco tres cosas que no se parecen: lo que **no aplica** a este artefacto, lo que
+aplica y **todavía no está**, y lo que **sí se ejecuta pero en otro sitio**. Sin distinguirlas, la
+lista no dice si falta trabajo o si la decisión ya está tomada. Por eso cada ausencia declara su
+clase además de su motivo:
 
-| Gate | Motivo por el que no se ejecuta |
-|---|---|
-| `typecheck` | no hay TypeScript ni anotaciones de tipo en el repositorio; no existe nada que comprobar |
-| `smells` | no hay analizador de complejidad sin dependencias, y añadir una contradiría la regla de cero dependencias |
-| `coverage` | el arnés de test es propio y no instrumenta cobertura; la suficiencia se mide por criterio de aceptación cubierto, no por porcentaje |
-| `visual` | la plantilla no tiene interfaz gráfica: no hay nada que capturar ni comparar |
-| `a11y` | no hay superficie visual, foco ni contraste que auditar; la usabilidad aquí es microcopy de línea de comandos |
-| `deps-audit` | el paquete no declara ninguna dependencia de runtime ni de desarrollo, así que no hay árbol que auditar |
-| `docs` | el gate documental necesita el SHA base del pull request y solo tiene sentido en CI, donde se ejecuta con `check-sdd --docs-diff` |
-| `mutation` | requiere un motor de mutación externo, y este artefacto se compromete a cero dependencias de runtime; añadirlo rompería la portabilidad que lo justifica |
+| Gate | Clase | Motivo por el que no se ejecuta aquí |
+|---|---|---|
+| `docs` | `se-ejecuta-en-otro-sitio` | necesita el SHA base del pull request, así que corre en CI: `quality-gates.yml` y `sdd-gates.yml` lo invocan con `check-sdd --docs-diff` |
+| `smells` | `pendiente` | no hay umbrales de complejidad calibrados para el código histórico; activarlo ahora daría falsos bloqueos |
+| `coverage` | `pendiente` | la suite actual no produce todavía una cobertura combinada fiable de Vitest y `node:test` |
+| `e2e` | `pendiente` | el smoke de instalación existe, pero los flujos con red, proveedores y vídeos requieren credenciales y consentimiento humano |
+| `visual` | `pendiente` | no existe un almacén aprobado de capturas de referencia para comparación visual |
+| `a11y` | `pendiente` | no existe aún un runner de navegador estable para auditar todas las pantallas dinámicas |
+| `mutation` | `pendiente` | no hay motor de mutación configurado ni presupuesto de ejecución acordado |
 
 Estos motivos se verifican, no solo se escriben:
 `scripts/test-install.mjs::gates_no_configurados_tienen_motivo` falla si un identificador
 aparece en `unconfigured` sin fila aquí, si el motivo es vago o si el gate está a la vez
-configurado y declarado ausente.
+configurado y declarado ausente;
+`scripts/test-install.mjs::cada_ausencia_declara_su_clase` exige que la clase sea una de las tres
+y que `se-ejecuta-en-otro-sitio` diga dónde.
+
+### Evidencia reutilizable en el cierre editorial
+
+`run --release` no reduce la suite funcional inicial: consume un `run --slow` verde y solo
+reutiliza coverage, E2E y a11y si coinciden ancestro, runtime, checks y huella material. Ejecuta
+otra vez trace-audit, secretos, strict y docs-diff. `scripts/test-release-gates.mjs` prueba PASS,
+evidencia ausente/roja/manipulada, cambios de código o configuración y tag sin cambio de bytes.
+La salida usa `execution: executed|reused` y conserva `sourceRunId`; un fallo muestra el slow
+completo sin lanzarlo automáticamente.
+
+### Un motivo que caduca es peor que no haberlo escrito
+
+`a11y` estuvo declarado inaplicable durante nueve specs con el motivo «no hay superficie visual».
+Era cierto cuando se escribió. Entretanto el repositorio empezó a publicar tres páginas HTML y
+nadie volvió a leer la fila. Lo mismo le pasaba a `visual`, y `coverage` seguía justificándose
+por una dependencia que ya no hacía falta: V8 recolecta cobertura por su cuenta desde mucho antes
+de la versión de Node que este artefacto exige.
+
+El problema no es equivocarse: es que una decisión caducada **aparenta ser una decisión tomada**,
+y por eso nadie la revisa. `scripts/test-install.mjs::un_motivo_caducado_falla` convierte esa
+caducidad en un fallo: si un motivo niega la existencia de una superficie que el árbol versionado
+sí contiene, el gate se pone rojo y nombra los ficheros que lo desmienten.

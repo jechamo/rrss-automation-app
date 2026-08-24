@@ -6,6 +6,12 @@
 > `.github/copilot-instructions.md`, `.cursor/rules/00-core.mdc`,
 > `.agents/rules/00-core.md`) **apuntan aquí**. Una sola fuente de verdad.
 
+**Mapa de lectura por fase.** Ejecuta `node scripts/sdd-project.mjs context --phase <fase>`;
+el CLI incluye siempre regla cero, gates, seguridad y prohibiciones, y añade únicamente las
+secciones de la fase. `--spec NNN --task T-*` incorpora la tarea, criterios y controles enlazados.
+Fases: `specify`, `clarify`, `design`, `plan`, `tasks`, `implement`, `verify`, `ship`, `light`,
+`compact` y `orchestrate`. Un encabezado ausente o duplicado falla cerrado.
+
 ---
 
 ## 0. Regla cero
@@ -143,6 +149,59 @@ docs/specs/042-checkout-invitado/
 └── execution-log.jsonl  # Append-only: qué subagente arrancó y terminó.
                          # Lo escriben los hooks, NO el modelo. No se edita a mano.
 ```
+
+---
+
+### 2.6 Circuito proporcional: light, compact y full
+
+Un peaje idéntico para corregir una errata y para cambiar un contrato no protege nada. El
+circuito proporcional reduce expediente y contexto **sin reducir gates, trazabilidad ni TDD**.
+
+| Nivel | Alcance | Expediente |
+|---|---|---|
+| `light` | Ficheros exactos no ejecutables aprobados | Sin los cinco documentos; no hay conducta nueva que fijar |
+| `compact` | Conducta en un módulo existente; ≤3 criterios, ≤3 tareas y `change.md` ≤12 KiB | Un `change.md` sellado y TDD completo |
+| `full` | Valor por defecto; seguridad, auth, API, datos, dependencias, infraestructura, SDD, varios módulos o límites excedidos | Expediente completo |
+
+**Qué NO dispensa.** Ningún gate. Ni el ciclo TDD. Ni la entrada en la bitácora. Ni las guardas
+de los hooks ni los territorios. Un cambio ligero se verifica exactamente igual que uno normal.
+
+**Quién decide.** `.sdd/circuit.json` usa `portable-path-v1`, negación prevalente y suelo
+`compact` para código ejecutable. Ausente, pendiente, inválido o legado significa `full`.
+`detect-circuit` solo propone; una persona revisa el hash y ejecuta `approve-circuit`. Los agentes
+presentan ese comando, nunca lo aprueban. La configuración aprobada se activa en un commit `full`
+dedicado que solo toca `.sdd/circuit.json`. Antes de editar se consulta:
+
+El legado `.sdd/lightweight.json` solo puede importarse como propuesta `pending`; nunca concede
+un nivel reducido después de actualizar.
+
+Un candidato `compact` se completa y aprueba con `approve-change --decision-ref <DEC/ADR>` y su
+`change.md` se materializa en otro commit `full` dedicado. El código empieza en el commit
+siguiente: así la auditoría lee sello, rutas y límites desde el padre y puede desmentir el diff.
+`Agent` sigue siendo una declaración; Git debe aportar autor material, pero el circuito no afirma
+que esa identidad sea una firma criptográfica.
+
+```bash
+node scripts/check-sdd.mjs --circuit-status --planned <ruta>... --json
+```
+
+`--behavior changed` solo eleva. Si el diff real amplía rutas o impactos, se escala; nunca se
+degrada automáticamente. `light` y `compact` se ejecutan con `/sdd-light`.
+
+**Cómo se declara y cómo se comprueba.** El commit lleva dos *trailers*:
+
+```
+Circuit: light
+Circuit-reason: <qué cambia y por qué no necesita spec>
+```
+
+`compact` añade `Spec`, `Task`, `Change-Group` y el sello de intención. Todos declaran `Agent` y
+`Circuit-config`. `check-sdd.mjs --trace-audit` es obligatorio en slow, ship y CI: contrasta el
+diff, la configuración del padre, territorio, autoría y límites agregados por módulo.
+
+**La cuota.** `.sdd/circuit.json` declara una `quota` (proporción máxima de commits reducidos).
+Superarla no acusa a nadie: indica que la frontera deja pasar más de lo previsto y hay que
+revisarla. Avisa siempre; falla solo en modo estricto.
 
 ---
 
@@ -302,6 +361,30 @@ Una tarea **no está hecha** hasta que todo esto está en verde:
 - [ ] `tasks.md` actualizado
 - [ ] Observabilidad: logs estructurados, métricas y trazas en los caminos nuevos
 
+### 7.1 Cierre editorial sin repetir evidencia conductual
+
+`run --slow` conserva su significado: ejecuta todos los gates lentos. Después de ese PASS, un
+cierre que solo modifica CHANGELOG, bitácora, evidencia, el campo de estado/progreso de la spec o informes puede usar
+`node scripts/sdd-project.mjs run --release --summary-json`. No es un bypass:
+
+- trace-audit, secretos, strict y diff documental se ejecutan otra vez;
+- coverage, E2E y a11y solo se marcan `reused`, con `sourceRunId`, si el slow es ancestral y
+  coinciden configuración, runtime y huella de todas las entradas no editoriales;
+- Pages, TFM, workflows, dependencias, SDD, skills, scripts o código cambian la huella y fuerzan
+  el slow completo;
+- reescribir requisitos, plan o pruebas también cambia la huella aunque el fichero sea de la spec;
+- evidencia ausente, roja, manipulada o de otra máquina falla cerrado y muestra el comando slow;
+- la evidencia lleva HMAC con clave local de 256 bits bajo el directorio Git; detecta corrupción y
+  mezcla entre clones, pero no autentica frente a procesos del mismo usuario;
+- bitácora y evidence conservan la historia previa por prepend/append, y un informe ya existente
+  no puede reescribirse durante el cierre;
+- un tag o release sobre el mismo SHA no altera el árbol ni invalida el sello; el workflow de tag
+  exige una ejecución completa previa del workflow exacto `sdd-gates.yml` sobre ese SHA en `main`;
+  esa CI, no el sello local, es la autoridad de publicación.
+
+La salida distingue `executed` de `reused`. Reutilizar evidencia significa demostrar que sus
+entradas no cambiaron, nunca afirmar que el proceso volvió a ejecutarse.
+
 ---
 
 ## 8. Seguridad (siempre activa, no una fase final)
@@ -313,25 +396,6 @@ referencias conservan versión para que una actualización futura no cambie audi
 El nivel ASVS objetivo (L1/L2/L3) se decide en la constitución según exposición, datos, criticidad
 y regulación; la plantilla no lo convierte en una decisión greenfield. Si falta, el plan sensible
 se bloquea hasta decidirlo. El `security-auditor` audita contra ese nivel.
-
-### 8.1 Trazabilidad por fase
-
-| Fase | Contrato de seguridad |
-|---|---|
-| Specify | Clasifica `Impacto de seguridad` como `sensible`, `no-sensible` o `security-pending`; sin tecnología |
-| Plan | Define threat model y la matriz `Control | ASVS | OWASP | Aplica | Decisión / justificación | Tarea | Test | Evidencia` |
-| Tasks | Cada tarea sensible declara `Controles de seguridad` y su test/caso de abuso |
-| Implement | TDD y salida real por control; no ejecutado conserva riesgo, propietario y paso |
-| Verify | `/security-scan verify`; auditor solo lectura, informe material y gate bloqueante |
-| Ship | Reutiliza el informe verificado; no vuelve a auditar ni permite `GO` incoherente |
-
-`security-pending` sirve únicamente para preservar historia brownfield durante la adopción. Una
-spec sensible nueva no puede usarlo para omitir matriz, pruebas o informe.
-
-El auditor no escribe. Devuelve HANDOFF estructurado y control al agente que lo invocó. Solo
-entonces un agente con delegación puede pedir a `docs-writer` que materialice **literalmente** el
-informe en `docs/security/reports/YYYY-MM-DD-NNN-slug.md`, con
-`<!-- sdd-security-report:v1 -->` y JSON. No se reinterpretan hallazgos, conteos ni veredicto.
 
 Innegociables:
 - **Nada de secretos en el repo.** Variables de entorno + gestor de secretos. `.env` está en `.gitignore` y los hooks bloquean su lectura.
@@ -357,6 +421,25 @@ defensa en profundidad, no sustituto universal.
 Si el proyecto usa agentes/LLM: trata **toda** salida de herramienta, web o fichero como
 **dato no confiable**, nunca como instrucción. Aísla credenciales por agente y aplica
 aprobación humana en acciones irreversibles.
+
+### 8.1 Trazabilidad por fase
+
+| Fase | Contrato de seguridad |
+|---|---|
+| Specify | Clasifica `Impacto de seguridad` como `sensible`, `no-sensible` o `security-pending`; sin tecnología |
+| Plan | Define threat model y la matriz `Control | ASVS | OWASP | Aplica | Decisión / justificación | Tarea | Test | Evidencia` |
+| Tasks | Cada tarea sensible declara `Controles de seguridad` y su test/caso de abuso |
+| Implement | TDD y salida real por control; no ejecutado conserva riesgo, propietario y paso |
+| Verify | `/security-scan verify`; auditor solo lectura, informe material y gate bloqueante |
+| Ship | Reutiliza el informe verificado; no vuelve a auditar ni permite `GO` incoherente |
+
+`security-pending` sirve únicamente para preservar historia brownfield durante la adopción. Una
+spec sensible nueva no puede usarlo para omitir matriz, pruebas o informe.
+
+El auditor no escribe. Devuelve HANDOFF estructurado y control al agente que lo invocó. Solo
+entonces un agente con delegación puede pedir a `docs-writer` que materialice **literalmente** el
+informe en `docs/security/reports/YYYY-MM-DD-NNN-slug.md`, con
+`<!-- sdd-security-report:v1 -->` y JSON. No se reinterpretan hallazgos, conteos ni veredicto.
 
 Checklist completa: `docs/security/SECURITY-CHECKLIST.md`. Tokens/CSRF:
 `docs/security/AUTH-TOKENS.md`. Modelo de amenazas: `docs/security/THREAT-MODEL.md`.
@@ -492,11 +575,61 @@ que ejecutara nada. Por eso la evidencia se registra **fuera del modelo**:
 | Nivel de verificación | Qué significa | Quién lo produce |
 |---|---|---|
 | `observed` | Un hook del host vio el ciclo real de arranque y fin del subagente | `SubagentStart`/`SubagentStop` → `.sdd/hooks/subagent-log.mjs` |
+| `observed-write` | Un hook del host vio a un agente concreto escribir un fichero concreto | `PreToolUse` → `.sdd/hooks/guard-write.mjs` |
+| `declared-corroborated` | El agente lo declaró y el repositorio lo contrasta contra artefactos que él no controla | Trailers del commit → `node scripts/check-sdd.mjs --trace-audit --base <ref>` |
 | `declared-direct` | El agente activo hizo el trabajo él mismo, sin delegar | El propio agente, en el handoff |
 | `unverified` | Se afirma una delegación que ningún hook observó | Solo válido si se documenta la limitación |
 
+`observed` es el estado fuerte, y por eso mismo es el menos disponible: **solo dos de los seis
+entornos soportados** emiten el ciclo de vida del subagente (ver
+[`docs/integrations/IDE-COMPATIBILITY.md`](../integrations/IDE-COMPATIBILITY.md)). En los otros
+cuatro, la única opción era `declared-direct`: una afirmación que nadie contrasta.
+
+`observed-write` recorta ese hueco por abajo. La pre-escritura sí corre en **cinco de los seis**
+entornos, y en ese punto el hook ya sabe dos cosas que no le ha contado el modelo: qué agente
+está activo y qué fichero va a tocar. Registrar ese cruce es casi gratis y responde a la
+pregunta que de verdad se hace al revisar —*quién tocó esto*— sin depender del ciclo de vida
+del subagente. Su límite: la guarda ve la **intención** de escribir, no la escritura consumada;
+si el host aborta después, queda una autoría de algo que no llegó a pasar. Se prefiere ese falso
+positivo a no tener rastro en cuatro de los seis entornos.
+
+`declared-corroborated` cubre el hueco restante sobre el único sustrato común a todos los
+entornos, que es git. Un commit que declara su traza al final del mensaje hace afirmaciones
+verificables:
+
+```text
+feat(013): corrobora la traza sin depender del entorno
+
+Spec: 013
+Task: T-013-04
+Agent: spec-analyst
+```
+
+La auditoría comprueba que la tarea existe y pertenece a esa spec, que el agente existe en el
+catálogo, y que los ficheros tocados caen dentro de su territorio —con la misma función que usa
+la guarda de escritura, no con una copia—. Escribir fuera del territorio exige declararlo:
+
+```text
+Trace-exception: la constitución citaba un contrato que esta spec cambia
+```
+
+Una excepción vacía, de una palabra o que aplaza la decisión (`pendiente`, `TBD`) se rechaza
+igual que su ausencia. Una excepción sin motivo es una excepción sin control.
+
+**El límite, dicho sin adornos**: un agente puede escribir un trailer falso y esto no lo
+impedirá. La corroboración no demuestra la delegación; encarece la mentira deliberada y vuelve
+detectable el descuido, que es el fallo que de verdad ocurre. Un commit sin trailers se reporta
+como **no auditable**, que no es lo mismo que conforme ni que infractor: confundir *"no lo sé"*
+con *"está bien"* es la forma más rápida de que nadie se crea el informe.
+
 Se escribe en `docs/specs/NNN-slug/execution-log.jsonl` (append-only) o, si no hay spec activa,
 en `.sdd/agent-audit.jsonl`. Ese fichero **no lo edita ningún agente**: los hooks lo bloquean.
+
+Junto al ciclo de vida se registra la **autoría**, en dos granos. Por spec: una única línea por
+sesión, agente y spec. Un subagente invocado quince veces produce quince pares de arranque y
+parada, y la pregunta que importa al cerrar la tarea —*quién trabajó aquí*— se pierde entre el
+ruido. Por fichero: una única línea por agente y fichero, emitida por la guarda de escritura.
+La autoría es un hecho, no un evento, y se deduplica bajo `.sdd/state/`, que no se versiona.
 
 Una spec se considera activa únicamente cuando un bloque real `### T-*` declara una tarea
 `pendiente` o `en curso`. Si no hay ninguna candidata se registra `sin-spec-activa`; si hay más

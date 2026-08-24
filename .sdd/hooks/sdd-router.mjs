@@ -14,6 +14,14 @@ const root = projectRoot(input);
 if (/^\s*\/(sdd-|docs-sync|onboard|adr|bitacora|tdd|security-scan|design-sync|middle|front|bbdd)\b/.test(input.prompt || ''))
   allow();
 
+// Un cambio que suena de bajo riesgo puede tener un peaje proporcional. El router SUGIERE
+// consultarlo; no lo decide. La decisión es determinista y vive en `--circuit-status`, porque
+// si dependiera de cómo esté redactada la petición, la frontera sería la elocuencia de quien
+// la escribe.
+const suenaBajoRiesgo =
+  /\b(renombra|renombrar|errata|typo|comentario|coma|tilde|enlace roto|formato|indentaci[oó]n|espacios? en blanco)\b/.test(prompt) &&
+  !/\b(api|endpoint|contrato|esquema|migraci[oó]n|autorizaci[oó]n|permisos?|token|seguridad|persistencia|dominio|hook|agente|gate)\b/.test(prompt);
+
 // Un PRD o una fuente de producto global se normalizan antes de elegir arquitectura
 // o de disenar una feature. El diseno externo es una fuente opcional del mismo intake.
 const continuaSpecAprobada =
@@ -152,6 +160,13 @@ const patrones = [
 ];
 
 const avisos = patrones.filter((p) => p.re.test(prompt)).map((p) => p.aviso);
+if (suenaBajoRiesgo)
+  avisos.push(
+    'Suena a cambio de bajo riesgo → comprueba si cabe en el circuito ligero con ' +
+      '`node scripts/check-sdd.mjs --circuit-status` y, si responde `light`, sigue `/sdd-light`. ' +
+      'La respuesta manda sobre tu criterio: el circuito ligero ahorra los documentos de la spec, ' +
+      'nunca un gate.',
+  );
 if (!avisos.length) allow();
 
 const salida = ['## Recordatorio SDD', ...avisos.map((a) => `- ${a}`)];

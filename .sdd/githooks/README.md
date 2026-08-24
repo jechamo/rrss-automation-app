@@ -6,7 +6,7 @@ monta Husky en `.husky/` — se autoactiva con `npm install` y llama a los mismo
 | Hook | Ejecuta | Cuándo |
 |---|---|---|
 | `pre-commit` | `sdd-project run --fast` | lint, tests rápidos, tipos, build, olores |
-| `pre-push` | `sdd-project run --slow` | cobertura, E2E, auditoría de dependencias, documentación |
+| `pre-push` | `sdd-project run --release` | reejecuta trazas, secretos y docs; reutiliza coverage/E2E/a11y solo tras un slow vigente |
 
 ## Activación
 
@@ -27,6 +27,13 @@ y `core.hooksPath` donde no.
 
 En ambos casos los hooks **delegan en `sdd-project run`**: si el proyecto cambia de runner, se
 toca `.sdd/checks.json` y los hooks no se enteran.
+
+El cambio funcional pasa antes por `run --slow`. El pre-push no lo repite a ciegas: `--release`
+comprueba huella material, runtime, checks y ancestro. Si algo no coincide, falla y entrega el
+comando exacto `run --slow --summary-json`; nunca convierte evidencia vieja en un PASS nuevo.
+Solo normaliza campos de estado/progreso: reescribir requisitos, plan o pruebas invalida la huella.
+El sello lleva HMAC con clave local del clon. Un push solo de tag no repite gates: el workflow
+remoto exige que el SHA ya tenga `SDD gates` verde en `main`.
 
 Si `.sdd/checks.json` no tiene comandos configurados, los hooks no hacen nada. No fallan: no hay
 nada que ejecutar.

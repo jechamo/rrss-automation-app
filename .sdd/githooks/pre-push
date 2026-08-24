@@ -17,6 +17,7 @@ fi
 
 head_sha=$(git rev-parse HEAD)
 refs=0
+branch_refs=0
 while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
   refs=$((refs + 1))
   case "$local_sha" in *[!0]*) ;; *) continue ;; esac
@@ -33,6 +34,7 @@ while IFS=' ' read -r local_ref local_sha remote_ref remote_sha; do
       echo "SDD · tag $local_ref apunta al HEAD ya validado; el diff documental corresponde a la rama."
       continue ;;
   esac
+  branch_refs=$((branch_refs + 1))
   base=${SDD_DOCS_BASE:-$remote_sha}
   case "$base" in
     ''|*[!0]*) ;;
@@ -51,5 +53,9 @@ if [ "$refs" -eq 0 ]; then
   echo "SDD docs-diff: NO EJECUTADO; Git no informó ninguna referencia a empujar." >&2
   exit 1
 fi
-echo "SDD · gates lentos (pre-push)"
-node scripts/sdd-project.mjs run --slow
+if [ "$branch_refs" -eq 0 ]; then
+  echo "SDD · push solo de tags: no se repiten gates; CI comprobará la atestación verde del mismo SHA."
+  exit 0
+fi
+echo "SDD · cierre de release (pre-push): reutiliza solo evidencia slow materialmente vigente"
+node scripts/sdd-project.mjs run --release --summary-json

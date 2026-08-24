@@ -1,7 +1,13 @@
 {
   "version": 1,
   "checks": {
-    "sdd": { "command": "node scripts/check-sdd.mjs", "required": true, "speed": "fast" }
+    "sdd": { "command": "node scripts/check-sdd.mjs", "required": true, "speed": "fast" },
+    "lint": { "command": "npm run lint", "required": true, "speed": "fast" },
+    "typecheck": { "command": "npm run typecheck", "required": true, "speed": "fast" },
+    "test": { "command": "npm test", "required": true, "speed": "fast" },
+    "build": { "command": "npm run build", "required": true, "speed": "fast" },
+    "security": { "command": "node scripts/scan-secrets.mjs --json", "required": true, "speed": "slow" },
+    "deps-audit": { "command": "npm audit --audit-level=high", "required": true, "speed": "slow" }
   },
-  "unconfigured": ["lint", "test", "typecheck", "build", "smells", "coverage", "e2e", "visual", "a11y", "security", "deps-audit", "docs", "mutation"]
+  "unconfigured": ["smells", "coverage", "e2e", "visual", "a11y", "docs", "mutation"]
 }

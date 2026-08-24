@@ -52,11 +52,11 @@
 
 | Control | Abuso | Resultado seguro |
 |---|---|---|
-| SEC-001 | Ruta absoluta, traversal o `.env`. | Rechazo sin leer ni mostrar contenido. |
-| SEC-002 | DB/sidecar e intento de reset. | Bloqueo o confirmación separada; resguardo. |
-| SEC-003 | Imagen global o PID no confirmado. | Rechazo; no termina procesos. |
-| SEC-004 | Error con URL, variable o ruta personal simulada. | Salida categórica saneada. |
-| SEC-005 | Instalación global o PATH. | Efecto no autorizado en esta spec. |
+| SEC-INPUT-001 | Ruta absoluta, traversal o `.env`. | Rechazo sin leer ni mostrar contenido. |
+| SEC-DATA-002 | DB/sidecar e intento de reset. | Bloqueo o confirmación separada; resguardo. |
+| SEC-PROC-003 | Imagen global o PID no confirmado. | Rechazo; no termina procesos. |
+| SEC-DIAG-004 | Error con URL, variable o ruta personal simulada. | Salida categórica saneada. |
+| SEC-DEPS-005 | Instalación global o PATH. | Efecto no autorizado en esta spec. |
 
 ## Usabilidad y documentación
 

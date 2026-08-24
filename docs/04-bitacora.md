@@ -33,6 +33,23 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ## Historial
 
+### 2026-08-24 — SDD 0.9.1 y endurecimiento del instalador (T-001-08)
+
+- Actualización brownfield fijada al commit oficial de SDD 0.9.1; simulación final sin conflictos.
+- Snapshot externo verificado antes de trabajar; la aplicación y los datos originales permanecen
+  fuera del worktree de implementación.
+- Excepción de proceso aprobada por el usuario: un único parche `full`, sin nuevo expediente ni
+  evidencia RED–GREEN–REFACTOR, pero con tests, build, CI, seguridad y rollback.
+- Verificado: Vault versionado, atómico y fail-closed; readiness con integridad/esquema; build
+  obligatorio; Chromium real; servidor de producción limitado a `127.0.0.1`; crawler `fetch`
+  documentado; lint y typecheck; 23 pruebas Vitest, 135 de contratos/instalador, 189 de hooks,
+  build Next y auditoría completa con cero vulnerabilidades.
+- La preparación real en una ruta Windows con espacios creó una SQLite con cero filas, el marcador
+  gestionado y `.next/BUILD_ID`. El puerto 3000 siguió ocupado por el local original, por lo que la
+  copia terminó correctamente bloqueada solo para el arranque concurrente. Prisma 6 requiere
+  `RUST_LOG=info` en `db push` ante el fallo conocido de su schema engine; el wrapper lo aplica solo
+  al subproceso sin modificar el entorno del operador.
+
 ### 2026-08-21 — Actualización del marco SDD/TDD v0.7.0
 
 - Instalación brownfield desde `jechamo/Estructura_inicial_claude#v0.7.0`: preserva el contexto

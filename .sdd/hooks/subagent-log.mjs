@@ -14,6 +14,7 @@
  */
 import {
   readHookInput, projectRoot, logEjecucion, allow, valorExacto, entraAgente, saleAgente, hostDestino,
+  marcarAutoria,
 } from './_lib.mjs';
 
 const evento = process.argv[2] === 'stop' ? 'stop' : 'start';
@@ -53,6 +54,18 @@ try {
       ? { motivo: 'el host no expuso el nombre del subagente en el payload del hook' }
       : {}),
   });
+
+  // Una línea por sesión, agente y spec. Al cerrar la tarea, esto responde «quién trabajó
+  // aquí» sin obligar a nadie a reconstruirlo a partir de veinte pares start/stop.
+  if (evento === 'start' && marcarAutoria(root, { sesion, agente, spec })) {
+    logEjecucion(root, {
+      evento: 'autoria',
+      agente,
+      sesion: String(sesion).slice(0, 8) || null,
+      spec: spec ?? null,
+      verificacion: 'observed',
+    });
+  }
 
   if (evento === 'stop') {
     const rel = destino.replace(/\\/g, '/').replace(root.replace(/\\/g, '/'), '.');

@@ -9,10 +9,13 @@
  * Distinguir `deny` de `ask` importa: bloquear un `terraform apply` legítimo
  * frustra; dejarlo pasar sin preguntar, arruina.
  */
-import { readHookInput, decide, gatesEnabled, toolCall, comandosDe, hostDestino, projectRoot, readIfExists } from './_lib.mjs';
+import { readHookInput, decide, gatesEnabled, toolCall, comandosDe, hostDestino, projectRoot,
+  readIfExists, rutaConfinadaSinEnlaces } from './_lib.mjs';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { claveEvidenciaLocal, firmarEvidenciaRelease, hashEvidenciaRelease,
+  machineGates, runtimeGates } from '../../scripts/lib/release-gates.mjs';
 import { readFileSync } from 'node:fs';
 
 const input = await readHookInput();
@@ -80,13 +83,32 @@ const sensibles = [
  * que el humano vea el hueco **antes** de aprobar, en vez de enterarse en CI.
  */
 function estadoDeGates(velocidad, root) {
+  const statePath = join(root, '.sdd/state/last-gate-run.json');
+  if (!rutaConfinadaSinEnlaces(root, statePath)) return 'el sello de gates atraviesa un enlace o escapa del proyecto';
   const sello = (() => {
-    try { return JSON.parse(readIfExists(join(root, '.sdd/state/last-gate-run.json')) || 'null'); }
+    try { return JSON.parse(readIfExists(statePath) || 'null'); }
     catch { return null; }
   })();
-  const entrada = sello?.[velocidad];
-  if (!entrada) return `no consta que hayan pasado los gates \`${velocidad}\``;
-  if (!entrada.ok) return `la última ejecución de \`${velocidad}\` salió en rojo`;
+  const selloReleaseValido = (entry) => {
+    const evidenceKey = claveEvidenciaLocal(root);
+    if (entry?.schemaVersion !== 2 || entry.kind !== 'release' || entry.ok !== true ||
+        entry.runtime !== runtimeGates() || entry.machineHash !== machineGates() || !Array.isArray(entry.results) ||
+        entry.evidenceHash !== hashEvidenciaRelease(entry) ||
+        entry.evidenceMac !== firmarEvidenciaRelease(entry, evidenceKey)) return false;
+    return entry.results.every((result) => {
+      const reusable = ['coverage', 'e2e', 'a11y'].includes(String(result?.id || '').split(':')[0]);
+      return result?.status === 0 &&
+        (result.execution === 'executed' || (reusable && result.execution === 'reused' && result.sourceRunId)) &&
+        (reusable || result.execution === 'executed');
+    });
+  };
+  const entradas = velocidad === 'slow'
+    ? [sello?.release, sello?.slow].filter(Boolean)
+    : [sello?.[velocidad]].filter(Boolean);
+  const candidatas = entradas.filter((entry) => entry.kind !== 'release' || selloReleaseValido(entry));
+  if (!entradas.length) return `no consta que hayan pasado los gates \`${velocidad}\``;
+  if (!candidatas.length) return `no consta un sello íntegro de gates \`${velocidad}\``;
+  if (!candidatas.some((entry) => entry.ok)) return `la última ejecución de \`${velocidad}\` salió en rojo`;
 
   // Mismo cálculo que `huellaArbol()` en sdd-project.mjs. Un repositorio sin commits todavía no
   // tiene HEAD, y su primer commit también se controla: el ref se toma vacío.
@@ -117,7 +139,8 @@ function estadoDeGates(velocidad, root) {
     hasher.update('\0');
   }
   const actual = hasher.digest('hex').slice(0, 16);
-  if (actual !== entrada.tree) return `los gates \`${velocidad}\` pasaron sobre otro estado del árbol`;
+  const entrada = candidatas.find((entry) => entry.ok && entry.tree === actual);
+  if (!entrada) return `los gates \`${velocidad}\` pasaron sobre otro estado del árbol`;
 
   let configuracion;
   try { configuracion = JSON.parse(readIfExists(join(root, '.sdd/checks.json')) || '{}'); }

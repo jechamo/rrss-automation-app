@@ -191,13 +191,13 @@ ruta, sin ampliar el contrato. Verificación posterior:
 ℹ duration_ms 130.5096
 ```
 
-### SEC-001
+### SEC-INPUT-001
 
 Las rutas absolutas externas, segmentos `..` y enlaces que resuelven fuera de la raíz producen un
 error tipado genérico. `.env` se bloquea antes de resolver el candidato. Las fixtures fueron creadas
 bajo directorios temporales sintéticos; no se leyó configuración ni persistencia del repositorio.
 
-### SEC-004
+### SEC-DIAG-004
 
 `sanitizeDiagnostic` construye por selección únicamente `id`, `classification`, `status`, `category`
 y `nextStep`. El test serializa el resultado y verifica la ausencia de `DATABASE_URL`, ruta personal
@@ -369,7 +369,7 @@ Suite completa final de REFACTOR:
 ℹ duration_ms 889.6176
 ```
 
-### SEC-002
+### SEC-DATA-002
 
 La presencia observada de base o sidecar añade un obligatorio `data` bloqueado. El caso de uso no
 invoca lecturas de contenido ni efectos; `data-reset` no se autoriza mediante
@@ -1172,13 +1172,13 @@ Comando: `npm run test:contracts`. Exit code `0`. npm mantuvo el aviso preexiste
 
 ## T-001-04 · Controles y cierre originales
 
-### SEC-003
+### SEC-PROC-003
 
 La inspección de puerto se inyecta y devuelve una observación normalizada. La terminación solo
 construye `taskkill /PID <pid> /T /F` si la confirmación coincide con el PID y puerto observados.
 `taskkill /IM`, `Stop-Process -Name`, `pkill` y `killall` se rechazan antes de invocar el doble.
 
-### SEC-005
+### SEC-DEPS-005
 
 Los descriptores de instalación global de npm (`-g`/`--global`) y modificación de PATH mediante
 `setx PATH` se clasifican `outside-project`, `allowed:false`, y su invocación se rechaza. No se
@@ -1356,7 +1356,7 @@ Verificación específica posterior:
 ℹ tests 15 · pass 15 · fail 0
 ```
 
-### SEC-003 y SEC-004
+### SEC-PROC-003 y SEC-DIAG-004
 
 La consola solo solicita `process` cuando la entrada declara una acción concreta, y el adaptador de
 proceso conserva la vinculación PID/puerto confirmada de `T-001-04`. `data-reset`,

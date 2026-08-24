@@ -241,7 +241,8 @@ prisma/schema.prisma          Modelo de datos multiproyecto
 <!-- sdd:start -->
 ## Flujo SDD gestionado
 
-La política operativa completa está en [`docs/sdd/OPERATING-MODEL.md`](docs/sdd/OPERATING-MODEL.md).
+Lee únicamente el recorte de tu fase con `node scripts/sdd-project.mjs context --phase <fase>`.
+La fuente completa sigue en [`docs/sdd/OPERATING-MODEL.md`](docs/sdd/OPERATING-MODEL.md).
 
 - Ningún código se implementa sin una spec aprobada en `docs/specs/NNN-slug/`.
 - Producto se aprueba con `/sdd-intake` antes de arquitectura greenfield o de specs derivadas de un PRD global.
@@ -254,6 +255,7 @@ La política operativa completa está en [`docs/sdd/OPERATING-MODEL.md`](docs/sd
 - `orchestrator` es la entrada; solo `orchestrator`, `planner` e `implementer` delegan.
 - La profundidad máxima es de dos saltos; los especialistas siempre devuelven el control.
 - Las decisiones viven en la bitácora o en un ADR, nunca únicamente en el chat.
+- Antes del push funcional se ejecuta `run --slow`; un cierre solo editorial usa `run --release`, que reutiliza evidencia únicamente si checks, runtime y entradas materiales siguen idénticos.
 
 ### HANDOFF
 - Agente origen:

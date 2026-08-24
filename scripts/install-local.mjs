@@ -13,6 +13,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import os from "node:os";
+import { createRequire } from "node:module";
 import { spawn, spawnSync } from "node:child_process";
 import { createInterface } from "node:readline/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -122,6 +123,12 @@ export function createLocalInstallationRuntime({
               "netstat.exe",
             ),
         })),
+    inspectHealth:
+      system.inspectHealth ??
+      (() => inspectReadyEndpoint()),
+    detectBrowser:
+      system.detectBrowser ??
+      (() => detectPlaywrightChromium({ projectRoot, exists: localSystem.exists })),
     optionalCapabilities: system.optionalCapabilities,
     pathEnvironment: system.pathEnvironment ?? process.env.PATH ?? "",
     appVersion: system.appVersion,
@@ -253,9 +260,9 @@ export function createLocalInstallationRuntime({
     const optionalCapabilities =
       localSystem.optionalCapabilities ??
       defaultOptionalCapabilities({
-        projectRoot,
         exists: localSystem.exists,
         pathEnvironment: localSystem.pathEnvironment,
+        browserAvailable: await localSystem.detectBrowser(),
       });
     const receipt = runPrecheck({
       required,
@@ -318,6 +325,12 @@ export function createLocalInstallationRuntime({
       processes,
       ["run", "db:push"],
       "data",
+      projectRoot,
+    );
+    invokeRequiredProcess(
+      processes,
+      ["run", "build"],
+      "dependencies",
       projectRoot,
     );
     const markerDirectory = resolveProjectWritePath(
@@ -513,7 +526,7 @@ export function createLocalInstallationRuntime({
     }
     const child = devProcesses.invoke({
       executable: nodeExecutable,
-      argv: [npmCliPath, "run", "dev"],
+      argv: [npmCliPath, "run", "start"],
       shell: false,
       cwd: projectRoot,
       detached: true,
@@ -529,7 +542,7 @@ export function createLocalInstallationRuntime({
       };
     }
     child.unref();
-    const startObservation = await waitForStartedPort({
+    const startObservation = await waitForReadyApplication({
       child,
       port,
       localSystem,
@@ -719,12 +732,24 @@ async function promptForConsent(request) {
   });
   try {
     const answer = await terminal.question(
-      `${CONSENT_COPY.get(request.effect) ?? "Confirma la acción local."} ¿Continuar? [y/N] `,
+      `${consentMessage(request)} ¿Continuar? [y/N] `,
     );
     return /^(?:y|yes|s|sí)$/iu.test(answer.trim());
   } finally {
     terminal.close();
   }
+}
+
+function consentMessage(request) {
+  const base = CONSENT_COPY.get(request.effect) ?? "Confirma la acción local.";
+  if (
+    request.effect === "process" &&
+    Number.isInteger(request.port) &&
+    Number.isInteger(request.pid)
+  ) {
+    return `${base} Se detendrá el proceso que escucha en el puerto ${request.port} (PID ${request.pid}).`;
+  }
+  return base;
 }
 
 export function probeWindowsPort({
@@ -756,13 +781,10 @@ function nodeMajor(version) {
   return Number.isInteger(major) ? major : 0;
 }
 
-function defaultOptionalCapabilities({ projectRoot, exists, pathEnvironment }) {
+function defaultOptionalCapabilities({ exists, pathEnvironment, browserAvailable }) {
   const audiovisualAvailable =
     executablePresentOnPath("ffmpeg.exe", pathEnvironment, exists) &&
     executablePresentOnPath("ffprobe.exe", pathEnvironment, exists);
-  const browserAvailable = exists(
-    path.join(projectRoot, "node_modules", "playwright"),
-  );
   return [
     {
       id: "ai-authenticated",
@@ -785,6 +807,40 @@ function defaultOptionalCapabilities({ projectRoot, exists, pathEnvironment }) {
       unavailableMode: "degraded",
     },
   ];
+}
+
+export async function detectPlaywrightChromium({ projectRoot, exists = existsSync }) {
+  if (!exists(path.join(projectRoot, "node_modules", "playwright"))) return false;
+  try {
+    const requireFromProject = createRequire(path.join(projectRoot, "package.json"));
+    const playwright = requireFromProject("playwright");
+    const executablePath = playwright?.chromium?.executablePath?.();
+    return typeof executablePath === "string" && exists(executablePath);
+  } catch {
+    return false;
+  }
+}
+
+export async function inspectReadyEndpoint(fetchImpl = globalThis.fetch) {
+  if (typeof fetchImpl !== "function") return false;
+  try {
+    const response = await fetchImpl("http://127.0.0.1:3000/api/health/ready", {
+      cache: "no-store",
+      signal: AbortSignal.timeout(1_500),
+    });
+    if (!response.ok) return false;
+    const body = await response.json();
+    return (
+      body?.service === "rrss-studio" &&
+      body?.schemaVersion === 1 &&
+      body?.status === "ready" &&
+      body?.checks?.application === "ok" &&
+      body?.checks?.database === "ok" &&
+      (body?.checks?.vault === "ok" || body?.checks?.vault === "empty")
+    );
+  } catch {
+    return false;
+  }
 }
 
 function executablePresentOnPath(executable, pathEnvironment, exists) {
@@ -829,7 +885,7 @@ async function waitForAvailablePort({ port, localSystem }) {
   return port.inspectAsync(3000);
 }
 
-async function waitForStartedPort({ child, port, localSystem }) {
+async function waitForReadyApplication({ child, port, localSystem }) {
   let childFailure = null;
   let exited = false;
   if (typeof child.once === "function") {
@@ -854,7 +910,7 @@ async function waitForStartedPort({ child, port, localSystem }) {
       throw new InstallationStepFailure({ category: "process" });
     }
     const observation = await port.inspectAsync(3000);
-    if (observation.status === "occupied") {
+    if (observation.status === "occupied" && await localSystem.inspectHealth()) {
       return observation;
     }
     await localSystem.sleep(localSystem.startPollIntervalMs);
@@ -880,6 +936,7 @@ function preparationPrerequisitesReady(receipt) {
     "project-dependencies",
     "configuration-template",
     "local-persistence",
+    "local-port-process",
   ]);
   return receipt.required.every(
     (check) => preparable.has(check.id) || check.status === "ok",
@@ -1119,10 +1176,16 @@ async function executeCanonicalInstallation({
     if (requests.length > 0 && !Array.isArray(input.confirmations)) {
       const confirmations = [];
       for (const request of requests) {
-        output.write(CONSENT_COPY.get(request.effect) ?? "Confirma la acción local.");
+        const promptRequest = {
+          ...request,
+          ...(request.effect === "process" && result.processConfirmation
+            ? result.processConfirmation
+            : {}),
+        };
+        output.write(consentMessage(promptRequest));
         confirmations.push({
           effect: request.effect,
-          approved: (await prompt(request)) === true,
+          approved: (await prompt(promptRequest)) === true,
           ...(request.effect === "process" && result.processConfirmation
             ? result.processConfirmation
             : {}),

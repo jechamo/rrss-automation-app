@@ -98,6 +98,8 @@ export function EntityLogo({
   return (
     <div className={`relative overflow-hidden ${className}`} style={box} aria-label={name}>
       {fallback}
+      {/* La fuente puede ser local/remota y ya tiene fallback; no pasa por el optimizador. */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={imageSrc}
         alt=""

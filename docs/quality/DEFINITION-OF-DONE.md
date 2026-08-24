@@ -71,7 +71,7 @@ voluntad, se olvida.
 | Cobertura por tier (umbral **por ruta**) | CI | Sí |
 | Complejidad cognitiva y duplicación | CI (gate `smells`) | Sí |
 | Lint / formato / tipos | CI + hook `PostToolUse` | Sí |
-| Gates rápidos antes del commit, lentos antes del push | Hooks versionados opt-in mediante `core.hooksPath` · **y el propio agente** | No: el que bloquea es CI |
+| Gates rápidos antes del commit, slow funcional y release editorial antes del push | Hooks versionados opt-in mediante `core.hooksPath` · **y el propio agente** | No: el que bloquea es CI |
 | Que los gates se hayan pasado sobre **este** árbol | Sello en `.sdd/state/` + `guard-bash` | No: avisa antes de aprobar |
 | Escaneo de secretos | CI (`scripts/scan-secrets.mjs`) + hook `PreToolUse` | Sí |
 | Auditoría de dependencias | CI, si hay lockfile | Sí (CRÍTICO/ALTO) |
@@ -84,6 +84,8 @@ voluntad, se olvida.
 | Scaffolds sin overwrite ni salto de gate | `sdd-project.mjs scaffold` + suite de instalación | Sí |
 | Generadores registrados sin shell, con timeout y drift | `sdd-project.mjs generate` + controles SEC-AUTO | Sí cuando el proyecto los activa |
 | Contrato, enlaces, placeholders y co-cambio documental contra SHA base | `check-sdd --docs-diff --base <SHA>` + gates `docs:*` configurados | Sí |
+| Circuito declarado, configuración histórica, territorio y sello compacto | `check-sdd --trace-audit --strict --base <SHA>` en slow, ship y CI | Sí |
+| Evidencia de gates sin secretos ni cuerpos crudos | `run --fast|--slow|--release --summary-json` · resumen ≤8 KiB · `executed|reused` con procedencia | Sí |
 | Skills de terceros fijadas y con licencia verificada | `scripts/skills-sync.mjs --check` | Sí |
 
 En este repositorio de plantilla, el workflow de calidad ejecuta además `--strict` sobre las specs

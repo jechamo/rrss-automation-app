@@ -44,7 +44,7 @@ toca. Perderlo sería perder el aislamiento en VS Code.
 **Consecuencia**: a partir de este ajuste, un agente sin envoltorio **no existe** en VS Code.
 Por eso `scripts/check-sdd.mjs` falla si falta alguno.
 
-Su procedimiento de trabajo vive en las 26 skills, que **sí son portables sin duplicar**:
+Su procedimiento de trabajo vive en las 27 skills, que **sí son portables sin duplicar**:
 `/sdd-intake`, `/middle`, `/front` y `/bbdd` valen igual aquí que en Claude Code, Cursor o Codex.
 
 Las skills canónicas están en `.agents/skills/*/SKILL.md` y aparecen directamente como

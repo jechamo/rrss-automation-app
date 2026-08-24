@@ -10,7 +10,7 @@ const ASSISTANT = path.resolve(
 );
 
 /**
- * Recorrido guiado: check → prepare → indicar /login → comprobar sesión → start.
+ * Recorrido guiado: check → prepare → indicar autenticación → comprobar sesión → start.
  * No autentica, no pide secretos y no dispara iniciar.bat.
  *
  * @param {{
@@ -45,7 +45,7 @@ export async function runPrepareGuide({
   write("");
 
   write("Paso 2/5 · Preparación dentro del proyecto");
-  write("Instala dependencias y deja la plantilla lista. Pedirá confirmación explícita.");
+  write("Instala dependencias, prepara SQLite y exige un build limpio. Pedirá confirmación explícita.");
   const prepared = await ask("prepare", "¿Ejecutar prepare? [y/N] ");
   if (prepared) {
     await assistant("prepare");
@@ -56,7 +56,8 @@ export async function runPrepareGuide({
 
   write("Paso 3/5 · Sesión de Claude (opcional, no bloquea)");
   write("No se piden secretos ni se lanza el login.");
-  write("Si quieres análisis con IA: abre la aplicación Claude en este equipo y ejecuta /login.");
+  write("Si quieres análisis con IA, ejecuta en otra terminal: claude auth login");
+  write("Para comprobarla manualmente: claude auth status");
   write("Cuando hayas terminado —o si prefieres seguir sin IA— continúa.");
   await ask("claude-ready", "Pulsa Intro para comprobar la sesión (sin autenticar)… ");
   const session = await sessionCheck();
@@ -79,9 +80,11 @@ export async function runPrepareGuide({
   write("Paso 5/5 · Resultado");
   write(
     started
-      ? "Arranque solicitado. Si el asistente lo aceptó, abre http://localhost:3000"
+      ? "Aplicación preparada. Abre http://localhost:3000/ajustes para configurar conectores y opciones."
       : "Puedes repetir este instalador o usar node scripts/install-local.mjs start",
   );
+  write("La configuración de /ajustes es manual: el instalador no solicita ni guarda claves.");
+  write("Si falta Chromium: npx playwright install chromium (no se ejecuta automáticamente).");
   if (session.status !== "ok") {
     write("Los análisis con IA siguen limitados hasta que exista una sesión local.");
   }

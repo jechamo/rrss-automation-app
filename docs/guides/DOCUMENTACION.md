@@ -121,13 +121,23 @@ su propietario. No existe un segundo agente documental.
 | Momento | Gate | Qué comprueba |
 |---|---|---|
 | Antes del commit | `node scripts/sdd-project.mjs run --fast` | Esquema, rutas, enlaces, placeholders y trazabilidad rápida |
-| Antes del push | `node scripts/sdd-project.mjs run --slow` | Gates lentos configurados y generación documental |
+| Antes del push funcional | `node scripts/sdd-project.mjs run --slow` | Gates lentos completos y generación documental |
+| Tras un cierre solo editorial | `node scripts/sdd-project.mjs run --release --summary-json` | Reejecuta trazas, secretos y docs; reutiliza coverage/E2E/a11y solo con huella vigente |
 | Pre-push documental | `node scripts/check-sdd.mjs --docs-diff --base <sha>` | Cambio agregado de código y docs contra la base exacta |
 | CI | workflow SDD | Validación autoritativa contra el SHA base del PR |
 | Ship | `/sdd-ship` | Bloquea documentación aplicable pendiente |
 
 Si la base Git no se puede resolver, el diff documental falla como `NO EJECUTADO`; no lo presenta
 como verde. Si un host no ejecuta hooks, lanza los comandos manualmente.
+
+`run --release` no sustituye el slow funcional: exige uno verde, ancestral y del mismo runtime y
+configuración. Solo admite CHANGELOG, bitácora, evidencia, campos de estado/progreso de la spec e
+informes. Requisitos, plan, pruebas, Pages, TFM, scripts, dependencias o configuración invalidan la reutilización. Si no puede demostrarla,
+falla y sugiere el slow completo sin ejecutarlo automáticamente.
+El sello usa una clave HMAC local no versionada para detectar corrupción y mezcla entre clones;
+no autentica frente a procesos del mismo usuario y la autoridad de publicación es la CI completa.
+Bitácora/evidence solo admiten prepend/append que conserve su historia y los informes existentes
+no se reescriben en este paso.
 
 Los hooks Git se instalan como ficheros compartidos, pero se activan de forma explícita:
 

@@ -24,7 +24,7 @@ if (!existsSync(libPath)) {
   console.error('No existe .sdd/hooks/_lib.mjs: no hay patrones que aplicar.');
   process.exit(1);
 }
-const { PATRONES_SECRETO, RUTAS_PROHIBIDAS, esPlantillaEnv } = await import(pathToFileURL(libPath).href);
+const { PATRONES_SECRETO, motivoRutaProhibida } = await import(pathToFileURL(libPath).href);
 
 const listado = spawnSync('git', ['ls-files', '-z'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 if (listado.status !== 0) {
@@ -41,10 +41,9 @@ let revisados = 0;
 
 for (const ruta of ficheros) {
   // 1 · Ficheros que no deben existir en el repositorio por lo que son.
-  if (!esPlantillaEnv(ruta)) {
-    for (const p of RUTAS_PROHIBIDAS) {
-      if (p.re.test(ruta)) hallazgos.push({ ruta, linea: null, que: 'fichero prohibido', detalle: p.motivo });
-    }
+  const motivoProhibido = motivoRutaProhibida(ruta);
+  if (motivoProhibido) {
+    hallazgos.push({ ruta, linea: null, que: 'fichero prohibido', detalle: motivoProhibido });
   }
   if (AUTOEXCLUIDOS.has(ruta)) continue;
 

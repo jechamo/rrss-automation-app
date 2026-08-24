@@ -1047,7 +1047,7 @@ export function MixStudioPanel({
     setVersionsOpen(true);
   }
 
-  async function useAsFinal(mix: MixDto) {
+  async function markAsFinal(mix: MixDto) {
     if (!await appDialog.confirm({
       title: "Usar como vídeo final",
       message: `«${mix.name}» sustituirá el final actual de la pieza. La versión seguirá conservada.`,
@@ -1215,6 +1215,8 @@ export function MixStudioPanel({
                   <div className="relative h-full max-h-[520px] min-h-[260px] aspect-[9/16] overflow-hidden rounded-2xl border border-white/10 bg-[#080a13] shadow-[0_0_45px_rgba(34,211,238,.06)]">
                     {inBrandOutro ? (
                       <div className="absolute inset-0 flex flex-col items-center justify-center bg-[radial-gradient(circle_at_center,rgba(124,58,237,.22),transparent_55%)] p-8">
+                        {/* Preview local autenticado; evita transformar el recurso en Next Image. */}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={`/api/projects/${projectId}/logo`} alt="Logo del proyecto" className="max-h-28 max-w-[72%] object-contain drop-shadow-2xl" />
                         <span className="mt-5 text-[10px] uppercase tracking-[.3em] text-white/45">Cierre de marca</span>
                       </div>
@@ -1328,7 +1330,6 @@ export function MixStudioPanel({
             byId={byId}
             timelineDuration={timelineDuration}
             contentDuration={contentDuration}
-            visualDuration={visualDuration}
             timelineCanvasWidth={timelineCanvasWidth}
             timelineZoom={timelineZoom}
             rulerTicks={rulerTicks}
@@ -1365,7 +1366,7 @@ export function MixStudioPanel({
           onNew={() => void createNewDraft()}
           onOpenDraft={(mix) => void openDraft(mix)}
           onView={(mix) => { setPlaying(false); setPreviewMixId(mix.id); setPreviewMode("mix"); setVersionsOpen(false); }}
-          onUseFinal={(mix) => void useAsFinal(mix)}
+          onUseFinal={(mix) => void markAsFinal(mix)}
           onDelete={(mix) => void removeMix(mix)}
         />
       )}
@@ -1456,7 +1457,6 @@ function TimelineEditor({
   byId,
   timelineDuration,
   contentDuration,
-  visualDuration,
   timelineCanvasWidth,
   timelineZoom,
   rulerTicks,
@@ -1489,7 +1489,6 @@ function TimelineEditor({
   byId: Map<string, StudioAsset>;
   timelineDuration: number;
   contentDuration: number;
-  visualDuration: number;
   timelineCanvasWidth: number;
   timelineZoom: number;
   rulerTicks: number[];

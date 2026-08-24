@@ -4,46 +4,59 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -H 127.0.0.1",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -H 127.0.0.1",
     "setup:local": "node scripts/install-local.mjs",
     "setup:guide": "node scripts/prepare-guide.mjs",
-    "lint": "next lint",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --noEmit",
     "test:ui": "vitest run --config vitest.config.ts",
+    "test:install": "node --test src/core/installation/*.test.mjs scripts/install-local.test.mjs scripts/prepare-guide.test.mjs",
+    "test": "npm run test:ui && npm run test:contracts",
     "test:contracts": "tsc --target ES2022 --module NodeNext --moduleResolution NodeNext --types node --outDir .contract-tests src/core/content/types.ts src/core/content/selection.ts src/core/content/selection.test.ts src/core/clips/contracts.ts src/core/clips/contracts.test.ts src/core/clips/publish.ts src/core/clips/publish.test.ts src/core/clips/local-transcription.ts src/core/clips/local-transcription.test.ts src/core/clips/youtube-captions-contracts.ts src/core/clips/youtube-captions.test.ts src/core/media/contracts.ts src/core/media/contracts.test.ts src/core/media/planning.ts src/core/media/mix-contracts.ts src/core/media/subtitles.ts src/core/media/subtitles.test.ts src/core/media/bintools.ts src/core/media/ytdlp-contracts.ts src/core/media/ytdlp.test.ts src/core/media/navigation-repair-rules.ts src/core/media/navigation-repair.test.ts src/core/leads/types.ts src/core/leads/calibration.ts src/core/leads/calibration.test.ts src/core/navigation/types.ts src/core/navigation/types.test.ts src/core/virales/types.ts src/core/virales/scrape-creators-contracts.ts src/core/virales/scrape-creators-contracts.test.ts && node --test .contract-tests/content/*.test.js .contract-tests/clips/*.test.js .contract-tests/media/*.test.js .contract-tests/leads/*.test.js .contract-tests/navigation/*.test.js .contract-tests/virales/*.test.js src/core/installation/*.test.mjs scripts/install-local.test.mjs scripts/prepare-guide.test.mjs && node -e \"require('fs').rmSync('.contract-tests',{recursive:true,force:true})\"",
-    "db:push": "prisma db push",
+    "db:push": "node scripts/prisma-db-push.mjs",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
+    "smoke:empty-db": "node scripts/check-empty-database.mjs",
+    "smoke:dependency-overrides": "node scripts/check-dependency-overrides.mjs",
     "postinstall": "prisma generate"
   },
   "dependencies": {
     "@anthropic-ai/claude-code": "^2.1.209",
-    "@prisma/client": "^6.2.1",
+    "@prisma/client": "6.19.3",
     "@tanstack/react-query": "^5.62.11",
     "@xyflow/react": "^12.3.6",
-    "next": "^15.1.4",
+    "next": "15.5.23",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zod": "^3.24.1",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "3.3.6",
     "@tailwindcss/postcss": "^4.0.0",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^22.10.5",
     "@types/react": "^19.0.4",
     "@types/react-dom": "^19.0.2",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^14.6.1",
     "@vitejs/plugin-react": "^5.0.2",
+    "eslint": "9.39.5",
+    "eslint-config-next": "15.5.23",
     "jsdom": "^26.1.0",
     "playwright": "^1.49.1",
-    "vitest": "^3.2.4",
-    "prisma": "^6.2.1",
+    "prisma": "6.19.3",
     "tailwindcss": "^4.0.0",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=20"
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.0",
+    "postcss": "8.5.26",
+    "sharp": "0.35.3"
   }
 }

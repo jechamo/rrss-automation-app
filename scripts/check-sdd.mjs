@@ -9,21 +9,90 @@
  *   node scripts/check-sdd.mjs            → estructura y coherencia (avisa)
  *   node scripts/check-sdd.mjs --strict   → además exige evidencia y trazabilidad (falla)
  *   node scripts/check-sdd.mjs --spec 042 → limita el análisis a una spec
+ *   node scripts/check-sdd.mjs --trace-audit --base <ref>
+ *                                         → corrobora los trailers de traza contra tasks.md,
+ *                                           el catálogo de agentes y el reparto de territorios
  *
  * Node >= 18, sin dependencias.
  */
-import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
-import { join, relative, resolve, dirname } from 'node:path';
+import { readFileSync, existsSync, readdirSync, statSync, lstatSync, realpathSync } from 'node:fs';
+import { join, relative, resolve, dirname, isAbsolute } from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { validateDocsConfig, normalizeDocPath, matchesDocPattern } from './lib/docs-contract.mjs';
 import { parseJsonc } from './lib/jsonc.mjs';
+import { auditarCommits, parsearTrailers } from './lib/trace-audit.mjs';
+import {
+  clasificar, clasificarCircuito, validarAprobacionCambio, validarCambioCompacto, validarCircuito,
+  canonicalizarRuta, intencionCambio, motivoMaterial, cuota,
+} from './lib/circuito.mjs';
+import { globARegExp } from '../.sdd/hooks/_lib.mjs';
+
+/**
+ * Lee la frontera del circuito ligero. Devuelve `null` ante ausencia o JSON inválido: sin
+ * frontera no hay circuito ligero, porque tratar el despiste como permiso total desactivaría
+ * el control entero en silencio.
+ */
+function leerFrontera(raiz) {
+  const ruta = join(raiz, '.sdd/lightweight.json');
+  if (!existsSync(ruta)) return null;
+  try {
+    const j = JSON.parse(readFileSync(ruta, 'utf8'));
+    return Array.isArray(j.permitido) && Array.isArray(j.prohibido) ? j : null;
+  } catch {
+    return null;
+  }
+}
+
+function referenciasDecisionLocales(raiz) {
+  const refs = new Set();
+  const bitacora = join(raiz, 'docs', 'bitacora', 'DECISIONS.md');
+  if (existsSync(bitacora))
+    for (const ref of readFileSync(bitacora, 'utf8').match(/\b(?:DEC|ADR)-[A-Za-z0-9._-]+\b/g) || []) refs.add(ref);
+  const adrs = join(raiz, 'docs', 'architecture', 'adr');
+  if (existsSync(adrs)) for (const entry of readdirSync(adrs)) {
+    const ref = entry.match(/^(ADR-[A-Za-z0-9._-]+)/)?.[1];
+    if (ref) refs.add(ref);
+  }
+  return refs;
+}
+
+function leerCircuito(raiz) {
+  const ruta = join(raiz, '.sdd/circuit.json');
+  if (!existsSync(ruta)) return { config: null, validation: { ok: false, active: false, reason: 'ausente' } };
+  try {
+    const config = JSON.parse(readFileSync(ruta, 'utf8'));
+    return { config, validation: validarCircuito(config, { decisionRefs: referenciasDecisionLocales(raiz) }) };
+  } catch (error) {
+    return { config: null, validation: { ok: false, active: false, reason: `JSON inválido: ${error.message}` } };
+  }
+}
+
+function tipoRutaConfinada(raiz, ruta, { planned = false } = {}) {
+  const canonical = canonicalizarRuta(ruta);
+  if (!canonical) return 'invalid';
+  const rootReal = realpathSync(raiz);
+  let current = raiz;
+  for (const segment of String(ruta).replace(/\\/g, '/').split('/').filter((part) => part && part !== '.')) {
+    current = join(current, segment);
+    if (!existsSync(current)) return planned ? 'file' : 'missing';
+    const stat = lstatSync(current);
+    if (stat.isSymbolicLink()) return 'symlink';
+    const real = realpathSync(current);
+    const rel = relative(rootReal, real);
+    if (rel === '..' || rel.startsWith('../') || rel.startsWith('..\\') || isAbsolute(rel))
+      return 'outside';
+  }
+  const stat = lstatSync(current);
+  return stat.isFile() ? 'file' : stat.isDirectory() ? 'directory' : 'other';
+}
 
 const ROOT = process.cwd();
 const args = process.argv.slice(2);
 const STRICT = args.includes('--strict');
 const VIRGIN = args.includes('--virgin');
 const DOCS_DIFF = args.includes('--docs-diff');
+const TRACE_AUDIT = args.includes('--trace-audit');
 const JSON_OUT = args.includes('--json');
 const indiceBaseDocs = args.indexOf('--base');
 const BASE_DOCS = indiceBaseDocs >= 0 ? args[indiceBaseDocs + 1] : null;
@@ -36,8 +105,98 @@ const warn = (regla, msg) => avisos.push({ regla, msg });
 
 if (DOCS_DIFF && (!BASE_DOCS || BASE_DOCS.startsWith('--')))
   err('docs/diff-base', '--docs-diff requiere `--base <SHA completo>`');
-if (!DOCS_DIFF && indiceBaseDocs >= 0)
-  err('docs/diff-base', '--base solo es válido junto con --docs-diff');
+if (TRACE_AUDIT && (!BASE_DOCS || BASE_DOCS.startsWith('--')))
+  err('traza/base', '--trace-audit requiere `--base <ref>`');
+if (!DOCS_DIFF && !TRACE_AUDIT && indiceBaseDocs >= 0)
+  err('docs/diff-base', '--base solo es válido junto con --docs-diff o --trace-audit');
+
+// ─── Circuito ligero: preguntar es determinista y barato ─────────────────────
+// El único punto del sistema donde la frontera podría erosionarse es aquel en que se le pide
+// a un modelo que la aplique de memoria. Por eso la respuesta se calcula aquí, sobre las rutas
+// realmente modificadas, y la skill se limita a consultarla. `--circuit-status` sale antes de
+// cualquier otra comprobación: es una pregunta, no una auditoría.
+if (args.includes('--circuit-status')) {
+  const { config, validation } = leerCircuito(ROOT);
+  const decisionRefs = referenciasDecisionLocales(ROOT);
+  const git = (...argv) => spawnSync('git', argv, { cwd: ROOT, encoding: 'utf8' });
+  // `--untracked-files=all` es obligatorio: sin él, un directorio recién creado y sin
+  // trackear se colapsa a una sola línea («?? docs/») en lugar de listar cada fichero, y la
+  // frontera deja de poder clasificarlos uno a uno.
+  const plannedIndex = args.indexOf('--planned');
+  const previstas = [];
+  if (plannedIndex >= 0) {
+    for (let i = plannedIndex + 1; i < args.length && !args[i].startsWith('--'); i++) previstas.push(args[i]);
+  }
+  const salida = plannedIndex >= 0 ? null : git('status', '--porcelain', '--untracked-files=all');
+  const rutas = plannedIndex >= 0 ? previstas : (salida.stdout || '')
+    .split('\n').map((l) => l.slice(3).trim()).filter(Boolean)
+    .map((l) => (l.includes(' -> ') ? l.split(' -> ')[1] : l)).map((l) => l.replace(/^"|"$/g, ''));
+  const fileTypes = {};
+  for (const ruta of rutas) {
+    const canonical = canonicalizarRuta(ruta);
+    if (!canonical) continue;
+    try { fileTypes[canonical] = tipoRutaConfinada(ROOT, ruta, { planned: plannedIndex >= 0 }); }
+    catch { fileTypes[canonical] = 'other'; }
+  }
+  const trackedPaths = (git('ls-files', '-z').stdout || '').split('\0').filter(Boolean);
+  const structural = clasificarCircuito(rutas, config, {
+    behaviorChanged: args.includes('--behavior') && args[args.indexOf('--behavior') + 1] === 'changed',
+    securityImpact: 'no-sensible', fileTypes, trackedPaths, decisionRefs,
+  });
+  let compactApproval = null;
+  if (validation.active && structural.circuito === 'compact') {
+    const plannedCanonical = new Set(rutas.map(canonicalizarRuta).filter(Boolean));
+    const specsRoot = join(ROOT, 'docs', 'specs');
+    for (const entry of existsSync(specsRoot) ? readdirSync(specsRoot, { withFileTypes: true }) : []) {
+      if (!entry.isDirectory() || !/^\d{3}-/.test(entry.name)) continue;
+      const changePath = join(specsRoot, entry.name, 'change.md');
+      if (!existsSync(changePath)) continue;
+      const text = readFileSync(changePath, 'utf8');
+      const contract = validarCambioCompacto(text, config, { decisionRefs });
+      const approval = validarAprobacionCambio(text, { decisionRefs });
+      const approvedRoutes = new Set((contract.routes || []).map(canonicalizarRuta));
+      if (contract.ok && approval.ok && [...plannedCanonical].every((path) => approvedRoutes.has(path))) {
+        compactApproval = entry.name;
+        break;
+      }
+    }
+  }
+  const securityImpact = compactApproval ? 'no-sensible' : null;
+  const veredicto = clasificarCircuito(rutas, config, {
+    behaviorChanged: args.includes('--behavior') && args[args.indexOf('--behavior') + 1] === 'changed',
+    securityImpact,
+    fileTypes, trackedPaths, decisionRefs,
+  });
+  const legacy = existsSync(join(ROOT, '.sdd/lightweight.json'));
+  const payload = { ...veredicto, configStatus: config?.status || 'absent', configValid: validation.ok,
+    configActive: validation.active, frontera: validation.active, legacy,
+    ...(structural.circuito === 'compact' && !compactApproval ? { candidateCircuit: 'compact', requiresApprovedChange: true } : {}),
+    ...(compactApproval ? { approvedChange: compactApproval } : {}) };
+  if (JSON_OUT) {
+    console.log(JSON.stringify(payload, null, 2));
+  } else if (!validation.active) {
+    console.log(`circuito: full · .sdd/circuit.json está ${config?.status || 'ausente'} (${validation.reason}); sin aprobación no hay atajo.`);
+    console.log('Ejecuta `node scripts/sdd-project.mjs detect-circuit` y presenta `approve-circuit` a una persona.');
+  } else if (veredicto.circuito === 'light') {
+    console.log(`circuito: light · ${veredicto.total} fichero(s) exacto(s) no ejecutable(s).`);
+    console.log('Siguen siendo obligatorios los gates, la bitácora y los trailers `Circuit: light` y `Circuit-reason:`.');
+  } else if (veredicto.circuito === 'compact') {
+    console.log(`circuito: compact · ${veredicto.total} fichero(s) en un módulo aprobado.`);
+    console.log('Exige change.md, TDD, revisión, gates, bitácora y trailers completos.');
+  } else if (structural.circuito === 'compact' && !compactApproval) {
+    console.log('circuito: full · candidato compact pendiente de change.md humano aprobado y sellado.');
+    console.log('Completa `new-change <slug> --mode compact`, presenta `approve-change` y repite la consulta.');
+  } else if (veredicto.total === 0) {
+    // La ausencia de cambio no merece atajo, pero tampoco merece un reproche. Sin este caso el
+    // mensaje anunciaba «0 de 0 fichero(s) quedan fuera de la frontera:» y no nombraba ninguno.
+    console.log('circuito: full · no hay cambios sin registrar, así que todavía no hay nada que clasificar.');
+  } else {
+    console.log(`circuito: full · ${veredicto.obligan.length} de ${veredicto.total} fichero(s) obligan al expediente completo:`);
+    for (const r of veredicto.obligan.slice(0, 10)) console.log(`  · ${r}`);
+    if (veredicto.obligan.length > 10) console.log(`  · … y ${veredicto.obligan.length - 10} más`);
+  }
+  process.exit(0);
+}
 
 const leer = (p) => (existsSync(p) ? readFileSync(p, 'utf8') : null);
 const rel = (p) => relative(ROOT, p).replace(/\\/g, '/');
@@ -508,21 +667,16 @@ try {
     .map(([ruta]) => ruta.split('/')[2]);
   if (rutas.length) rutasGestionadas = new Set(rutas);
 } catch {
-  // La seccion de instalacion informa un installed.json invalido; aqui se conserva compatibilidad.
+  // La sección de instalación informa un installed.json inválido.
 }
 const skillsCanonicas = rutasGestionadas
   ? skillsDeclaradas.filter((skill) => rutasGestionadas.has(skill))
   : skillsDeclaradas;
-const skillsPropias = rutasGestionadas
-  ? skillsDeclaradas.filter((skill) => !rutasGestionadas.has(skill))
-  : [];
 const skillsClaude = dirs(join(ROOT, '.claude/skills'));
 if (nombresAgentes.size !== 20)
   err('paridad/agentes', `se esperaban 20 agentes canónicos y hay ${nombresAgentes.size}`);
 if (skillsCanonicas.length !== 27)
   err('paridad/skills', `se esperaban 27 skills canónicas y hay ${skillsCanonicas.length}`);
-if (skillsPropias.length)
-  warn('paridad/skills-propias', `${skillsPropias.length} skill(s) propias preservadas fuera del contrato instalado: ${skillsPropias.join(', ')}`);
 const adaptersFaltantes = skillsCanonicas.filter((skill) => !skillsClaude.includes(skill));
 if (adaptersFaltantes.length)
   err('paridad/skills', `.claude/skills no adapta: ${adaptersFaltantes.join(', ')}`);
@@ -530,6 +684,71 @@ for (const skill of skillsCanonicas.filter((nombre) => skillsClaude.includes(nom
   const adapter = leer(join(ROOT, '.claude/skills', skill, 'SKILL.md')) || '';
   if (!adapter.includes(`.agents/skills/${skill}/SKILL.md`))
     err('paridad/skills', `.claude/skills/${skill}/SKILL.md no referencia la fuente canónica portable`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// La séptima superficie: el sitio publicado.
+//
+// Seis superficies de agentes se comparan entre sí desde la spec 002, y ninguna de ellas es la
+// que ve alguien de fuera. El sitio enumera agentes y skills a mano y escribe los recuentos
+// dentro del HTML: puede quedarse atrás sin que nada falle, y entonces la página que explica el
+// sistema es la única parte del sistema que miente. Se verifica el inventario y los números;
+// la prosa que describe cada uno sigue siendo humana a propósito.
+// ─────────────────────────────────────────────────────────────────────────────
+{
+  const datos = leer(join(ROOT, 'site/assets/js/datos.mjs'));
+  if (datos) {
+    const idsDe = (desde, hasta) => {
+      const trozo = datos.slice(datos.indexOf(desde), hasta ? datos.indexOf(hasta) : undefined);
+      return new Set([...trozo.matchAll(/\{\s*id:\s*'([a-z0-9-]+)'/g)].map((m) => m[1]));
+    };
+    const agentesSitio = idsDe('export const FAMILIAS_AGENTES', 'export const GRUPOS_SKILLS');
+    const skillsSitio = idsDe('export const GRUPOS_SKILLS', null);
+    // Los identificadores de familia y de grupo también casan con el patrón; se descuentan
+    // comparando contra los catálogos, que es lo que de verdad importa.
+    const diferencia = (a, b) => [...a].filter((x) => !b.has(x)).sort();
+
+    const faltanAgentes = diferencia(nombresAgentes, agentesSitio);
+    if (faltanAgentes.length)
+      err('superficie/sitio', `site/assets/js/datos.mjs no publica ${faltanAgentes.length} agente(s): ${faltanAgentes.join(', ')}`);
+    const sobranAgentes = diferencia(agentesSitio, nombresAgentes)
+      .filter((x) => !['circuito', 'arquitectura', 'construccion', 'calidad', 'auditoria'].includes(x));
+    if (sobranAgentes.length)
+      err('superficie/sitio', `site/assets/js/datos.mjs anuncia agente(s) inexistente(s): ${sobranAgentes.join(', ')}`);
+
+    const catalogoSkills = new Set(skillsCanonicas);
+    const faltanSkills = diferencia(catalogoSkills, skillsSitio);
+    if (faltanSkills.length)
+      err('superficie/sitio', `site/assets/js/datos.mjs no publica ${faltanSkills.length} skill(s): ${faltanSkills.join(', ')}`);
+    const sobranSkills = diferencia(skillsSitio, catalogoSkills)
+      .filter((x) => !['circuito', 'terreno', 'riesgo', 'memoria', 'otros'].includes(x));
+    if (sobranSkills.length)
+      err('superficie/sitio', `site/assets/js/datos.mjs anuncia skill(s) inexistente(s): ${sobranSkills.join(', ')}`);
+
+    // Los recuentos del HTML están escritos a mano dentro de terminales de ejemplo. Un número
+    // desfasado en la portada es exactamente la clase de afirmación cómoda que este repositorio
+    // reprocha en otros sitios.
+    const indexHtml = leer(join(ROOT, 'site/index.html')) || '';
+    for (const m of indexHtml.matchAll(/(\d+)\s+agente\(s\)\s*·\s*(\d+)\s+skill\(s\)/g)) {
+      if (Number(m[1]) !== nombresAgentes.size || Number(m[2]) !== skillsCanonicas.length)
+        err('superficie/sitio',
+          `site/index.html anuncia «${m[0]}» y el catálogo real tiene ${nombresAgentes.size} agente(s) · ${skillsCanonicas.length} skill(s)`);
+    }
+  }
+
+  // El sitio se publica como «project page», colgando de /<repositorio>/. Una ruta que empiece
+  // por barra apunta a la raíz del dominio, no a la del sitio: el recurso existe en el
+  // repositorio, el enlace es válido en local y en producción da 404. No se comprueba que el
+  // fichero exista porque algunos los genera `site-prep.mjs` en el momento de publicar; se
+  // comprueba lo que sí es una propiedad estática del HTML.
+  for (const pagina of ['index.html', 'documentacion.html', '404.html']) {
+    const html = leer(join(ROOT, 'site', pagina));
+    if (!html) continue;
+    const absolutas = [...html.matchAll(/(?:src|href)="(\/[^/"][^"]*|\/)"/g)].map((m) => m[1]);
+    if (absolutas.length)
+      err('superficie/sitio',
+        `site/${pagina} usa ${absolutas.length} ruta(s) absoluta(s) que en una project page apuntan fuera del sitio: ${[...new Set(absolutas)].join(', ')}`);
+  }
 }
 
 // Una skill ya aparece como comando `/` en los hosts compatibles. Mantener además un
@@ -738,13 +957,71 @@ if (territoriosRaw) {
         err('territorios/patrones', `territorio '${nombre}' sin patrones`);
     }
 
-    // Antes de activar ask/deny, /onboard debe gobernar a todos los agentes que escriben.
-    if (['ask', 'deny'].includes(cfg.modo)) {
-      const AUDITORES = new Set(['code-reviewer', 'security-auditor', 'research-analyst', 'orchestrator']);
-      for (const a of nombresAgentes) {
-        if (conDueño.has(a) || (cfg.coordinadores || []).includes(a) || AUDITORES.has(a)) continue;
-        warn('territorios/huerfano', `'${a}' no es dueño de ningún territorio ni coordinador: puede escribir en cualquier sitio no reclamado`);
+    // ── integridad de rutas ──────────────────────────────────────────────────
+    // Un patrón que no apunta a nada no protege nada, pero parece que sí. Es la forma
+    // más silenciosa de que un reparto quede obsoleto: se renombra una carpeta y el
+    // territorio sigue escrito, intacto y vacío.
+    //
+    // Se exige solo cuando el reparto manda de verdad (ask/deny). En `audit`, un proyecto
+    // recién instalado aún no ha creado sus carpetas, y convertir eso en error rompería la
+    // instalación el primer día por algo que todavía no es un problema.
+    const obliga = ['ask', 'deny'].includes(cfg.modo);
+    const anotar = obliga ? err : warn;
+    const futuras = new Set(cfg.rutasFuturas || []);
+    for (const [nombre, t] of territorios) {
+      for (const patron of t.patrones || []) {
+        if (futuras.has(patron)) continue;
+        const base = String(patron).includes('*')
+          ? String(patron).split('*')[0].replace(/\/$/, '')
+          : String(patron);
+        if (base && !existsSync(join(ROOT, base)))
+          anotar('territorios/ruta', `territorio '${nombre}': '${patron}' no resuelve a nada; decláralo en 'rutasFuturas' si aún no existe`);
       }
+    }
+    for (const patron of futuras)
+      if (!territorios.some(([, t]) => (t.patrones || []).includes(patron)))
+        warn('territorios/ruta', `'${patron}' figura en 'rutasFuturas' pero ningún territorio lo reclama`);
+
+    // ── solape ───────────────────────────────────────────────────────────────
+    // Dos dueños sobre la misma ruta convierten la decisión en un accidente de orden:
+    // gana el territorio que aparezca antes en el fichero. Eso no es un reparto.
+    const muestraDe = (p) => String(p).replace(/\*\*\//g, 'x/').replace(/\*\*/g, 'x').replace(/\*/g, 'x').replace(/\?/g, 'x');
+    for (const [nombreA, a] of territorios) {
+      for (const [nombreB, b] of territorios) {
+        if (nombreA >= nombreB) continue;
+        if ((a.duenos || []).some((d) => (b.duenos || []).includes(d))) continue;
+        for (const patron of a.patrones || []) {
+          const muestra = muestraDe(patron);
+          if ((b.patrones || []).some((q) => globARegExp(q).test(muestra)))
+            err('territorios/solape', `'${nombreA}' y '${nombreB}' reclaman la misma ruta ('${patron}'): la decisión dependería del orden del fichero`);
+        }
+      }
+    }
+
+    // ── agentes sin territorio ───────────────────────────────────────────────
+    // No todos los agentes necesitan territorio, pero la diferencia entre "no le
+    // corresponde" y "se nos olvidó" tiene que estar escrita. Un auditor de solo lectura
+    // con territorio de escritura sería una contradicción; un especialista de aplicación
+    // sin territorio en la plantilla es correcto porque la plantilla no tiene aplicación.
+    const sinTerritorio = cfg.sinTerritorio || {};
+    const declarados = new Map();
+    for (const [grupo, datos] of Object.entries(sinTerritorio)) {
+      if (!datos || typeof datos.motivo !== 'string' || datos.motivo.trim().length <= 20)
+        err('territorios/sin-territorio', `el grupo '${grupo}' no explica por qué sus agentes no tienen territorio`);
+      if (/pendiente|tbd|todo/i.test(datos?.motivo || ''))
+        err('territorios/sin-territorio', `el motivo del grupo '${grupo}' aplaza la decisión en vez de tomarla`);
+      for (const a of datos?.agentes || []) {
+        if (!nombresAgentes.has(a)) err('territorios/agente', `'${a}' (grupo '${grupo}') no existe en .claude/agents/`);
+        if (conDueño.has(a)) err('territorios/sin-territorio', `'${a}' figura como sin territorio y a la vez es dueño de uno`);
+        if (declarados.has(a)) err('territorios/sin-territorio', `'${a}' está declarado en dos grupos: '${declarados.get(a)}' y '${grupo}'`);
+        declarados.set(a, grupo);
+      }
+    }
+    for (const a of nombresAgentes) {
+      if (conDueño.has(a) || (cfg.coordinadores || []).includes(a) || declarados.has(a)) continue;
+      // En `audit` esto es un aviso: el reparto todavía observa. En `ask`/`deny` manda, y
+      // un agente que escribe sin que nadie haya dicho dónde es exactamente el agujero.
+      anotar('territorios/sin-territorio', `'${a}' no es dueño de ningún territorio, ni coordinador, ni consta por qué no lo necesita`);
     }
   }
 }
@@ -806,8 +1083,39 @@ let tareasHechas = 0;
 for (const s of specs) {
   const dir = join(SPECS, s);
   const spec = leer(join(dir, 'spec.md'));
+  const compactChange = leer(join(dir, 'change.md'));
   if (!spec) {
-    err('spec/estructura', `${s}: falta spec.md`);
+    if (compactChange !== null) {
+      const bytes = Buffer.byteLength(compactChange, 'utf8');
+      const criteria = new Set(compactChange.match(/\bCA-\d+\b/g) || []);
+      const compactTasks = new Set(compactChange.match(/\bT-\d{3}-\d+\b/g) || []);
+      const approval = validarAprobacionCambio(compactChange, { decisionRefs: referenciasDecisionLocales(ROOT) });
+      const approved = approval.ok;
+      const intent = intencionCambio(compactChange) || '';
+      const declaredSeal = compactChange.match(/^\|\s*Sello de intenci[oó]n\s*\|\s*`?([0-9a-f]{64})`?\s*\|/im)?.[1];
+      const actualSeal = createHash('sha256').update(intent).digest('hex');
+      const compactContract = validarCambioCompacto(compactChange, leerCircuito(ROOT).config,
+        { decisionRefs: referenciasDecisionLocales(ROOT) });
+      if (!compactContract.ok) err('compact/contrato', `${s}: ${compactContract.reason}`);
+      if (bytes > 12 * 1024 || criteria.size < 1 || compactTasks.size < 1 || criteria.size > 3 || compactTasks.size > 3)
+        err('compact/limites', `${s}: change.md debe conservar 1–3 criterios, 1–3 tareas y como máximo 12 KiB; escala a full`);
+      if (!/^- Seguridad:\s*`no-sensible`\s*$/im.test(compactChange))
+        err('compact/impacto', `${s}: Seguridad debe ser exactamente no-sensible`);
+      if (!/^\|\s*Revisor independiente\s*\|\s*code-reviewer\s*\|/im.test(compactChange))
+        err('compact/revision', `${s}: falta code-reviewer independiente`);
+      if (!/^\|\s*Veredicto de revisión\s*\|\s*(?:approved|apto)\s*\|/im.test(compactChange)) {
+        const message = `${s}: falta veredicto final de code-reviewer`;
+        STRICT ? err('compact/revision', message) : warn('compact/revision', message);
+      }
+      if (!approved) {
+        const message = `${s}: change.md sigue pendiente; una persona debe ejecutar approve-change`;
+        STRICT ? err('compact/aprobacion', message) : warn('compact/aprobacion', message);
+      } else if (declaredSeal !== actualSeal) err('compact/sello', `${s}: la intención cambió después de aprobarse`);
+      if (/^\|\s*Estado\s*\|\s*approved\s*\|/im.test(compactChange) && !approval.ok)
+        err('compact/aprobacion', `${s}: aprobación durable inválida: ${approval.reason}`);
+      continue;
+    }
+    err('spec/estructura', `${s}: falta spec.md o change.md`);
     continue;
   }
 
@@ -1390,11 +1698,7 @@ if (instalado) {
 }
 
 if (!existsSync(join(ROOT, 'AGENTS.md'))) err('repo/AGENTS', 'falta AGENTS.md, la fuente de verdad');
-const envRastreado = spawnSync('git', ['ls-files', '--error-unmatch', '--', '.env'], {
-  cwd: ROOT,
-  stdio: 'ignore',
-}).status === 0;
-if (envRastreado) err('repo/secretos', '.env está versionado; retíralo del índice sin exponer su contenido');
+if (existsSync(join(ROOT, '.env'))) err('repo/secretos', '.env está en el árbol de trabajo — comprueba que .gitignore lo excluye');
 
 const gitignore = leer(join(ROOT, '.gitignore')) || '';
 if (!/^\.env\s*$/m.test(gitignore)) err('repo/secretos', '.gitignore no excluye .env');
@@ -1506,6 +1810,184 @@ if (VIRGIN) {
       if (modo !== '100755')
         err('githooks/permiso', `${ruta} está en el índice como ${modo}: git no lo ejecutará en Linux ni macOS. Corrige con \`git update-index --chmod=+x ${ruta}\``);
     }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Corroboración de trazas (--trace-audit --base <ref>).
+//
+// `observed` solo lo alcanzan dos de los seis entornos soportados, porque solo dos emiten el
+// ciclo de vida del subagente. Para los otros cuatro la alternativa era `declared-direct`: el
+// agente lo dice y nadie lo contrasta. Esto añade el estado intermedio sobre el único
+// sustrato común a todos: git. No impide un trailer falso; vuelve detectable el descuido.
+// ─────────────────────────────────────────────────────────────────────────────
+if (TRACE_AUDIT && BASE_DOCS && !BASE_DOCS.startsWith('--')) {
+  const git = (...argv) => spawnSync('git', argv, { cwd: ROOT, encoding: 'utf8' });
+  const rango = `${BASE_DOCS}..HEAD`;
+  const formatoHistorial = '--format=%H%x1f%an <%ae>%x1f%B%x1e';
+  const historial = git('log', '--reverse', formatoHistorial, rango);
+  // Cada política admite como máximo 100 commits auditables. No se recorre toda la historia:
+  // además de ser innecesario, multiplicaría las consultas Git por cada ancestro del repositorio.
+  const previo = git('log', '--max-count=100', '--reverse', formatoHistorial, BASE_DOCS);
+  if (historial.status !== 0) {
+    err('traza/base', `no se puede leer el rango \`${rango}\`: ${(historial.stderr || '').trim().split('\n')[0]}`);
+  } else {
+    const tareas = new Set();
+    const specsIds = new Set();
+    for (const nombre of dirs(join(ROOT, 'docs', 'specs'))) {
+      const m = nombre.match(/^(\d{3})-/);
+      if (m) specsIds.add(m[1]);
+      const taskSource = (leer(join(ROOT, 'docs', 'specs', nombre, 'tasks.md')) ||
+        leer(join(ROOT, 'docs', 'specs', nombre, 'change.md')) || '');
+      for (const id of taskSource.match(/T-\d{3}-\d+/g) || [])
+        tareas.add(id);
+    }
+    const agentes = new Set(
+      (existsSync(join(ROOT, '.claude', 'agents'))
+        ? readdirSync(join(ROOT, '.claude', 'agents'))
+        : []
+      ).filter((n) => n.endsWith('.md')).map((n) => n.replace(/\.md$/, '')),
+    );
+    let reparto = null;
+    try { reparto = JSON.parse(leer(join(ROOT, '.sdd', 'territories.json')) || 'null'); } catch { reparto = null; }
+
+    const jsonEn = (ref, path) => {
+      const shown = git('show', `${ref}:${path}`);
+      if (shown.status !== 0) return null;
+      try { return JSON.parse(shown.stdout); } catch { return null; }
+    };
+    const decisionesEn = (ref) => {
+      const refs = new Set();
+      const diary = git('show', `${ref}:docs/bitacora/DECISIONS.md`);
+      if (diary.status === 0)
+        for (const value of diary.stdout.match(/\b(?:DEC|ADR)-[A-Za-z0-9._-]+\b/g) || []) refs.add(value);
+      const adrs = git('ls-tree', '-r', '--name-only', ref, 'docs/architecture/adr');
+      if (adrs.status === 0) for (const path of adrs.stdout.split('\n')) {
+        const value = path.split('/').at(-1)?.match(/^(ADR-[A-Za-z0-9._-]+)/)?.[1];
+        if (value) refs.add(value);
+      }
+      return refs;
+    };
+    const cambiosEn = (ref) => {
+      const listed = git('ls-tree', '-r', '--name-only', ref, 'docs/specs');
+      const seals = new Map();
+      const scopes = new Map();
+      const paths = new Map();
+      const approvals = new Map();
+      if (listed.status !== 0) return { seals, scopes, paths, approvals };
+      for (const path of listed.stdout.split('\n').filter((x) => /\/change\.md$/.test(x))) {
+        const shown = git('show', `${ref}:${path}`);
+        if (shown.status !== 0) continue;
+        const text = shown.stdout.replace(/\r\n/g, '\n');
+        const group = text.match(/^\|\s*\*{0,2}Change-Group\*{0,2}\s*\|\s*`?([^|`\n]+)`?\s*\|/im)?.[1]?.trim();
+        const approval = validarAprobacionCambio(text, { decisionRefs: decisionesEn(ref) });
+        if (!group || !approval.ok) continue;
+        const intent = intencionCambio(text) || '';
+        seals.set(group, approval.seal);
+        paths.set(group, path);
+        approvals.set(group, [approval.approvedBy, approval.approvedAt, approval.decisionRef, approval.seal].join('\u0000'));
+        const module = text.match(/^\|\s*\*{0,2}M[oó]dulo\*{0,2}\s*\|\s*`?([^|`\n]+)`?\s*\|/im)?.[1]?.trim();
+        const routesBlock = text.match(/### Rutas previstas\s*\n([\s\S]*?)(?=\n###|\n##|$)/i)?.[1] || '';
+        const routes = [...routesBlock.matchAll(/^-\s*`([^`]+)`\s*$/gm)].map((match) => match[1]);
+        scopes.set(group, {
+          module, routes,
+          criteria: new Set(intent.match(/CA-\d+/g) || []).size,
+          tasks: new Set(text.match(/T-\d{3}-\d+/g) || []).size,
+          intentBytes: Buffer.byteLength(intent, 'utf8'),
+        });
+      }
+      return { seals, scopes, paths, approvals };
+    };
+
+    const nuevos = new Set(historial.stdout.split('\u001e').map((block) => block.trim().split('\u001f')[0]).filter(Boolean));
+    const historialCompleto = `${previo.status === 0 ? previo.stdout : ''}${historial.stdout}`;
+    const commits = historialCompleto.split('\u001e').map((bloque) => bloque.trim()).filter(Boolean)
+      .map((bloque) => {
+        const [sha, author = '', mensaje = ''] = bloque.split('\u001f');
+        const commitSha = sha.trim();
+        const ficheros = git('show', '--pretty=format:', '--name-only', commitSha)
+          .stdout.split('\n').map((l) => l.trim()).filter(Boolean);
+        const parent = (git('rev-parse', `${commitSha}^`).stdout || '').trim();
+        const trackedPaths = parent
+          ? (git('ls-tree', '-r', '--name-only', parent).stdout || '').split('\n').filter(Boolean)
+          : [];
+        const fileTypes = {};
+        for (const file of ficheros) {
+          const mode = (git('ls-tree', commitSha, '--', file).stdout || '').trim().split(/\s+/)[0] || '';
+          fileTypes[canonicalizarRuta(file)] = /^100\d{3}$/.test(mode) ? 'file' : mode === '120000' ? 'symlink' : 'other';
+        }
+        const parentCircuit = parent ? jsonEn(parent, '.sdd/circuit.json') : null;
+        const parentValidation = validarCircuito(parentCircuit, { decisionRefs: parent ? decisionesEn(parent) : new Set() });
+        const committedCircuit = jsonEn(commitSha, '.sdd/circuit.json');
+        const committedValidation = validarCircuito(committedCircuit, { decisionRefs: decisionesEn(commitSha) });
+        const activationTransition = !parentValidation.active && committedValidation.active;
+        const circuitApprovalTransition = committedValidation.active &&
+          (!parentValidation.active || JSON.stringify(parentCircuit) !== JSON.stringify(committedCircuit));
+        const activationCommitValid = !circuitApprovalTransition || committedCircuit.activationCommit === parent;
+        const circuitConfig = circuitApprovalTransition ? committedCircuit : parentCircuit;
+        const configRef = circuitApprovalTransition ? commitSha : parent;
+        const circuitValidation = validarCircuito(circuitConfig, { decisionRefs: configRef ? decisionesEn(configRef) : new Set() });
+        const historicalTerritories = parent ? jsonEn(parent, '.sdd/territories.json') : null;
+        const changes = parent ? cambiosEn(parent) : { seals: new Map(), scopes: new Map(), paths: new Map(), approvals: new Map() };
+        const committedChanges = cambiosEn(commitSha);
+        const approvedNow = [...committedChanges.seals.keys()].filter((group) =>
+          committedChanges.approvals.get(group) !== changes.approvals.get(group));
+        const trailers = parsearTrailers(mensaje);
+        return {
+          sha: commitSha,
+          author,
+          mensaje,
+          ficheros,
+          reportable: nuevos.has(commitSha),
+          scope: changes.scopes.get(trailers['Change-Group']),
+          context: {
+            reparto: historicalTerritories || reparto,
+            enforceTrailers: circuitValidation.active,
+            activationTransition,
+            circuitApprovalTransition,
+            activationCommitValid,
+            changeApprovalTransition: approvedNow.length > 0,
+            changeApprovalPaths: approvedNow.map((group) => committedChanges.paths.get(group)).filter(Boolean),
+            circuitConfigHash: circuitConfig?.proposalHash || null,
+            frontera: circuitValidation.active ? circuitConfig : null,
+            lightFiles: circuitValidation.active ? new Set(circuitConfig.proposal.light.allowedFiles.map(canonicalizarRuta)) : null,
+            changeSeals: changes.seals,
+            limits: circuitConfig?.proposal?.limits,
+            quota: circuitConfig?.proposal?.quota,
+            fileTypes,
+            trackedPaths,
+            decisionRefs: configRef ? decisionesEn(configRef) : new Set(),
+            requireGitAuthor: circuitValidation.active,
+          },
+        };
+      });
+
+    const currentCircuit = leerCircuito(ROOT).config;
+    const resumen = auditarCommits(commits, {
+      tareas, agentes, specs: specsIds, reparto, frontera: null,
+      limits: currentCircuit?.proposal?.limits,
+      quota: currentCircuit?.proposal?.quota,
+    });
+    for (const infractor of resumen.infractores)
+      for (const hallazgo of infractor.hallazgos) err('traza/corroboracion', hallazgo);
+    for (const aviso of resumen.avisos || []) warn('traza/fragmentacion', aviso);
+    // Un commit sin trailers no es una infracción: es un commit que esta auditoría no alcanza.
+    // Decirlo en voz alta evita que el silencio se lea como conformidad.
+    if (resumen.noAuditables)
+      warn('traza/no-auditable',
+        `${resumen.noAuditables} de ${resumen.total} commit(s) en \`${rango}\` no declaran traza; la corroboración no los alcanza`);
+    // La cuota pone en duda la frontera, no al autor. Fallar en cada commit por una proporción
+    // histórica castigaría a quien no ha hecho nada mal: el commit que cruza el umbral puede
+    // ser el más inocente de la ventana. Avisa siempre; falla cuando alguien mira el conjunto.
+    const c = resumen.cuota;
+    if (c.superada) {
+      const mensaje =
+        `${Math.round(c.proporcion * 100)} % de los commits en \`${rango}\` usan el circuito ligero, ` +
+        `por encima de la cuota declarada (${Math.round(c.maximo * 100)} %). ` +
+        'Eso no señala a nadie: indica que la frontera de `.sdd/circuit.json` deja pasar más de lo previsto y hay que revisarla.';
+      STRICT ? err('traza/cuota', mensaje) : warn('traza/cuota', mensaje);
+    }
+    console.log(`traza · ${rango} · ${resumen.conformes} corroborado(s) · ${resumen.noAuditables} no auditable(s) · ${resumen.infractores.length} con hallazgos · ${c.ligeros} reducido(s) (${Math.round(c.proporcion * 100)} %)`);
   }
 }
 

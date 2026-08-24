@@ -170,10 +170,20 @@ formato del host obliga —los agentes—, y siempre como envoltorio fino que re
 | **PRD global o proyecto nuevo** | `/sdd-intake` | `orchestrator` → `spec-analyst` / `ux-designer` |
 | **Proyecto nuevo con producto aprobado** | `/sdd-init` | `architect` |
 | **Modificación / funcionalidad nueva** | `/sdd-specify` | `spec-analyst` |
+| **Cambio que crees de bajo riesgo** | `/sdd-light` | `docs-writer` o el especialista del terreno |
 | Repo existente sin documentar | `/onboard` | `research-analyst` → `architect` |
 | No sé en qué punto estoy | `/sdd-status` | — |
 | Algo se ha caído en producción | `/respond-incident` | — |
 | Revalidar formatos y estándares | `/sdd-refresh` | `research-analyst` |
+
+> **Sobre el modo rápido.** `/sdd-light` no lo decides tú ni lo decide el agente: lo decide la
+> ruta. La skill empieza ejecutando `node scripts/check-sdd.mjs --circuit-status --planned <ruta>...` y, si responde
+> `full`, se detiene y te manda a `/sdd-specify`. Ahorra los cinco documentos de la spec y
+> **ningún gate**: los tests, el lint, la cobertura y el escaneo de secretos siguen corriendo
+> igual. El commit resultante lleva `Circuit: light` y un motivo, para que la auditoría de CI
+> pueda desmentirlo si el atajo no correspondía.
+> La aprobación de la frontera y la de un `change.md` compacto viven en commits `full` dedicados
+> anteriores al código; no se agrupan con la implementación.
 
 ### Qué automatiza el CLI y qué sigue razonando el agente
 
@@ -182,6 +192,8 @@ node scripts/sdd-project.mjs status --json [--spec NNN]
 node scripts/sdd-project.mjs scaffold --spec NNN --phase design|plan|tasks|verify [--dry-run]
 node scripts/sdd-project.mjs trace-status --spec NNN --json
 node scripts/check-sdd.mjs --json [--strict] [--spec NNN]
+node scripts/sdd-project.mjs run --slow --summary-json
+node scripts/sdd-project.mjs run --release --summary-json
 ```
 
 Esto evita releer el árbol, copiar plantillas y contar IDs a mano. El agente sigue decidiendo
@@ -249,8 +261,10 @@ es fácil si las fronteras existen; crearlas después no lo es.
 | `/sdd-verify` | Informes | Todos los gates en verde |
 | `/sdd-ship` | PR, CHANGELOG | GO/NO-GO firmado por una persona |
 
-> **Aviso práctico**: son 9 fases. Para un cambio trivial cuesta más el proceso que el cambio.
-> No hay vía rápida declarada todavía: es una carencia conocida.
+> **Aviso práctico**: son 9 fases para `full`; `/sdd-light` aplica `light` o `compact` cuando la
+> frontera aprobada lo permite. En la entrega, `run --slow` verifica el contenido funcional y
+> `run --release` evita repetir coverage/E2E/a11y tras un cierre exclusivamente editorial. Este
+> último reejecuta trazas, secretos y documentación y falla si no puede demostrar la huella.
 
 ---
 
@@ -366,6 +380,21 @@ datos personales; L3 crítico o regulado). Se declara en la constitución y el a
 Y no es una fase final: la seguridad está activa todo el rato — hooks que bloquean `.env` y
 comandos destructivos, validación en la frontera, autorización en cada caso de uso del lado
 servidor, consultas parametrizadas, RLS probado con dos tenants, secretos fuera del repo.
+
+#### Peticiones salientes y SSRF
+
+`/security-scan` aplica este corte a **toda petición saliente** dentro del alcance. La auditoría
+identifica el destino y el protocolo solicitados, evalúa el **destino efectivo** tras resolverlo y
+revalida cada una de las **redirecciones** antes de continuar. Rechaza siempre los destinos de
+metadata de infraestructura. Cualquier otro destino local, privado o link-local se rechaza o
+requiere una excepción documentada con responsable, alcance, motivo material y evidencia.
+
+La revisión también exige límites materiales de espera, cancelación, reintentos, respuesta y
+procesamiento. Cada control aplicable conserva estado, decisión y evidencia minimizada; si no pudo
+ejecutarse, queda como `no ejecutado`, nunca como verde implícito. El contrato normativo está en
+[`.agents/skills/security-scan/SKILL.md`](../../.agents/skills/security-scan/SKILL.md) y la lista
+de comprobación en
+[`docs/security/SECURITY-CHECKLIST.md`](../security/SECURITY-CHECKLIST.md).
 
 ### Definition of Done
 

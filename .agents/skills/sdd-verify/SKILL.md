@@ -5,6 +5,10 @@ description: "Verifica el trabajo antes de entregar. Ejecuta todos los gates de 
 
 # /sdd-verify — Validar
 
+## Contexto — lee exactamente esto
+
+Ejecuta `context --phase verify --spec NNN --json` y `trace-status --spec NNN --json`. Abre checklists solo cuando el impacto aplique.
+
 Coordina `code-reviewer` read-only; consulta security-auditor, refactor-specialist y test-engineer según impacto.
 
 ## Preparar y ejecutar

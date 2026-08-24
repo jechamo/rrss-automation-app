@@ -5,6 +5,10 @@ description: Resuelve las ambigüedades de una spec. Recorre los marcadores [NEE
 
 # /sdd-clarify — Cerrar ambigüedades
 
+## Contexto — lee exactamente esto
+
+Ejecuta `context --phase clarify --spec NNN --json`. Ese JSON sustituye releer la política y el expediente completos; abre solo las fuentes que enlace.
+
 Agente responsable: `@spec-analyst`.
 
 Esta fase existe porque **el coste de una ambigüedad crece por diez en cada fase**.

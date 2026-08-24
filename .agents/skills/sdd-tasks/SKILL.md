@@ -5,6 +5,10 @@ description: Trocea el plan en tareas atómicas y ordenadas, cada una con su tes
 
 # /sdd-tasks — Trocear
 
+## Contexto — lee exactamente esto
+
+Ejecuta `context --phase tasks --spec NNN --json` y `trace-status --spec NNN --json`; no releas la plantilla ni las matrices completas.
+
 Agente responsable: `@planner`.
 
 ## Puerta de entrada

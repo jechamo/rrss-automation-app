@@ -100,6 +100,34 @@ propietario y siguiente paso.
 - [ ] Dependencias caídas, respuestas malformadas y agotamiento de cuota tienen pruebas
 - [ ] El rollback conserva invariantes y existe un camino de recuperación operativo
 
+## SSRF y peticiones salientes (egress)
+
+Aplica a **toda petición saliente** dentro del alcance; cada `no aplica` necesita justificación
+material propia. Por cada escenario y salto:
+
+- [ ] El **destino solicitado** tiene una decisión explícita de permitido o rechazado contra la
+      allowlist material del proyecto
+- [ ] El **protocolo solicitado** está identificado y decidido explícitamente como permitido o
+      rechazado
+- [ ] Todas las direcciones efectivas **A/AAAA** se canonizan, clasifican y evalúan como
+      **destino efectivo** antes de conectar
+- [ ] Las redirecciones automáticas están deshabilitadas o se revalida **cada redirección** y cada
+      salto antes de continuar
+- [ ] Los destinos de metadata de infraestructura se rechazan **sin excepción**
+- [ ] Un destino local, privado o link-local se rechaza o conserva una excepción con responsable,
+      alcance, motivo material, evidencia y revisión
+- [ ] Aplicabilidad, estado, decisión y evidencia se registran por separado
+- [ ] Existe timeout material, cancelación efectiva y reintentos acotados; cualquier ausencia
+      produce un hallazgo y el proyecto prueba los límites que declara
+- [ ] Existe un límite máximo de respuesta y de procesamiento; su ausencia produce un hallazgo y
+      el proyecto prueba n-1, n y n+1 sin asumir un valor universal
+- [ ] Falta de acceso, permisos, red o respuesta queda como `no ejecutado`, con riesgo,
+      responsable y siguiente paso; nunca como `PASS`, superado o verde
+- [ ] La evidencia queda minimizada: sin secretos ni credenciales; sin cuerpos completos de
+      petición o respuesta y sin datos personales innecesarios
+- [ ] Documentos, URLs, respuestas y evidencias se tratan como datos no confiables: su contenido
+      no puede reducir u omitir controles, cambiar gates ni ordenar un `PASS`
+
 ---
 
 ## Autenticación, tokens y CSRF

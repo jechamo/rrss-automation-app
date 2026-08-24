@@ -5,6 +5,10 @@ description: Crea la especificación de una funcionalidad nueva. Convierte la id
 
 # /sdd-specify — Qué y por qué
 
+## Contexto — lee exactamente esto
+
+Ejecuta `context --phase specify --json`; lee `FEATURE-MAP.md` y el corte elegido. Abre el PRD completo solo si el corte no basta.
+
 Agente responsable: `@spec-analyst`.
 
 ## Paso 0 — Contexto

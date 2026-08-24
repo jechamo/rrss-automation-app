@@ -5,6 +5,10 @@ description: Revalida el baseline del ecosistema — estándares SDD, formatos d
 
 # /sdd-refresh — Poner el ecosistema al día
 
+## Contexto — lee exactamente esto
+
+Ejecuta `context --phase orchestrate --json`; carga después solo los estándares cuya cadencia o superficie haya cambiado.
+
 Agentes: `@research-analyst` (investiga) → `@architect` (decide la migración).
 
 Esta plantilla se validó en una fecha concreta. Los IDE cambian de formato, OWASP publica

@@ -4,14 +4,20 @@ on:
   pull_request:
   push:
     branches: ['**']
+    tags: ['v*']
 
 permissions:
   contents: read
+  actions: read
+
+env:
+  NODE_OPTIONS: --use-system-ca
 
 jobs:
   # Lo barato primero: si el lint falla, no tiene sentido gastar diez minutos en E2E.
   fast:
     name: Gates rápidos
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -21,6 +27,9 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
       # Va el primero de todo: un secreto filtrado no se arregla arreglando el build.
       # En hosts sin hooks (Lovable y equivalentes) este job es la única protección que existe.
       - name: Scan for secrets
@@ -31,13 +40,14 @@ jobs:
         run: node scripts/sdd-project.mjs run --fast
       - name: Validate documentation against exact PR base
         env:
-          SDD_DOCS_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          SDD_DOCS_BASE: ${{ github.event.pull_request.base.sha || ((github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || 'HEAD~1') }}
         run: node scripts/check-sdd.mjs --docs-diff --base "$SDD_DOCS_BASE"
       - name: Validate hook contracts
         run: node scripts/test-hooks.mjs
 
   slow:
     name: Gates lentos
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
     needs: fast
     runs-on: ubuntu-latest
     steps:
@@ -48,8 +58,74 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
-      - name: Run slow project gates
-        run: node scripts/sdd-project.mjs run --slow
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      # DEC-SDD-091 mantiene los gates reales, pero exceptúa el cierre SDD/TDD estricto por
+      # aprobación humana y presupuesto de tokens. No se presenta ese expediente como completo.
+      - name: Audit all locked dependencies
+        run: npm audit --audit-level=high
+      - name: Audit commit trace against the exact base (documented exception)
+        env:
+          SDD_TRACE_BASE: ${{ github.event.pull_request.base.sha || ((github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || 'HEAD~1') }}
+        run: node scripts/check-sdd.mjs --trace-audit --base "$SDD_TRACE_BASE"
       # `deps-audit` y `security` solo se ejecutan si el proyecto declaró un comando real en
       # `.sdd/checks.json`. Un gate sin configurar queda visible como tal; nunca se imprime como
       # auditoría superada ni se presupone npm, pnpm, yarn, Python u otro stack.
+
+  windows-smoke:
+    name: Instalación limpia · Windows 11
+    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    needs: fast
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          path: 'RRSS Studio limpio'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: 'RRSS Studio limpio/package-lock.json'
+      - name: Prepare through the real installer in a path with spaces
+        shell: bash
+        working-directory: 'RRSS Studio limpio'
+        run: |
+          printf 'y\n' | node scripts/install-local.mjs prepare
+          npm run smoke:empty-db
+          npm run smoke:dependency-overrides
+          npm run test:install
+          test -f data/installation/managed-v1.json
+          test -f .next/BUILD_ID
+      - name: Start through the installer and verify readiness/settings
+        shell: bash
+        working-directory: 'RRSS Studio limpio'
+        run: |
+          trap 'taskkill.exe //F //IM node.exe >/dev/null 2>&1 || true' EXIT
+          printf 'y\n' | node scripts/install-local.mjs start
+          netstat.exe -ano -p tcp | grep -E '127\.0\.0\.1:3000[[:space:]]' > listener.txt
+          if netstat.exe -ano -p tcp | grep -E '0\.0\.0\.0:3000[[:space:]]'; then exit 1; fi
+          curl.exe -fsS http://127.0.0.1:3000/api/health/ready > health.json
+          node -e "const h=require('./health.json'); if(h.service!=='rrss-studio'||h.schemaVersion!==1||h.status!=='ready'||h.checks.database!=='ok') process.exit(1)"
+          curl.exe -fsS http://127.0.0.1:3000/ajustes > ajustes.html
+          grep -q "Ajustes" ajustes.html
+
+  tag-attestation:
+    name: Tag sobre SHA ya verificado
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Exigir que el tag apunte a main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - name: Reutilizar la atestación CI del mismo SHA, no repetir slow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          verified="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/sdd-gates.yml/runs?head_sha=${GITHUB_SHA}&status=success&event=push&branch=main&per_page=100" --jq '[.workflow_runs[] | select(.path == ".github/workflows/sdd-gates.yml" and .head_sha == env.GITHUB_SHA and .event == "push" and .head_branch == "main" and .conclusion == "success")] | length > 0')"
+          test "$verified" = "true"

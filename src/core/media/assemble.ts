@@ -369,7 +369,7 @@ export function assemblePresenterDemo(args: PresenterDemoArgs): AssembleResult |
     { input: presenterInput, start: 0, end: hookSeconds },
   ];
 
-  let segments = capSegments(readNavSegments(dir, recordingDuration), middleSeconds);
+  const segments = capSegments(readNavSegments(dir, recordingDuration), middleSeconds);
   if (segments.length === 0) {
     const available = recordingDuration ? Math.min(recordingDuration, middleSeconds) : middleSeconds;
     sources.push({

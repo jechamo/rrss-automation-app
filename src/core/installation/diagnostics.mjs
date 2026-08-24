@@ -34,7 +34,7 @@ const SAFE_NEXT_STEP_BY_OPTIONAL_ID = new Map([
   ],
   [
     "browser-navigation",
-    "La grabación y navegación automatizada quedan degradadas mientras falte el navegador local.",
+    "La grabación y navegación automatizada quedan degradadas. Instala Chromium manualmente con: npx playwright install chromium",
   ],
   [
     "ffmpeg",

@@ -1,9 +1,9 @@
 {
   "schemaVersion": 7,
-  "version": "0.7.0",
+  "version": "0.9.1",
   "mode": "brownfield",
   "installedAt": "2026-08-21T09:20:29.744Z",
-  "updatedAt": "2026-08-21T09:20:29.744Z",
+  "updatedAt": "2026-08-24T18:04:51.517Z",
   "source": "jechamo/Estructura_inicial_claude",
   "product": {
     "schemaVersion": 1,
@@ -40,19 +40,19 @@
   },
   "files": {
     "docs/product/PRD.md": {
-      "hash": "c3c6111ed9e26e34",
+      "hash": "8a8adf2cde714cc5",
       "policy": "seed-once"
     },
     "docs/product/USE-CASES.md": {
-      "hash": "2df40e645f7bd452",
+      "hash": "1e91696ba17062df",
       "policy": "seed-once"
     },
     "docs/product/FEATURE-MAP.md": {
-      "hash": "12acdaef064987ba",
+      "hash": "5e12f0062eee18ea",
       "policy": "seed-once"
     },
     "docs/product/SOURCES.md": {
-      "hash": "034bd5d473accc2c",
+      "hash": "3749a06a1a7fa819",
       "policy": "seed-once"
     },
     "CHANGELOG.md": {
@@ -60,19 +60,19 @@
       "policy": "seed-once"
     },
     "AGENTS.md": {
-      "hash": "8a6e3a7aa8249da9",
+      "hash": "a92aad05333f5f80",
       "policy": "managed-block"
     },
     "CLAUDE.md": {
-      "hash": "462b91c53ab857a5",
+      "hash": "330f3212cb662c4e",
       "policy": "managed-block"
     },
     "GEMINI.md": {
-      "hash": "853b2129a6f18cb1",
+      "hash": "780f13052f2f4df2",
       "policy": "managed-block"
     },
     ".github/copilot-instructions.md": {
-      "hash": "bd641a4a4d17ba18",
+      "hash": "c7b3289f447c7a32",
       "policy": "managed-block"
     },
     "docs/README.md": {
@@ -92,7 +92,7 @@
       "policy": "seed-once"
     },
     "docs/architecture/constitution.md": {
-      "hash": "7ef39ac48f8aa69e",
+      "hash": "b7da9b674d798ec5",
       "policy": "seed-once"
     },
     "docs/design/DIRECCION-VISUAL.md": {
@@ -104,7 +104,7 @@
       "policy": "seed-once"
     },
     "docs/bitacora/DECISIONS.md": {
-      "hash": "df9a061f22f2633f",
+      "hash": "b94f4f8fce34a017",
       "policy": "seed-once"
     },
     ".sdd/agent-audit.jsonl": {
@@ -112,7 +112,7 @@
       "policy": "seed-once"
     },
     ".sdd/external-skills.json": {
-      "hash": "384509af73788394",
+      "hash": "7c6f98e7eee3ee4c",
       "policy": "seed-once"
     },
     ".sdd/territories.json": {
@@ -124,7 +124,7 @@
       "policy": "seed-once"
     },
     ".sdd/docs.json": {
-      "hash": "ffcf2120d9997fe1",
+      "hash": "4c6c64dd33ec9379",
       "policy": "seed-once"
     },
     ".sdd/generators.json": {
@@ -136,41 +136,41 @@
       "policy": "seed-once"
     },
     ".gitignore": {
-      "hash": "9acaed84ed32b706",
+      "hash": "982efe0d478797e8",
       "policy": "append-block"
     },
     ".agents/agents/api-designer.md": {
-      "hash": "601684eeaa5f6f7a",
+      "hash": "f983cfcb7950391e",
       "sourceHash": "601684eeaa5f6f7a",
       "policy": "managed"
     },
     ".agents/agents/architect.md": {
-      "hash": "30b96e18121215ed",
+      "hash": "1f33be63b2579ffb",
       "sourceHash": "30b96e18121215ed",
       "policy": "managed"
     },
     ".agents/agents/backend-expert.md": {
-      "hash": "1dc4bae0d03a5af1",
+      "hash": "cd99736b1083b2cd",
       "sourceHash": "1dc4bae0d03a5af1",
       "policy": "managed"
     },
     ".agents/agents/bitacora-keeper.md": {
-      "hash": "6d39851abe981422",
+      "hash": "62b5ab3b015f0211",
       "sourceHash": "6d39851abe981422",
       "policy": "managed"
     },
     ".agents/agents/code-reviewer.md": {
-      "hash": "8cf0cdfec205e5c1",
+      "hash": "52e8d679f87f54ed",
       "sourceHash": "8cf0cdfec205e5c1",
       "policy": "managed"
     },
     ".agents/agents/database-expert.md": {
-      "hash": "2fe89686f0023ce2",
+      "hash": "f633d783de8ffd5c",
       "sourceHash": "2fe89686f0023ce2",
       "policy": "managed"
     },
     ".agents/agents/devops-expert.md": {
-      "hash": "ea97ae55df5ca7ba",
+      "hash": "636c2f547d290ee4",
       "sourceHash": "ea97ae55df5ca7ba",
       "policy": "managed"
     },
@@ -180,12 +180,12 @@
       "policy": "managed"
     },
     ".agents/agents/frontend-expert.md": {
-      "hash": "38e81cba291b1e25",
+      "hash": "de0951b2eb6a63de",
       "sourceHash": "38e81cba291b1e25",
       "policy": "managed"
     },
     ".agents/agents/implementer.md": {
-      "hash": "5ff82b69397c1d8e",
+      "hash": "240446a5da9edd91",
       "sourceHash": "5ff82b69397c1d8e",
       "policy": "managed"
     },
@@ -195,47 +195,47 @@
       "policy": "managed"
     },
     ".agents/agents/performance-optimizer.md": {
-      "hash": "10619e54240abff5",
+      "hash": "d49eb2e9d4456349",
       "sourceHash": "10619e54240abff5",
       "policy": "managed"
     },
     ".agents/agents/planner.md": {
-      "hash": "c6ce06039f8885a0",
+      "hash": "2a5dceb04351b132",
       "sourceHash": "c6ce06039f8885a0",
       "policy": "managed"
     },
     ".agents/agents/refactor-specialist.md": {
-      "hash": "832d312c474e1bdb",
+      "hash": "0c0bf9763a614309",
       "sourceHash": "832d312c474e1bdb",
       "policy": "managed"
     },
     ".agents/agents/release-manager.md": {
-      "hash": "626324fbf7c65191",
+      "hash": "36f575f64ec7bba0",
       "sourceHash": "626324fbf7c65191",
       "policy": "managed"
     },
     ".agents/agents/research-analyst.md": {
-      "hash": "afee215ba2fe376c",
+      "hash": "8739fcd14b836f51",
       "sourceHash": "afee215ba2fe376c",
       "policy": "managed"
     },
     ".agents/agents/security-auditor.md": {
-      "hash": "98c80a0a9f9ad896",
+      "hash": "735f54df49e7ce0a",
       "sourceHash": "98c80a0a9f9ad896",
       "policy": "managed"
     },
     ".agents/agents/spec-analyst.md": {
-      "hash": "2d1ffa620f1b9a92",
+      "hash": "8acf3e7a84578d7a",
       "sourceHash": "2d1ffa620f1b9a92",
       "policy": "managed"
     },
     ".agents/agents/test-engineer.md": {
-      "hash": "60e9da5b51f24734",
+      "hash": "c7f6cc9eb6f143b3",
       "sourceHash": "60e9da5b51f24734",
       "policy": "managed"
     },
     ".agents/agents/ux-designer.md": {
-      "hash": "e505ea8457f3beff",
+      "hash": "ed84ca5200e2bc3d",
       "sourceHash": "e505ea8457f3beff",
       "policy": "managed"
     },
@@ -245,8 +245,8 @@
       "policy": "json-merge"
     },
     ".agents/rules/00-core.md": {
-      "hash": "972ce3b4790b9803",
-      "sourceHash": "972ce3b4790b9803",
+      "hash": "88f2604b06bff006",
+      "sourceHash": "88f2604b06bff006",
       "policy": "managed"
     },
     ".agents/skills/adr/SKILL.md": {
@@ -310,8 +310,8 @@
       "policy": "managed"
     },
     ".agents/skills/sdd-clarify/SKILL.md": {
-      "hash": "3911f6c40ab70b63",
-      "sourceHash": "3911f6c40ab70b63",
+      "hash": "738e36c451243a26",
+      "sourceHash": "738e36c451243a26",
       "policy": "managed"
     },
     ".agents/skills/sdd-design/references/design-gates.md": {
@@ -320,18 +320,18 @@
       "policy": "managed"
     },
     ".agents/skills/sdd-design/SKILL.md": {
-      "hash": "930d5e137e1ff261",
-      "sourceHash": "930d5e137e1ff261",
+      "hash": "7b24a42da6d52cdc",
+      "sourceHash": "7b24a42da6d52cdc",
       "policy": "managed"
     },
     ".agents/skills/sdd-implement/SKILL.md": {
-      "hash": "515375d3a385dd45",
-      "sourceHash": "515375d3a385dd45",
+      "hash": "e0d4b6db2e15e635",
+      "sourceHash": "e0d4b6db2e15e635",
       "policy": "managed"
     },
     ".agents/skills/sdd-init/SKILL.md": {
-      "hash": "41778c7b89a6be40",
-      "sourceHash": "41778c7b89a6be40",
+      "hash": "3479a03ef30a54d7",
+      "sourceHash": "3479a03ef30a54d7",
       "policy": "managed"
     },
     ".agents/skills/sdd-intake/evals/evals.json": {
@@ -340,8 +340,8 @@
       "policy": "managed"
     },
     ".agents/skills/sdd-intake/SKILL.md": {
-      "hash": "1e94fc8f6496681c",
-      "sourceHash": "1e94fc8f6496681c",
+      "hash": "bec5911e006f37dd",
+      "sourceHash": "bec5911e006f37dd",
       "policy": "managed"
     },
     ".agents/skills/sdd-plan/references/coherence-and-gates.md": {
@@ -350,43 +350,43 @@
       "policy": "managed"
     },
     ".agents/skills/sdd-plan/SKILL.md": {
-      "hash": "83b9b325d95a8be6",
-      "sourceHash": "83b9b325d95a8be6",
+      "hash": "491f5ffef1b94218",
+      "sourceHash": "491f5ffef1b94218",
       "policy": "managed"
     },
     ".agents/skills/sdd-refresh/SKILL.md": {
-      "hash": "04938be95cd90004",
-      "sourceHash": "04938be95cd90004",
+      "hash": "4dfd4c399c0245db",
+      "sourceHash": "4dfd4c399c0245db",
       "policy": "managed"
     },
     ".agents/skills/sdd-ship/SKILL.md": {
-      "hash": "e411cf18f9ae40e5",
-      "sourceHash": "e411cf18f9ae40e5",
+      "hash": "7f0a4e4a5d95e02b",
+      "sourceHash": "7f0a4e4a5d95e02b",
       "policy": "managed"
     },
     ".agents/skills/sdd-specify/SKILL.md": {
-      "hash": "e8b7c863422ab35e",
-      "sourceHash": "e8b7c863422ab35e",
+      "hash": "c336878b09148439",
+      "sourceHash": "c336878b09148439",
       "policy": "managed"
     },
     ".agents/skills/sdd-start/SKILL.md": {
-      "hash": "29271ae04347cd43",
-      "sourceHash": "29271ae04347cd43",
+      "hash": "e705136d7e18e8ba",
+      "sourceHash": "e705136d7e18e8ba",
       "policy": "managed"
     },
     ".agents/skills/sdd-light/SKILL.md": {
-      "hash": "a1ea09dc84041359",
-      "sourceHash": "a1ea09dc84041359",
+      "hash": "db3bcf1269cbb1d2",
+      "sourceHash": "db3bcf1269cbb1d2",
       "policy": "managed"
     },
     ".agents/skills/sdd-status/SKILL.md": {
-      "hash": "6de7f4c15d2ff18c",
-      "sourceHash": "6de7f4c15d2ff18c",
+      "hash": "d87080dc53200c17",
+      "sourceHash": "d87080dc53200c17",
       "policy": "managed"
     },
     ".agents/skills/sdd-tasks/SKILL.md": {
-      "hash": "b336914e84af818b",
-      "sourceHash": "b336914e84af818b",
+      "hash": "fe070068b8d33feb",
+      "sourceHash": "fe070068b8d33feb",
       "policy": "managed"
     },
     ".agents/skills/sdd-verify/references/review-checklists.md": {
@@ -395,13 +395,13 @@
       "policy": "managed"
     },
     ".agents/skills/sdd-verify/SKILL.md": {
-      "hash": "81616e98edfd5127",
-      "sourceHash": "81616e98edfd5127",
+      "hash": "56129a78d651f588",
+      "sourceHash": "56129a78d651f588",
       "policy": "managed"
     },
     ".agents/skills/security-scan/SKILL.md": {
-      "hash": "4e51a147add600d7",
-      "sourceHash": "4e51a147add600d7",
+      "hash": "f5405e8beb3208da",
+      "sourceHash": "f5405e8beb3208da",
       "policy": "managed"
     },
     ".agents/skills/skill-creator/agents/analyzer.md": {
@@ -535,7 +535,7 @@
       "policy": "managed"
     },
     ".claude/settings.json": {
-      "hash": "01746d8380d69309",
+      "hash": "21e0dc6b5a6ed6fd",
       "sourceHash": "21e0dc6b5a6ed6fd",
       "policy": "json-merge"
     },
@@ -850,7 +850,7 @@
       "policy": "managed"
     },
     ".cursor/hooks.json": {
-      "hash": "adcc9169b4e12268",
+      "hash": "9fcf7be806029032",
       "sourceHash": "9fcf7be806029032",
       "policy": "json-merge"
     },
@@ -875,37 +875,37 @@
       "policy": "managed"
     },
     ".gemini/agents/api-designer.md": {
-      "hash": "ca95ed7a40dcb960",
+      "hash": "0f057ebab5bc46ec",
       "sourceHash": "ca95ed7a40dcb960",
       "policy": "managed"
     },
     ".gemini/agents/architect.md": {
-      "hash": "2fdbde8551f587bf",
+      "hash": "d346a7a0294c70dd",
       "sourceHash": "2fdbde8551f587bf",
       "policy": "managed"
     },
     ".gemini/agents/backend-expert.md": {
-      "hash": "903b2e256c14f3f8",
+      "hash": "a164f3c681292338",
       "sourceHash": "903b2e256c14f3f8",
       "policy": "managed"
     },
     ".gemini/agents/bitacora-keeper.md": {
-      "hash": "045f6ced81f02023",
+      "hash": "575b5ed3038e9afb",
       "sourceHash": "045f6ced81f02023",
       "policy": "managed"
     },
     ".gemini/agents/code-reviewer.md": {
-      "hash": "8e5f71fbff64ecb3",
+      "hash": "085ea9ad268e4c43",
       "sourceHash": "8e5f71fbff64ecb3",
       "policy": "managed"
     },
     ".gemini/agents/database-expert.md": {
-      "hash": "c495c414faaab914",
+      "hash": "62b8f5060e890b52",
       "sourceHash": "c495c414faaab914",
       "policy": "managed"
     },
     ".gemini/agents/devops-expert.md": {
-      "hash": "779fd0ee56673a43",
+      "hash": "150cd130626efa99",
       "sourceHash": "779fd0ee56673a43",
       "policy": "managed"
     },
@@ -915,12 +915,12 @@
       "policy": "managed"
     },
     ".gemini/agents/frontend-expert.md": {
-      "hash": "0cb2ce5fcbf73519",
+      "hash": "231a838d78b60c67",
       "sourceHash": "0cb2ce5fcbf73519",
       "policy": "managed"
     },
     ".gemini/agents/implementer.md": {
-      "hash": "388d6f7b7cff2014",
+      "hash": "3a24d710eef99e86",
       "sourceHash": "388d6f7b7cff2014",
       "policy": "managed"
     },
@@ -930,47 +930,47 @@
       "policy": "managed"
     },
     ".gemini/agents/performance-optimizer.md": {
-      "hash": "d8e81841937e4d4a",
+      "hash": "f3ecd40f96f48521",
       "sourceHash": "d8e81841937e4d4a",
       "policy": "managed"
     },
     ".gemini/agents/planner.md": {
-      "hash": "19629a9be16f99fb",
+      "hash": "a8b4bd6320444338",
       "sourceHash": "19629a9be16f99fb",
       "policy": "managed"
     },
     ".gemini/agents/refactor-specialist.md": {
-      "hash": "41596f6f9ad7b895",
+      "hash": "a07576673b8112ff",
       "sourceHash": "41596f6f9ad7b895",
       "policy": "managed"
     },
     ".gemini/agents/release-manager.md": {
-      "hash": "74ccc0d6d29de11d",
+      "hash": "4d069c1502030763",
       "sourceHash": "74ccc0d6d29de11d",
       "policy": "managed"
     },
     ".gemini/agents/research-analyst.md": {
-      "hash": "9460ca0ed94360a5",
+      "hash": "0e155b3fbfaaf933",
       "sourceHash": "9460ca0ed94360a5",
       "policy": "managed"
     },
     ".gemini/agents/security-auditor.md": {
-      "hash": "f930937d4d7864bb",
+      "hash": "3b143726223e847b",
       "sourceHash": "f930937d4d7864bb",
       "policy": "managed"
     },
     ".gemini/agents/spec-analyst.md": {
-      "hash": "2eb47387cb86fc42",
+      "hash": "70b4580faff81b1b",
       "sourceHash": "2eb47387cb86fc42",
       "policy": "managed"
     },
     ".gemini/agents/test-engineer.md": {
-      "hash": "28482d65af73a91a",
+      "hash": "277b70c8b82ecc60",
       "sourceHash": "28482d65af73a91a",
       "policy": "managed"
     },
     ".gemini/agents/ux-designer.md": {
-      "hash": "0eb9e03a4d060220",
+      "hash": "63c56736ce016774",
       "sourceHash": "0eb9e03a4d060220",
       "policy": "managed"
     },
@@ -1045,8 +1045,8 @@
       "policy": "managed"
     },
     ".github/agents/README.md": {
-      "hash": "6ffcc69893c74e85",
-      "sourceHash": "6ffcc69893c74e85",
+      "hash": "f72122c7351683c7",
+      "sourceHash": "f72122c7351683c7",
       "policy": "managed"
     },
     ".github/agents/refactor-specialist.agent.md": {
@@ -1110,8 +1110,8 @@
       "policy": "managed"
     },
     ".github/workflows/sdd-gates.yml": {
-      "hash": "27d1dcfa89c07b0f",
-      "sourceHash": "27d1dcfa89c07b0f",
+      "hash": "ad4a417694ed245e",
+      "sourceHash": "ad4a417694ed245e",
       "policy": "managed"
     },
     ".sdd/githooks/pre-commit": {
@@ -1120,13 +1120,13 @@
       "policy": "managed"
     },
     ".sdd/githooks/pre-push": {
-      "hash": "442b89fc4e744785",
-      "sourceHash": "442b89fc4e744785",
+      "hash": "bf1397a529698303",
+      "sourceHash": "bf1397a529698303",
       "policy": "managed"
     },
     ".sdd/githooks/README.md": {
-      "hash": "670193f7ef320d11",
-      "sourceHash": "670193f7ef320d11",
+      "hash": "68e01eed8d71a81a",
+      "sourceHash": "68e01eed8d71a81a",
       "policy": "managed"
     },
     ".sdd/hooks/format-and-lint.mjs": {
@@ -1135,13 +1135,13 @@
       "policy": "managed"
     },
     ".sdd/hooks/guard-bash.mjs": {
-      "hash": "2714edb3f410c3d5",
-      "sourceHash": "2714edb3f410c3d5",
+      "hash": "e834ffa6b1123038",
+      "sourceHash": "e834ffa6b1123038",
       "policy": "managed"
     },
     ".sdd/hooks/guard-write.mjs": {
-      "hash": "7a94889e1f632f76",
-      "sourceHash": "7a94889e1f632f76",
+      "hash": "f4acdeee6a7e40ed",
+      "sourceHash": "f4acdeee6a7e40ed",
       "policy": "managed"
     },
     ".sdd/hooks/README.md": {
@@ -1150,8 +1150,8 @@
       "policy": "managed"
     },
     ".sdd/hooks/sdd-router.mjs": {
-      "hash": "d516ceceaf0b1b97",
-      "sourceHash": "d516ceceaf0b1b97",
+      "hash": "cbff05a520477c17",
+      "sourceHash": "cbff05a520477c17",
       "policy": "managed"
     },
     ".sdd/hooks/session-context.mjs": {
@@ -1165,13 +1165,13 @@
       "policy": "managed"
     },
     ".sdd/hooks/subagent-log.mjs": {
-      "hash": "a74cee61094dcdee",
-      "sourceHash": "a74cee61094dcdee",
+      "hash": "89d8b0a3823c7c35",
+      "sourceHash": "89d8b0a3823c7c35",
       "policy": "managed"
     },
     ".sdd/hooks/_lib.mjs": {
-      "hash": "a875f9a6e29bd43f",
-      "sourceHash": "a875f9a6e29bd43f",
+      "hash": "5219ad247befc9be",
+      "sourceHash": "5219ad247befc9be",
       "policy": "managed"
     },
     ".sdd/README.md": {
@@ -1190,8 +1190,8 @@
       "policy": "managed"
     },
     "docs/agents/CATALOG.md": {
-      "hash": "5a74881e071b3956",
-      "sourceHash": "5a74881e071b3956",
+      "hash": "e40c939d329de37a",
+      "sourceHash": "e40c939d329de37a",
       "policy": "managed"
     },
     "docs/architecture/adr/_TEMPLATE.md": {
@@ -1235,13 +1235,13 @@
       "policy": "managed"
     },
     "docs/guides/COMO-TRABAJAR-CON-LOS-AGENTES.md": {
-      "hash": "4172835ebd386b5d",
-      "sourceHash": "4172835ebd386b5d",
+      "hash": "7072c32b2399fead",
+      "sourceHash": "7072c32b2399fead",
       "policy": "managed"
     },
     "docs/guides/DOCUMENTACION.md": {
-      "hash": "e979bfe2a922810c",
-      "sourceHash": "e979bfe2a922810c",
+      "hash": "e8bc5a08d8cd6e3e",
+      "sourceHash": "e8bc5a08d8cd6e3e",
       "policy": "managed"
     },
     "docs/ops/OBSERVABILITY.md": {
@@ -1255,8 +1255,8 @@
       "policy": "managed"
     },
     "docs/quality/DEFINITION-OF-DONE.md": {
-      "hash": "296ca9cc901228f4",
-      "sourceHash": "296ca9cc901228f4",
+      "hash": "a5061859b610ee97",
+      "sourceHash": "a5061859b610ee97",
       "policy": "managed"
     },
     "docs/quality/METRICS.md": {
@@ -1265,12 +1265,12 @@
       "policy": "managed"
     },
     "docs/quality/TECH-DEBT.md": {
-      "hash": "53d50fcebc5a5865",
+      "hash": "5d8a3ad0d1df25e4",
       "sourceHash": "53d50fcebc5a5865",
       "policy": "managed"
     },
     "docs/quality/TEST-STRATEGY.md": {
-      "hash": "c6ab85be4f0f2c7b",
+      "hash": "9a4bdbae8dc4fdf5",
       "sourceHash": "c6ab85be4f0f2c7b",
       "policy": "managed"
     },
@@ -1280,8 +1280,8 @@
       "policy": "managed"
     },
     "docs/sdd/OPERATING-MODEL.md": {
-      "hash": "008fc27f0b8c163f",
-      "sourceHash": "008fc27f0b8c163f",
+      "hash": "a013a8c432fbac05",
+      "sourceHash": "a013a8c432fbac05",
       "policy": "managed"
     },
     "docs/security/AUTH-TOKENS.md": {
@@ -1295,8 +1295,8 @@
       "policy": "managed"
     },
     "docs/security/SECURITY-CHECKLIST.md": {
-      "hash": "e0e9ce18e1555b11",
-      "sourceHash": "e0e9ce18e1555b11",
+      "hash": "4b2e696dda51882e",
+      "sourceHash": "4b2e696dda51882e",
       "policy": "managed"
     },
     "docs/security/_TEMPLATE.threat-model.md": {
@@ -1355,13 +1355,13 @@
       "policy": "managed"
     },
     "scripts/check-sdd.mjs": {
-      "hash": "91aa8778f984686d",
+      "hash": "6f9a46ee7ef217c6",
       "sourceHash": "91aa8778f984686d",
       "policy": "managed"
     },
     "scripts/check-syntax.mjs": {
-      "hash": "ad0f360e2a9a68f5",
-      "sourceHash": "ad0f360e2a9a68f5",
+      "hash": "74faca9abd5a00fb",
+      "sourceHash": "74faca9abd5a00fb",
       "policy": "managed"
     },
     "scripts/lib/docs-contract.mjs": {
@@ -1380,8 +1380,8 @@
       "policy": "managed"
     },
     "scripts/sdd-project.mjs": {
-      "hash": "826dbda3552c1515",
-      "sourceHash": "826dbda3552c1515",
+      "hash": "c46668fef5349028",
+      "sourceHash": "c46668fef5349028",
       "policy": "managed"
     },
     "scripts/skills-sync.mjs": {
@@ -1390,64 +1390,251 @@
       "policy": "managed"
     },
     "scripts/test-hooks.mjs": {
-      "hash": "62e917b15b677ca4",
-      "sourceHash": "62e917b15b677ca4",
+      "hash": "e311b4fed7f49a9c",
+      "sourceHash": "e311b4fed7f49a9c",
       "policy": "managed"
     },
     "SECURITY.md": {
       "hash": "e066905e85ed37c8",
       "sourceHash": "e066905e85ed37c8",
       "policy": "managed"
+    },
+    ".sdd/coverage.json": {
+      "hash": "82122eaab412d651",
+      "policy": "seed-once"
+    },
+    ".sdd/smells.json": {
+      "hash": "a4ac40abb2538ba1",
+      "policy": "seed-once"
+    },
+    ".sdd/circuit.json": {
+      "hash": "5f4f7e953578237d",
+      "policy": "seed-once"
+    },
+    ".claude/agents/backend-expert.md": {
+      "hash": "249909b7c23913d0",
+      "sourceHash": "249909b7c23913d0",
+      "policy": "managed"
+    },
+    ".claude/agents/bitacora-keeper.md": {
+      "hash": "e8642c2f1dd7d882",
+      "sourceHash": "e8642c2f1dd7d882",
+      "policy": "managed"
+    },
+    ".claude/agents/code-reviewer.md": {
+      "hash": "071d0b75dc6488d7",
+      "sourceHash": "071d0b75dc6488d7",
+      "policy": "managed"
+    },
+    ".claude/agents/devops-expert.md": {
+      "hash": "92e9190a0d708580",
+      "sourceHash": "92e9190a0d708580",
+      "policy": "managed"
+    },
+    ".claude/agents/docs-writer.md": {
+      "hash": "c30bb4a0cc8c8cf8",
+      "sourceHash": "c30bb4a0cc8c8cf8",
+      "policy": "managed"
+    },
+    ".claude/agents/frontend-expert.md": {
+      "hash": "365324d3db293d5b",
+      "sourceHash": "365324d3db293d5b",
+      "policy": "managed"
+    },
+    ".claude/agents/implementer.md": {
+      "hash": "f6d2a4b26939a6a9",
+      "sourceHash": "f6d2a4b26939a6a9",
+      "policy": "managed"
+    },
+    ".claude/agents/orchestrator.md": {
+      "hash": "cac057c4d669453f",
+      "sourceHash": "cac057c4d669453f",
+      "policy": "managed"
+    },
+    ".claude/agents/performance-optimizer.md": {
+      "hash": "adc2b8217074a1ce",
+      "sourceHash": "adc2b8217074a1ce",
+      "policy": "managed"
+    },
+    ".claude/agents/planner.md": {
+      "hash": "fde032d5fd85b6fe",
+      "sourceHash": "fde032d5fd85b6fe",
+      "policy": "managed"
+    },
+    ".claude/agents/refactor-specialist.md": {
+      "hash": "d1e69b9e4ca61892",
+      "sourceHash": "d1e69b9e4ca61892",
+      "policy": "managed"
+    },
+    ".claude/agents/release-manager.md": {
+      "hash": "b3f1d8e11886a0cf",
+      "sourceHash": "b3f1d8e11886a0cf",
+      "policy": "managed"
+    },
+    ".claude/agents/security-auditor.md": {
+      "hash": "dcf5512d174ab558",
+      "sourceHash": "dcf5512d174ab558",
+      "policy": "managed"
+    },
+    ".claude/agents/spec-analyst.md": {
+      "hash": "37fa29226da8f824",
+      "sourceHash": "37fa29226da8f824",
+      "policy": "managed"
+    },
+    ".claude/agents/test-engineer.md": {
+      "hash": "7c1cd343bfac93c2",
+      "sourceHash": "7c1cd343bfac93c2",
+      "policy": "managed"
+    },
+    ".claude/agents/ux-designer.md": {
+      "hash": "69dca3abc740e709",
+      "sourceHash": "69dca3abc740e709",
+      "policy": "managed"
+    },
+    ".cursor/agents/docs-writer.md": {
+      "hash": "79bf9d8cfff1a598",
+      "sourceHash": "79bf9d8cfff1a598",
+      "policy": "managed"
+    },
+    ".cursor/agents/implementer.md": {
+      "hash": "58e019e0f55db1ca",
+      "sourceHash": "58e019e0f55db1ca",
+      "policy": "managed"
+    },
+    ".cursor/agents/orchestrator.md": {
+      "hash": "08f5bb0c4acf50a4",
+      "sourceHash": "08f5bb0c4acf50a4",
+      "policy": "managed"
+    },
+    ".cursor/agents/planner.md": {
+      "hash": "c1073a84d7826303",
+      "sourceHash": "c1073a84d7826303",
+      "policy": "managed"
+    },
+    ".cursor/agents/security-auditor.md": {
+      "hash": "016f8347a9c71d83",
+      "sourceHash": "016f8347a9c71d83",
+      "policy": "managed"
+    },
+    ".cursor/agents/spec-analyst.md": {
+      "hash": "c559bc8b98222d3a",
+      "sourceHash": "c559bc8b98222d3a",
+      "policy": "managed"
+    },
+    ".cursor/agents/ux-designer.md": {
+      "hash": "cb6edaef678a0ed5",
+      "sourceHash": "cb6edaef678a0ed5",
+      "policy": "managed"
+    },
+    ".cursor/rules/00-core.mdc": {
+      "hash": "264e5b4135238d10",
+      "sourceHash": "264e5b4135238d10",
+      "policy": "managed"
+    },
+    ".cursor/rules/20-security.mdc": {
+      "hash": "e8042ab5256afaf6",
+      "sourceHash": "e8042ab5256afaf6",
+      "policy": "managed"
+    },
+    ".sdd/hooks/territorios.mjs": {
+      "hash": "d6441ac1b420c35e",
+      "sourceHash": "d6441ac1b420c35e",
+      "policy": "managed"
+    },
+    "docs/specs/_TEMPLATE/change.md": {
+      "hash": "5ba68edbc2db7141",
+      "sourceHash": "5ba68edbc2db7141",
+      "policy": "managed"
+    },
+    "scripts/check-a11y.mjs": {
+      "hash": "48d1a32be30017c6",
+      "sourceHash": "48d1a32be30017c6",
+      "policy": "managed"
+    },
+    "scripts/check-coverage.mjs": {
+      "hash": "cf4c7aaf4b87141a",
+      "sourceHash": "cf4c7aaf4b87141a",
+      "policy": "managed"
+    },
+    "scripts/check-smells.mjs": {
+      "hash": "58f55755b4096504",
+      "sourceHash": "58f55755b4096504",
+      "policy": "managed"
+    },
+    "scripts/lib/circuito.mjs": {
+      "hash": "e5497d49f0fa1d2a",
+      "sourceHash": "e5497d49f0fa1d2a",
+      "policy": "managed"
+    },
+    "scripts/lib/coverage-v8.mjs": {
+      "hash": "19b6415e7b4f559b",
+      "sourceHash": "19b6415e7b4f559b",
+      "policy": "managed"
+    },
+    "scripts/lib/gate-summary.mjs": {
+      "hash": "eb014b0c820c5167",
+      "sourceHash": "eb014b0c820c5167",
+      "policy": "managed"
+    },
+    "scripts/lib/release-gates.mjs": {
+      "hash": "52ff011c6d1a227f",
+      "sourceHash": "52ff011c6d1a227f",
+      "policy": "managed"
+    },
+    "scripts/lib/trace-audit.mjs": {
+      "hash": "525590fb8a54cd23",
+      "sourceHash": "525590fb8a54cd23",
+      "policy": "managed"
     }
   },
   "ficheros": {
-    "docs/product/PRD.md": "c3c6111ed9e26e34",
-    "docs/product/USE-CASES.md": "2df40e645f7bd452",
-    "docs/product/FEATURE-MAP.md": "12acdaef064987ba",
-    "docs/product/SOURCES.md": "034bd5d473accc2c",
+    "docs/product/PRD.md": "8a8adf2cde714cc5",
+    "docs/product/USE-CASES.md": "1e91696ba17062df",
+    "docs/product/FEATURE-MAP.md": "5e12f0062eee18ea",
+    "docs/product/SOURCES.md": "3749a06a1a7fa819",
     "CHANGELOG.md": "7838ad412700e1f9",
-    "AGENTS.md": "8a6e3a7aa8249da9",
-    "CLAUDE.md": "462b91c53ab857a5",
-    "GEMINI.md": "853b2129a6f18cb1",
-    ".github/copilot-instructions.md": "bd641a4a4d17ba18",
+    "AGENTS.md": "a92aad05333f5f80",
+    "CLAUDE.md": "330f3212cb662c4e",
+    "GEMINI.md": "780f13052f2f4df2",
+    ".github/copilot-instructions.md": "c7b3289f447c7a32",
     "docs/README.md": "45518245607a9cff",
     "docs/agents/SKILLS-EXTERNAS.md": "279fdfb4967fa206",
     "docs/integrations/IDE-COMPATIBILITY.md": "38ba13c9a53f98e6",
     "docs/product/VISION.md": "4db7f722b3c26bee",
-    "docs/architecture/constitution.md": "7ef39ac48f8aa69e",
+    "docs/architecture/constitution.md": "b7da9b674d798ec5",
     "docs/design/DIRECCION-VISUAL.md": "25e0c0d65fc58c90",
     "docs/security/THREAT-MODEL.md": "c66ad11b4176152b",
-    "docs/bitacora/DECISIONS.md": "df9a061f22f2633f",
+    "docs/bitacora/DECISIONS.md": "b94f4f8fce34a017",
     ".sdd/agent-audit.jsonl": "e3b0c44298fc1c14",
-    ".sdd/external-skills.json": "384509af73788394",
+    ".sdd/external-skills.json": "7c6f98e7eee3ee4c",
     ".sdd/territories.json": "e8a4424a3fe40905",
     ".sdd/checks.json": "e75855cad9da3302",
-    ".sdd/docs.json": "ffcf2120d9997fe1",
+    ".sdd/docs.json": "4c6c64dd33ec9379",
     ".sdd/generators.json": "07a3d3bebf673be6",
     ".github/dependabot.yml": "eada67e1b7f73d16",
-    ".gitignore": "9acaed84ed32b706",
-    ".agents/agents/api-designer.md": "601684eeaa5f6f7a",
-    ".agents/agents/architect.md": "30b96e18121215ed",
-    ".agents/agents/backend-expert.md": "1dc4bae0d03a5af1",
-    ".agents/agents/bitacora-keeper.md": "6d39851abe981422",
-    ".agents/agents/code-reviewer.md": "8cf0cdfec205e5c1",
-    ".agents/agents/database-expert.md": "2fe89686f0023ce2",
-    ".agents/agents/devops-expert.md": "ea97ae55df5ca7ba",
+    ".gitignore": "982efe0d478797e8",
+    ".agents/agents/api-designer.md": "f983cfcb7950391e",
+    ".agents/agents/architect.md": "1f33be63b2579ffb",
+    ".agents/agents/backend-expert.md": "cd99736b1083b2cd",
+    ".agents/agents/bitacora-keeper.md": "62b5ab3b015f0211",
+    ".agents/agents/code-reviewer.md": "52e8d679f87f54ed",
+    ".agents/agents/database-expert.md": "f633d783de8ffd5c",
+    ".agents/agents/devops-expert.md": "636c2f547d290ee4",
     ".agents/agents/docs-writer.md": "f46e891a1e7e2137",
-    ".agents/agents/frontend-expert.md": "38e81cba291b1e25",
-    ".agents/agents/implementer.md": "5ff82b69397c1d8e",
+    ".agents/agents/frontend-expert.md": "de0951b2eb6a63de",
+    ".agents/agents/implementer.md": "240446a5da9edd91",
     ".agents/agents/orchestrator.md": "e04fe49ba44e3a0d",
-    ".agents/agents/performance-optimizer.md": "10619e54240abff5",
-    ".agents/agents/planner.md": "c6ce06039f8885a0",
-    ".agents/agents/refactor-specialist.md": "832d312c474e1bdb",
-    ".agents/agents/release-manager.md": "626324fbf7c65191",
-    ".agents/agents/research-analyst.md": "afee215ba2fe376c",
-    ".agents/agents/security-auditor.md": "98c80a0a9f9ad896",
-    ".agents/agents/spec-analyst.md": "2d1ffa620f1b9a92",
-    ".agents/agents/test-engineer.md": "60e9da5b51f24734",
-    ".agents/agents/ux-designer.md": "e505ea8457f3beff",
+    ".agents/agents/performance-optimizer.md": "d49eb2e9d4456349",
+    ".agents/agents/planner.md": "2a5dceb04351b132",
+    ".agents/agents/refactor-specialist.md": "0c0bf9763a614309",
+    ".agents/agents/release-manager.md": "36f575f64ec7bba0",
+    ".agents/agents/research-analyst.md": "8739fcd14b836f51",
+    ".agents/agents/security-auditor.md": "735f54df49e7ce0a",
+    ".agents/agents/spec-analyst.md": "8acf3e7a84578d7a",
+    ".agents/agents/test-engineer.md": "c7f6cc9eb6f143b3",
+    ".agents/agents/ux-designer.md": "ed84ca5200e2bc3d",
     ".agents/hooks.json": "5a9ff3db2e3104f6",
-    ".agents/rules/00-core.md": "972ce3b4790b9803",
+    ".agents/rules/00-core.md": "88f2604b06bff006",
     ".agents/skills/adr/SKILL.md": "a659856ed8005d77",
     ".agents/skills/bbdd/SKILL.md": "2f21517300289a76",
     ".agents/skills/bitacora/SKILL.md": "a98dbe7b17358f72",
@@ -1460,25 +1647,25 @@
     ".agents/skills/observability/SKILL.md": "f433f88c3883626f",
     ".agents/skills/onboard/SKILL.md": "1a3f7cb4506375b4",
     ".agents/skills/respond-incident/SKILL.md": "6a2e2b31f1d87563",
-    ".agents/skills/sdd-clarify/SKILL.md": "3911f6c40ab70b63",
+    ".agents/skills/sdd-clarify/SKILL.md": "738e36c451243a26",
     ".agents/skills/sdd-design/references/design-gates.md": "12be7dca8c7ecd4b",
-    ".agents/skills/sdd-design/SKILL.md": "930d5e137e1ff261",
-    ".agents/skills/sdd-implement/SKILL.md": "515375d3a385dd45",
-    ".agents/skills/sdd-init/SKILL.md": "41778c7b89a6be40",
+    ".agents/skills/sdd-design/SKILL.md": "7b24a42da6d52cdc",
+    ".agents/skills/sdd-implement/SKILL.md": "e0d4b6db2e15e635",
+    ".agents/skills/sdd-init/SKILL.md": "3479a03ef30a54d7",
     ".agents/skills/sdd-intake/evals/evals.json": "3aa9c37b40456971",
-    ".agents/skills/sdd-intake/SKILL.md": "1e94fc8f6496681c",
+    ".agents/skills/sdd-intake/SKILL.md": "bec5911e006f37dd",
     ".agents/skills/sdd-plan/references/coherence-and-gates.md": "b111cb2e3260ddcb",
-    ".agents/skills/sdd-plan/SKILL.md": "83b9b325d95a8be6",
-    ".agents/skills/sdd-refresh/SKILL.md": "04938be95cd90004",
-    ".agents/skills/sdd-ship/SKILL.md": "e411cf18f9ae40e5",
-    ".agents/skills/sdd-specify/SKILL.md": "e8b7c863422ab35e",
-    ".agents/skills/sdd-start/SKILL.md": "29271ae04347cd43",
-    ".agents/skills/sdd-light/SKILL.md": "a1ea09dc84041359",
-    ".agents/skills/sdd-status/SKILL.md": "6de7f4c15d2ff18c",
-    ".agents/skills/sdd-tasks/SKILL.md": "b336914e84af818b",
+    ".agents/skills/sdd-plan/SKILL.md": "491f5ffef1b94218",
+    ".agents/skills/sdd-refresh/SKILL.md": "4dfd4c399c0245db",
+    ".agents/skills/sdd-ship/SKILL.md": "7f0a4e4a5d95e02b",
+    ".agents/skills/sdd-specify/SKILL.md": "c336878b09148439",
+    ".agents/skills/sdd-start/SKILL.md": "e705136d7e18e8ba",
+    ".agents/skills/sdd-light/SKILL.md": "db3bcf1269cbb1d2",
+    ".agents/skills/sdd-status/SKILL.md": "d87080dc53200c17",
+    ".agents/skills/sdd-tasks/SKILL.md": "fe070068b8d33feb",
     ".agents/skills/sdd-verify/references/review-checklists.md": "8002ad5976563c21",
-    ".agents/skills/sdd-verify/SKILL.md": "81616e98edfd5127",
-    ".agents/skills/security-scan/SKILL.md": "4e51a147add600d7",
+    ".agents/skills/sdd-verify/SKILL.md": "56129a78d651f588",
+    ".agents/skills/security-scan/SKILL.md": "f5405e8beb3208da",
     ".agents/skills/skill-creator/agents/analyzer.md": "bf68f4cac5a56c67",
     ".agents/skills/skill-creator/agents/comparator.md": "fe1fc9787c495d86",
     ".agents/skills/skill-creator/agents/grader.md": "57134da0c1a4eea3",
@@ -1505,7 +1692,7 @@
     ".claude/agents/architect.md": "77b77ecb64d4824b",
     ".claude/agents/database-expert.md": "b911bff5fe531d9c",
     ".claude/agents/research-analyst.md": "eadb8e1571dc85d0",
-    ".claude/settings.json": "01746d8380d69309",
+    ".claude/settings.json": "21e0dc6b5a6ed6fd",
     ".claude/skills/adr/SKILL.md": "84e3476e7a7b598c",
     ".claude/skills/bbdd/SKILL.md": "19903827d6e097ce",
     ".claude/skills/bitacora/SKILL.md": "215cf5f6b3f4908b",
@@ -1568,31 +1755,31 @@
     ".cursor/agents/release-manager.md": "b9a733265bec597e",
     ".cursor/agents/research-analyst.md": "d691568ffd61d09b",
     ".cursor/agents/test-engineer.md": "313b2edf6b50e734",
-    ".cursor/hooks.json": "adcc9169b4e12268",
+    ".cursor/hooks.json": "9fcf7be806029032",
     ".cursor/rules/10-tdd.mdc": "d81231dfb8925084",
     ".cursor/rules/30-architecture.mdc": "9376674f7cc98b26",
     ".cursor/rules/40-usability.mdc": "6b1123afce667662",
     ".editorconfig": "68cb8ae675d491ed",
-    ".gemini/agents/api-designer.md": "ca95ed7a40dcb960",
-    ".gemini/agents/architect.md": "2fdbde8551f587bf",
-    ".gemini/agents/backend-expert.md": "903b2e256c14f3f8",
-    ".gemini/agents/bitacora-keeper.md": "045f6ced81f02023",
-    ".gemini/agents/code-reviewer.md": "8e5f71fbff64ecb3",
-    ".gemini/agents/database-expert.md": "c495c414faaab914",
-    ".gemini/agents/devops-expert.md": "779fd0ee56673a43",
+    ".gemini/agents/api-designer.md": "0f057ebab5bc46ec",
+    ".gemini/agents/architect.md": "d346a7a0294c70dd",
+    ".gemini/agents/backend-expert.md": "a164f3c681292338",
+    ".gemini/agents/bitacora-keeper.md": "575b5ed3038e9afb",
+    ".gemini/agents/code-reviewer.md": "085ea9ad268e4c43",
+    ".gemini/agents/database-expert.md": "62b8f5060e890b52",
+    ".gemini/agents/devops-expert.md": "150cd130626efa99",
     ".gemini/agents/docs-writer.md": "8dc1d917d911ce34",
-    ".gemini/agents/frontend-expert.md": "0cb2ce5fcbf73519",
-    ".gemini/agents/implementer.md": "388d6f7b7cff2014",
+    ".gemini/agents/frontend-expert.md": "231a838d78b60c67",
+    ".gemini/agents/implementer.md": "3a24d710eef99e86",
     ".gemini/agents/orchestrator.md": "f344a59d47a8d6a0",
-    ".gemini/agents/performance-optimizer.md": "d8e81841937e4d4a",
-    ".gemini/agents/planner.md": "19629a9be16f99fb",
-    ".gemini/agents/refactor-specialist.md": "41596f6f9ad7b895",
-    ".gemini/agents/release-manager.md": "74ccc0d6d29de11d",
-    ".gemini/agents/research-analyst.md": "9460ca0ed94360a5",
-    ".gemini/agents/security-auditor.md": "f930937d4d7864bb",
-    ".gemini/agents/spec-analyst.md": "2eb47387cb86fc42",
-    ".gemini/agents/test-engineer.md": "28482d65af73a91a",
-    ".gemini/agents/ux-designer.md": "0eb9e03a4d060220",
+    ".gemini/agents/performance-optimizer.md": "f3ecd40f96f48521",
+    ".gemini/agents/planner.md": "a8b4bd6320444338",
+    ".gemini/agents/refactor-specialist.md": "a07576673b8112ff",
+    ".gemini/agents/release-manager.md": "4d069c1502030763",
+    ".gemini/agents/research-analyst.md": "0e155b3fbfaaf933",
+    ".gemini/agents/security-auditor.md": "3b143726223e847b",
+    ".gemini/agents/spec-analyst.md": "70b4580faff81b1b",
+    ".gemini/agents/test-engineer.md": "277b70c8b82ecc60",
+    ".gemini/agents/ux-designer.md": "63c56736ce016774",
     ".gitattributes": "fc02e45b31f33898",
     ".github/agents/api-designer.agent.md": "a94cbf387e1645b1",
     ".github/agents/architect.agent.md": "6b222584f9e1b138",
@@ -1607,7 +1794,7 @@
     ".github/agents/orchestrator.agent.md": "d23e345dd2785a33",
     ".github/agents/performance-optimizer.agent.md": "b49376e71c789a43",
     ".github/agents/planner.agent.md": "b151e39acf05588c",
-    ".github/agents/README.md": "6ffcc69893c74e85",
+    ".github/agents/README.md": "f72122c7351683c7",
     ".github/agents/refactor-specialist.agent.md": "bdb0db4b6f73ac98",
     ".github/agents/release-manager.agent.md": "da02135bdd3d2af7",
     ".github/agents/research-analyst.agent.md": "573fdb3c60b46791",
@@ -1620,23 +1807,23 @@
     ".github/instructions/security.instructions.md": "f8e4a9475843aaf7",
     ".github/instructions/tests.instructions.md": "a97a2edd1b092c8c",
     ".github/instructions/usability.instructions.md": "d3e61bb22ad70ed0",
-    ".github/workflows/sdd-gates.yml": "27d1dcfa89c07b0f",
+    ".github/workflows/sdd-gates.yml": "ad4a417694ed245e",
     ".sdd/githooks/pre-commit": "5efb54616007c472",
-    ".sdd/githooks/pre-push": "442b89fc4e744785",
-    ".sdd/githooks/README.md": "670193f7ef320d11",
+    ".sdd/githooks/pre-push": "bf1397a529698303",
+    ".sdd/githooks/README.md": "68e01eed8d71a81a",
     ".sdd/hooks/format-and-lint.mjs": "72ede70c98cf305f",
-    ".sdd/hooks/guard-bash.mjs": "2714edb3f410c3d5",
-    ".sdd/hooks/guard-write.mjs": "7a94889e1f632f76",
+    ".sdd/hooks/guard-bash.mjs": "e834ffa6b1123038",
+    ".sdd/hooks/guard-write.mjs": "f4acdeee6a7e40ed",
     ".sdd/hooks/README.md": "a2446e7763e07aba",
-    ".sdd/hooks/sdd-router.mjs": "d516ceceaf0b1b97",
+    ".sdd/hooks/sdd-router.mjs": "cbff05a520477c17",
     ".sdd/hooks/session-context.mjs": "fa5f65d1b060ab42",
     ".sdd/hooks/session-log.mjs": "3c95520d5728ce28",
-    ".sdd/hooks/subagent-log.mjs": "a74cee61094dcdee",
-    ".sdd/hooks/_lib.mjs": "a875f9a6e29bd43f",
+    ".sdd/hooks/subagent-log.mjs": "89d8b0a3823c7c35",
+    ".sdd/hooks/_lib.mjs": "5219ad247befc9be",
     ".sdd/README.md": "7aa47e2e0b0cdce9",
     ".vscode/settings.json": "2b3f4963334af35d",
     "CONTRIBUTING.md": "cf5a6abb5a58bc93",
-    "docs/agents/CATALOG.md": "5a74881e071b3956",
+    "docs/agents/CATALOG.md": "e40c939d329de37a",
     "docs/architecture/adr/_TEMPLATE.md": "0570124c78f17027",
     "docs/architecture/DECISION-GUIDE.md": "2e6fb439ab4bd6b5",
     "docs/architecture/PATTERNS.md": "a3702aa8f658cf18",
@@ -1645,19 +1832,19 @@
     "docs/design/A11Y-CHECKLIST.md": "9fc31048a379e763",
     "docs/design/DIRECTION-GUIDE.md": "25ed227404af3f6c",
     "docs/design/USABILITY-CHECKLIST.md": "7bd3e8a367d671e3",
-    "docs/guides/COMO-TRABAJAR-CON-LOS-AGENTES.md": "4172835ebd386b5d",
-    "docs/guides/DOCUMENTACION.md": "e979bfe2a922810c",
+    "docs/guides/COMO-TRABAJAR-CON-LOS-AGENTES.md": "7072c32b2399fead",
+    "docs/guides/DOCUMENTACION.md": "e8bc5a08d8cd6e3e",
     "docs/ops/OBSERVABILITY.md": "c75b9d513e503089",
     "docs/ops/runbooks/_TEMPLATE.md": "051acdc3a09f9ad2",
-    "docs/quality/DEFINITION-OF-DONE.md": "296ca9cc901228f4",
+    "docs/quality/DEFINITION-OF-DONE.md": "a5061859b610ee97",
     "docs/quality/METRICS.md": "798398bbbeb757ee",
-    "docs/quality/TECH-DEBT.md": "53d50fcebc5a5865",
-    "docs/quality/TEST-STRATEGY.md": "c6ab85be4f0f2c7b",
+    "docs/quality/TECH-DEBT.md": "5d8a3ad0d1df25e4",
+    "docs/quality/TEST-STRATEGY.md": "9a4bdbae8dc4fdf5",
     "docs/quality/_TEMPLATE.executive-summary.md": "e2aa5a78b366e375",
-    "docs/sdd/OPERATING-MODEL.md": "008fc27f0b8c163f",
+    "docs/sdd/OPERATING-MODEL.md": "a013a8c432fbac05",
     "docs/security/AUTH-TOKENS.md": "3fbc2fc1a8662bcd",
     "docs/security/MCP-SECURITY.md": "aa7520d69d2767c4",
-    "docs/security/SECURITY-CHECKLIST.md": "e0e9ce18e1555b11",
+    "docs/security/SECURITY-CHECKLIST.md": "4b2e696dda51882e",
     "docs/security/_TEMPLATE.threat-model.md": "85dd736caa945738",
     "docs/specs/_TEMPLATE/clarifications.md": "fe4d43618ed02dc4",
     "docs/specs/_TEMPLATE/contracts/.gitkeep": "e3b0c44298fc1c14",
@@ -1669,14 +1856,52 @@
     "docs/specs/_TEMPLATE/spec.md": "69dffa4662330f39",
     "docs/specs/_TEMPLATE/tasks.md": "8cd12b0737141867",
     "docs/specs/_TEMPLATE/test-plan.md": "c4d27f9209f265e7",
-    "scripts/check-sdd.mjs": "91aa8778f984686d",
-    "scripts/check-syntax.mjs": "ad0f360e2a9a68f5",
+    "scripts/check-sdd.mjs": "6f9a46ee7ef217c6",
+    "scripts/check-syntax.mjs": "74faca9abd5a00fb",
     "scripts/lib/docs-contract.mjs": "34a90b5f85f73a8f",
     "scripts/lib/jsonc.mjs": "44a5b4067171482d",
     "scripts/scan-secrets.mjs": "13ab0c6f86e8dc19",
-    "scripts/sdd-project.mjs": "826dbda3552c1515",
+    "scripts/sdd-project.mjs": "c46668fef5349028",
     "scripts/skills-sync.mjs": "6e4584204bb7d78b",
-    "scripts/test-hooks.mjs": "62e917b15b677ca4",
-    "SECURITY.md": "e066905e85ed37c8"
+    "scripts/test-hooks.mjs": "e311b4fed7f49a9c",
+    "SECURITY.md": "e066905e85ed37c8",
+    ".sdd/coverage.json": "82122eaab412d651",
+    ".sdd/smells.json": "a4ac40abb2538ba1",
+    ".sdd/circuit.json": "5f4f7e953578237d",
+    ".claude/agents/backend-expert.md": "249909b7c23913d0",
+    ".claude/agents/bitacora-keeper.md": "e8642c2f1dd7d882",
+    ".claude/agents/code-reviewer.md": "071d0b75dc6488d7",
+    ".claude/agents/devops-expert.md": "92e9190a0d708580",
+    ".claude/agents/docs-writer.md": "c30bb4a0cc8c8cf8",
+    ".claude/agents/frontend-expert.md": "365324d3db293d5b",
+    ".claude/agents/implementer.md": "f6d2a4b26939a6a9",
+    ".claude/agents/orchestrator.md": "cac057c4d669453f",
+    ".claude/agents/performance-optimizer.md": "adc2b8217074a1ce",
+    ".claude/agents/planner.md": "fde032d5fd85b6fe",
+    ".claude/agents/refactor-specialist.md": "d1e69b9e4ca61892",
+    ".claude/agents/release-manager.md": "b3f1d8e11886a0cf",
+    ".claude/agents/security-auditor.md": "dcf5512d174ab558",
+    ".claude/agents/spec-analyst.md": "37fa29226da8f824",
+    ".claude/agents/test-engineer.md": "7c1cd343bfac93c2",
+    ".claude/agents/ux-designer.md": "69dca3abc740e709",
+    ".cursor/agents/docs-writer.md": "79bf9d8cfff1a598",
+    ".cursor/agents/implementer.md": "58e019e0f55db1ca",
+    ".cursor/agents/orchestrator.md": "08f5bb0c4acf50a4",
+    ".cursor/agents/planner.md": "c1073a84d7826303",
+    ".cursor/agents/security-auditor.md": "016f8347a9c71d83",
+    ".cursor/agents/spec-analyst.md": "c559bc8b98222d3a",
+    ".cursor/agents/ux-designer.md": "cb6edaef678a0ed5",
+    ".cursor/rules/00-core.mdc": "264e5b4135238d10",
+    ".cursor/rules/20-security.mdc": "e8042ab5256afaf6",
+    ".sdd/hooks/territorios.mjs": "d6441ac1b420c35e",
+    "docs/specs/_TEMPLATE/change.md": "5ba68edbc2db7141",
+    "scripts/check-a11y.mjs": "48d1a32be30017c6",
+    "scripts/check-coverage.mjs": "cf4c7aaf4b87141a",
+    "scripts/check-smells.mjs": "58f55755b4096504",
+    "scripts/lib/circuito.mjs": "e5497d49f0fa1d2a",
+    "scripts/lib/coverage-v8.mjs": "19b6415e7b4f559b",
+    "scripts/lib/gate-summary.mjs": "eb014b0c820c5167",
+    "scripts/lib/release-gates.mjs": "52ff011c6d1a227f",
+    "scripts/lib/trace-audit.mjs": "525590fb8a54cd23"
   }
 }

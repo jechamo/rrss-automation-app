@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "grammar": "portable-path-v1",
+  "detectorVersion": 1,
+  "proposal": {
+    "light": { "allowedFiles": [] },
+    "compact": { "allowedPrefixes": [] },
+    "deniedPrefixes": ["src/domain/", "src/auth/", "src/security/", "app/api/", "api/", "contracts/", "migrations/", "prisma/", "supabase/", "database/", "infra/", "scripts/", ".sdd/", ".agents/", ".claude/", ".codex/", ".cursor/", ".gemini/", ".github/", "docs/specs/", "docs/product/", "docs/architecture/", "docs/security/", "docs/sdd/"],
+    "executableExtensions": [".cjs", ".js", ".jsx", ".mjs", ".ts", ".tsx"],
+    "sensitiveSegments": [".agents", ".github", ".sdd", "api", "auth", "contracts", "database", "domain", "infra", "migrations", "prisma", "routes", "scripts", "security", "supabase"],
+    "limits": { "modules": 1, "criteria": 3, "tasks": 3, "intentBytes": 12288, "auditWindow": 20 },
+    "quota": 0.4
+  },
+  "status": "pending",
+  "proposalHash": "f8490f12c16aed7efab3aefd6059a7fa5adb447f3831414b65172afc090595ca"
+}

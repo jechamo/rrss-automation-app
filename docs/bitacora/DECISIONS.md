@@ -7,6 +7,22 @@
 
 <!-- decisiones:insertar-aqui -->
 
+## DEC-SDD-091 · 2026-08-24 · Actualización fijada y excepción de proceso
+
+- **Tipo**: decisión de mantenimiento y seguridad.
+- **Contexto**: la clonación pública no compilaba porque `.gitignore` ocultaba el código de Vault;
+  el marco SDD instalado era 0.7.0 y el operador necesitaba conservar DB, claves, sesiones y medios.
+- **Decisión / hecho**: actualizar mediante `update` al commit exacto de SDD 0.9.1, mantener el
+  circuito `full` y ejecutar una sola tarea `T-001-08`. Por aprobación explícita de norkc se omiten
+  nueva spec, diseño, plan, test-plan y demostración RED–GREEN–REFACTOR debido al presupuesto de
+  tokens; no se omiten tests dirigidos, build limpio, CI, revisión de seguridad ni rollback.
+- **Protección**: snapshot externo verificado antes de intervenir; sin cambio de esquema, seeds,
+  rutas o formato del Vault; prohibidos resets automáticos y pruebas pagadas sin permiso adicional.
+- **Alternativas descartadas**: `init` sobre el proyecto existente; declarar `light`; regenerar una
+  base limpia encima del estado del operador; autenticar Claude o instalar Chromium sin consentimiento.
+- **Referencias**: `docs/research/baseline-2026-08-24.md` · spec 001 · `T-001-08`.
+- **Quién**: norkc / implementer.
+
 ## 2026-08-22 · Instalador guiado sin autenticar Claude
 
 - **Tipo**: cambio

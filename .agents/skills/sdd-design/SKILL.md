@@ -5,6 +5,10 @@ description: Convierte la spec en el documento de diseño de la funcionalidad �
 
 # /sdd-design — Cómo se ve y se recorre
 
+## Contexto — lee exactamente esto
+
+Ejecuta `context --phase design --spec NNN --json`. Abre el diseño fuente y las checklists solo cuando el impacto UX sea aplicable.
+
 Agente responsable: `@ux-designer`; `@spec-analyst` si aparece un requisito nuevo. Se omite solo cuando no existe interfaz.
 
 ## Entrada

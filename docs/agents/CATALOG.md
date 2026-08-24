@@ -1,6 +1,6 @@
 # Catálogo de agentes
 
-20 agentes en tres niveles y 26 skills. Definición canónica en
+20 agentes en tres niveles y 27 skills. Definición canónica en
 [`.claude/agents/`](../../.claude/agents/), con adaptadores para GitHub/VS Code, Cursor, Codex,
 Gemini CLI y Antigravity.
 
@@ -52,6 +52,11 @@ flowchart TD
 conocen su sucesor natural y hacen handoff explícito. Los especialistas **nunca encadenan**
 por su cuenta: hacen su trabajo y devuelven el control.
 
+Los perfiles que arrancan fríos consumen el recorte de `context --phase` correspondiente a su
+fase. `orchestrator`, `planner` e `implementer` amplían ese contexto solo cuando el impacto lo
+exige; la topología, los territorios y los límites de delegación siguen siendo los mismos en los
+modos `light`, `compact` y `full`.
+
 **Profundidad máxima de delegación: 2 niveles**, contando saltos entre agentes —tú no cuentas—:
 `orchestrator` → agente de fase → especialista. Ahí se acaba.
 
@@ -93,7 +98,7 @@ patrones y lista de comprobación. Un agente al que solo le dices "aplica SOLID"
 | [`refactor-specialist`](../../.claude/agents/refactor-specialist.md) | SOLID, DRY, KISS, YAGNI, patrones | — | `opus` | — |
 | [`performance-optimizer`](../../.claude/agents/performance-optimizer.md) | Latencia, memoria, bundle, consultas | — | `inherit` | — |
 | [`devops-expert`](../../.claude/agents/devops-expert.md) | CI/CD, contenedores, IaC, observabilidad | — | `inherit` | — |
-| [`docs-writer`](../../.claude/agents/docs-writer.md) | README, guías, API para consumidores y baseline documental | [`/docs-sync`](../../.agents/skills/docs-sync/SKILL.md) | `haiku` | — |
+| [`docs-writer`](../../.claude/agents/docs-writer.md) | README, guías, API para consumidores y baseline documental | [`/docs-sync`](../../.agents/skills/docs-sync/SKILL.md) · [`/sdd-light`](../../.agents/skills/sdd-light/SKILL.md) | `haiku` | — |
 | [`bitacora-keeper`](../../.claude/agents/bitacora-keeper.md) | Memoria del proyecto, decisiones, deuda | [`/bitacora`](../../.agents/skills/bitacora/SKILL.md) | `haiku` | — |
 
 ---

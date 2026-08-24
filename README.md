@@ -25,7 +25,7 @@ Recorre, en este orden:
 
 1. Diagnóstico (`check`), sin cambios.
 2. Preparación (`prepare`), solo si confirmas.
-3. **Sesión de Claude**: te indica que abras la app y ejecutes `/login`. No pide
+3. **Sesión de Claude**: muestra `claude auth login` y `claude auth status`. No pide
    secretos ni lanza el login. Después comprueba la sesión en solo lectura.
 4. Arranque (`start`), solo si confirmas.
 5. Resultado: uso local básico y efecto de la IA si falta la sesión.
@@ -77,7 +77,7 @@ El asistente identifica, no configura, estas capacidades:
 - IA autenticada (sesión local de la herramienta de IA)
 - Proveedores externos (claves en Ajustes, cifradas; nunca en `.env`)
 - Herramientas audiovisuales (FFmpeg/ffprobe)
-- Navegación automatizada (Playwright en el proyecto)
+- Navegación automatizada (Playwright y Chromium instalados)
 
 La guía no solicita, muestra, guarda ni valida secretos. Tampoco inicia sesión
 en la herramienta de IA ni configura proveedores.
@@ -117,8 +117,9 @@ node scripts/install-local.mjs prepare
 ```
 
 Resultado esperado: el asistente muestra el plan y pide consentimiento
-`project-preparation`. Si aceptas, instala dependencias y deja la plantilla
-lista. Si rechazas, no hay efecto.
+`project-preparation`. Si aceptas, instala dependencias, prepara SQLite y exige
+un `npm run build` correcto antes de escribir el marcador de preparación. Si
+rechazas, no hay efecto.
 
 Si no ocurre: confirma el plan o resuelve el bloqueo del `check` anterior.
 `prepare` no instala nada global ni modifica el PATH.
@@ -134,6 +135,9 @@ paso.
 - Clonación limpia: `prepare` puede crear la persistencia gestionada.
 - Datos locales existentes o incompatibles: **Arranque bloqueado para proteger
   datos locales**. El asistente los conserva y no arranca.
+- Actualización de un local ya usado: no ejecutes `reset`. Conserva el snapshot,
+  integra la nueva versión del código y valida la base/Vault antes de usar `iniciar.bat`;
+  el instalador limpio no adopta una base histórica sin marcador.
 - Reinicio deliberado (no forma parte del recorrido feliz):
 
 ```bat
@@ -158,8 +162,9 @@ node scripts/install-local.mjs start
 ```
 
 Resultado esperado: consentimiento `process` (también con el puerto libre) y,
-si aceptas, el servidor local en marcha. Rechazar no se interpreta como fallo
-técnico.
+si aceptas, el servidor de producción en marcha y limitado a `127.0.0.1`. El éxito requiere que
+`/api/health/ready` confirme aplicación, SQLite y Vault; ocupar el puerto no
+basta. Rechazar no se interpreta como fallo técnico.
 
 Si no ocurre: confirma el proceso o puerto detectado, o libera el puerto a
 mano. El asistente **no** ejecuta `taskkill /IM node.exe`.
@@ -173,7 +178,8 @@ Si necesitas un arranque con confirmación previa, usa el asistente.
 Qué se comprueba: el contrato de las tres garantías.
 
 - Éxito: «Uso local básico preparado. La aplicación puede iniciarse sin un
-  bloqueo de persistencia.» Abre `http://localhost:3000`.
+  bloqueo de persistencia.» Abre `http://localhost:3000/ajustes` y configura
+  manualmente solo los conectores que vayas a utilizar.
 - Parcial: el uso local básico está preparado y alguna opcional queda
   bloqueada o degradada. Ejemplo: «RRSS Studio está preparado para uso local
   básico. El análisis con IA sigue bloqueado hasta que inicies sesión
@@ -187,10 +193,10 @@ Tras el uso local básico, habilita solo lo que necesites:
 
 | Capacidad | Clase si falta | Efecto |
 |---|---|---|
-| IA autenticada | Opcional bloqueada | Los análisis que dependen de la sesión local no estarán disponibles. El instalador te indica `/login` y comprueba la sesión; no autentica por ti. |
+| IA autenticada | Opcional bloqueada | Los análisis que dependen de la sesión local no estarán disponibles. Ejecuta `claude auth login` y comprueba con `claude auth status`; el instalador no autentica por ti. |
 | Proveedores externos | Opcional bloqueada | La generación con proveedores remotos queda fuera. Configúralos en Ajustes. |
 | Herramientas audiovisuales | Opcional degradada | Se conserva la previsualización; no el montaje que depende de FFmpeg. |
-| Navegación automatizada | Opcional degradada | La grabación automática de la app no estará disponible; puedes usar la subida manual. |
+| Navegación automatizada | Opcional degradada | Si Chromium no existe realmente, ejecuta tú `npx playwright install chromium`; el instalador no lo descarga. Mientras tanto puedes usar la subida manual. |
 
 #### 7. Recuperar bloqueos frecuentes
 
@@ -202,6 +208,7 @@ Tras el uso local básico, habilita solo lo que necesites:
 | Falta la configuración local de persistencia | Copia la plantilla `.env.example` a `.env` y ajusta solo valores no sensibles. No pegues secretos. |
 | Datos locales protegidos | Conserva los datos. Solo usa `reset` si quieres un reinicio explícito. |
 | Puerto ocupado | Confirma el PID/puerto que muestre el asistente, o libéralo tú. |
+| Readiness indica Vault bloqueado tras un cierre abrupto | Detén RRSS Studio, comprueba que no quede otro proceso usándolo y elimina únicamente `data/.vault.lock`; nunca separes `.vaultkey` de `vault.enc`. |
 | Permiso de escritura | «La preparación está bloqueada por permisos de escritura. Usa una ubicación con permiso y vuelve a comprobarla.» |
 | IA o FFmpeg ausentes | Sigue; el uso local básico no depende de ellos. |
 
@@ -209,7 +216,7 @@ Tras el uso local básico, habilita solo lo que necesites:
 
 | Comando | Efecto |
 |---|---|
-| `preparar.bat` o `npm run setup:guide` | Recorrido guiado: check, prepare, indicar `/login`, comprobar sesión, start. |
+| `preparar.bat` o `npm run setup:guide` | Recorrido guiado: check, prepare, indicar `claude auth login/status`, comprobar sesión, start. |
 | `npm run setup:local` o `node scripts/install-local.mjs` | `check`. Sin cambios. |
 | `node scripts/install-local.mjs prepare` | Preparación dentro del proyecto, con consentimiento. |
 | `node scripts/install-local.mjs start` | Arranque local, con consentimiento de proceso. |

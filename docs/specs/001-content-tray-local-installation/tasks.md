@@ -15,14 +15,15 @@
 
 | Métrica | Valor |
 |---|---|
-| Tareas | 7 |
+| Tareas | 8 |
 | Por capa | domain 2 · application 1 · infrastructure 1 · interfaces 2 · docs 1 |
 | Estimación | S 1 · M 3 · L 3 |
 | Paralelizables | 2 (`T-001-01` y `T-001-02`) |
 | Terrenos | middle 3 · infra 1 · front 1 · test/infra 1 · docs 1 |
 
 Orden de ejecución: `T-001-01` → `T-001-02` → `T-001-03` → `T-001-04` → `T-001-05` → `T-001-06` →
-`T-001-07`. Respeta domain → application → infrastructure → interfaces → transversal y MoSCoW: todos
+`T-001-07` → `T-001-08`. La última tarea es un parche de continuidad aprobado expresamente y no
+reabre el expediente de producto. Respeta domain → application → infrastructure → interfaces → transversal y MoSCoW: todos
 los *must* (`RF-01`, `RF-02`, `RF-04`, `RF-05`) quedan cubiertos antes de que `T-001-06` cierre el
 único *could* de interfaz (`RF-03`).
 
@@ -43,11 +44,11 @@ los *must* (`RF-01`, `RF-02`, `RF-04`, `RF-05`) quedan cubiertos antes de que `T
 
 | Control | Tarea | Test |
 |---|---|---|
-| SEC-001 | T-001-02 | `installation.test.mjs::debe_rechazar_ruta_fuera_del_proyecto` |
-| SEC-002 | T-001-03 | `installation.test.mjs::debe_bloquear_datos_existentes_sin_reset_confirmado` |
-| SEC-003 | T-001-04 | `install-local.test.mjs::debe_requerir_confirmacion_por_pid` |
-| SEC-004 | T-001-02 | `installation.test.mjs::debe_sanear_diagnostico_local` |
-| SEC-005 | T-001-04 | `install-local.test.mjs::debe_clasificar_instalacion_global_como_efecto_externo` |
+| SEC-INPUT-001 | T-001-02 | `installation.test.mjs::debe_rechazar_ruta_fuera_del_proyecto` |
+| SEC-DATA-002 | T-001-03 | `installation.test.mjs::debe_bloquear_datos_existentes_sin_reset_confirmado` |
+| SEC-PROC-003 | T-001-04 | `install-local.test.mjs::debe_requerir_confirmacion_por_pid` |
+| SEC-DIAG-004 | T-001-02 | `installation.test.mjs::debe_sanear_diagnostico_local` |
+| SEC-DEPS-005 | T-001-04 | `install-local.test.mjs::debe_clasificar_instalacion_global_como_efecto_externo` |
 | UX-A11Y-001 a UX-A11Y-007 | T-001-06 | `ContentTray.test.tsx` y `PieceCarousel.test.tsx` (parte semántica) + revisión manual |
 | UX-FORM-001 | T-001-05 | `install-local.test.mjs::debe_exigir_confirmacion_separada_para_reset` |
 | UX-COPY-001 | T-001-03 | `installation.test.mjs::debe_devolver_recuperacion_segura` |
@@ -148,8 +149,8 @@ casos pasan en GREEN. `selection.ts` no importa React, Prisma, `fs` ni nada de `
 - Skill: /middle
 - Capa: domain
 - Cubre: OBJ-004 → PRD-RF-006 → UC-012 → RF-07 → CA-07
-- Controles de seguridad: `SEC-001` (validar argumentos, plataforma y rutas contenidas bajo la raíz
-  del proyecto; nunca leer `.env`) y `SEC-004` (el DTO de diagnóstico expone solo categoría, estado y
+- Controles de seguridad: `SEC-INPUT-001` (validar argumentos, plataforma y rutas contenidas bajo la raíz
+  del proyecto; nunca leer `.env`) y `SEC-DIAG-004` (el DTO de diagnóstico expone solo categoría, estado y
   siguiente paso).
 - Controles de usabilidad: no aplica. Es una capa sin interfaz; el texto de recuperación que consume
   `UX-COPY-001` se compone en `T-001-03`.
@@ -171,7 +172,7 @@ que no puede depender de `typescript` para ejecutarse. Justificación completa e
 —añadir `src/core/installation/*.test.mjs` a `node --test`—, no las dos de `T-001-01`.
 
 Desviación registrada: `plan.md` §9 y `test-plan.md` nombran `installation.test.ts`. Los nombres de
-caso no cambian, así que la trazabilidad de `SEC-001` y `SEC-004` se conserva.
+caso no cambian, así que la trazabilidad de `SEC-INPUT-001` y `SEC-DIAG-004` se conserva.
 
 ### Casos del RED
 
@@ -198,7 +199,7 @@ sensibles inyectadas.
 - Capa: application
 - Cubre: OBJ-004 → PRD-RF-006, PRD-RF-008 → UC-011, UC-012 → RF-05, RF-06, RF-08 → CA-05, CA-06,
   CA-08
-- Controles de seguridad: `SEC-002` (los datos SQLite y sidecars existentes se bloquean y preservan;
+- Controles de seguridad: `SEC-DATA-002` (los datos SQLite y sidecars existentes se bloquean y preservan;
   el reset exige consentimiento separado y resguardo, nunca borrado automático).
 - Controles de usabilidad: `UX-COPY-001` (cada diagnóstico da categoría, recuperación y alternativa
   sin datos locales).
@@ -240,8 +241,8 @@ el estado del filesystem antes y después es idéntico. `ready` solo se alcanza 
   adaptadores locales)
 - Capa: infrastructure
 - Cubre: OBJ-004 → PRD-RF-005 → UC-011 → RF-04 → CA-04
-- Controles de seguridad: `SEC-003` (procesos con argv separado y `shell:false`; nunca terminar por
-  imagen global, solo PID o puerto detectado y confirmado) y `SEC-005` (las dependencias se preparan
+- Controles de seguridad: `SEC-PROC-003` (procesos con argv separado y `shell:false`; nunca terminar por
+  imagen global, solo PID o puerto detectado y confirmado) y `SEC-DEPS-005` (las dependencias se preparan
   con npm bajo consentimiento; no se instala globalmente ni se modifica el PATH).
 - Controles de usabilidad: no aplica. Los adaptadores no dialogan con la persona; el consentimiento
   se presenta en `T-001-05`.
@@ -256,7 +257,7 @@ el estado del filesystem antes y después es idéntico. `ready` solo se alcanza 
 
 ### Por qué los tests viven en `scripts/install-local.test.mjs`
 
-`plan.md` §9 ancló ahí la evidencia de `SEC-003` y `SEC-005`, y `test-plan.md` hace lo mismo con
+`plan.md` §9 ancló ahí la evidencia de `SEC-PROC-003` y `SEC-DEPS-005`, y `test-plan.md` hace lo mismo con
 `RF-04`. Se respeta: lo que hay que fijar es el **comportamiento observable** del adaptador —qué argv
 compone, qué consentimiento exige antes de actuar, qué devuelve cuando la persistencia no está
 preparada—, no su implementación interna. El fichero se crea en esta tarea y `T-001-05` lo amplía con
@@ -286,7 +287,7 @@ directorios temporales. Añadir `scripts/install-local.test.mjs` a `node --test`
 - Skill: /middle
 - Capa: interfaces
 - Cubre: OBJ-004 → PRD-RF-006 → UC-012 → RF-05, RF-07, RF-08 → CA-05, CA-07, CA-08
-- Controles de seguridad: `SEC-003` y `SEC-004` heredados: la consola no imprime valores de entorno,
+- Controles de seguridad: `SEC-PROC-003` y `SEC-DIAG-004` heredados: la consola no imprime valores de entorno,
   rutas personales, contenido SQLite ni salida cruda de procesos.
 - Controles de usabilidad: `UX-FORM-001` (consentimiento visible, separado y sin opción afirmativa
   predeterminada; rechazar conserva el estado) y `UX-COPY-001` en su presentación.
@@ -420,7 +421,7 @@ navegación puede dejar carrusel y detalle en piezas distintas, cumpliendo `RN-0
 - Skill: /docs-sync
 - Capa: docs
 - Cubre: OBJ-004 → PRD-RF-005, PRD-RF-008 → UC-011 → RF-04, RF-06, RF-07 → CA-04, CA-06, CA-07
-- Controles de seguridad: `SEC-004` en su vertiente documental: la guía no imprime `DATABASE_URL`,
+- Controles de seguridad: `SEC-DIAG-004` en su vertiente documental: la guía no imprime `DATABASE_URL`,
   secretos, rutas personales ni contenido de datos locales, y no lee `.env` para redactarse.
 - Controles de usabilidad: `UX-COPY-001`. La guía es una superficie de lectura: cada paso dice qué se
   comprueba, qué resultado esperar y qué hacer si no ocurre.
@@ -452,14 +453,38 @@ desenlaces de la regla de selección.
 
 No incluye las auditorías. `/security-scan verify` y la auditoría de usabilidad de `code-reviewer`
 pertenecen a `/sdd-verify`, ambos en solo lectura, y sus informes los materializa `docs-writer` en
-`docs/security/reports/` y `docs/design/reports/`. No son tareas de implementación y por eso no
-figuran como `T-001-08`.
+`docs/security/reports/` y `docs/design/reports/`.
 
 ### Definición de hecho
 
 Una persona que clona el repositorio en Windows 11 llega al arranque local siguiendo solo el README, o
 se detiene en un único bloqueo accionable con su siguiente paso. Ningún ejemplo contiene valores
 reales de configuración.
+
+---
+
+### T-001-08 · Actualizar SDD y endurecer la instalación sin perder estado local
+
+- Estado: completada · 2026-08-24
+- Terreno: middle / infra / docs
+- Skill: `/sdd-refresh`, `/middle`, `/docs-sync`, `/security-scan`, `/sdd-verify`, `/bitacora`
+- Capa: transversal
+- Cubre: continuidad de OBJ-004 → UC-011/UC-012 → RF-04/RF-05/RF-06/RF-07 → CA-04/CA-05/CA-06/CA-07
+- Seguridad: sensible. Protege la pareja Vault, SQLite, medios y sesiones; prohíbe resets automáticos.
+- Test dirigido: Vault corrupto o incompleto, build obligatorio, health readiness y Chromium ausente.
+- Excepción humana: norkc aprueba no crear nueva spec, diseño, plan, test-plan ni evidencia TDD por
+  presupuesto de tokens. Se mantienen tests dirigidos, build, CI, revisión y rollback. No se declara
+  `light`: el circuito y los trailers permanecen `full`.
+
+#### Alcance
+
+Actualizar el marco instalado de SDD 0.7.0 a 0.9.1 fijando el SHA oficial; versionar exclusivamente
+el código del Vault que `.gitignore` ocultaba por error; mantener el formato AES-256-GCM y las rutas
+locales; exigir build y readiness real al instalador; conservar `/ajustes` manual; detectar Chromium
+por su ejecutable; configurar gates existentes y corregir la descripción del crawler HTTP.
+
+No cambia el esquema Prisma, no crea seeds, no rota claves, no llama proveedores pagados y no toca
+los datos locales del operador. El snapshot externo verificado es el punto de restauración.
 
 ---
 

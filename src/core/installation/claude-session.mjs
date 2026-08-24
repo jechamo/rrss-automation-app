@@ -32,7 +32,8 @@ export function pickClaudeBinary({
   listDirectories = listDirectoryNames,
 } = {}) {
   const override = String(env.CLAUDE_CLI_PATH ?? "").trim();
-  if (override && exists(override)) {
+  const safeOverride = platform !== "win32" || /\.exe$/iu.test(override);
+  if (override && safeOverride && exists(override)) {
     return { found: true, source: "configured", command: override };
   }
 
@@ -116,10 +117,9 @@ function publicReport(status) {
 }
 
 function runClaudeCommand(command, args) {
-  const useShell = process.platform === "win32" && !/\.exe$/i.test(command);
   const result = spawnSync(command, args, {
     encoding: "utf8",
-    shell: useShell,
+    shell: false,
     timeout: 15_000,
     windowsHide: true,
   });

@@ -5,6 +5,10 @@ description: Arranca un proyecto NUEVO con el baseline de producto aprobado. Def
 
 # /sdd-init — Bootstrap de proyecto nuevo
 
+## Contexto — lee exactamente esto
+
+Ejecuta `context --phase orchestrate --json`; añade el producto aprobado. La constitución aún no existe y no se inventa.
+
 **Solo para proyectos nuevos.** Si el repo ya tiene código, usa `/onboard`.
 Agente responsable: `@architect`, con apoyo de `@bitacora-keeper`.
 

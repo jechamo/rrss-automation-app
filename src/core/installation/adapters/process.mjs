@@ -59,7 +59,7 @@ export function createProcessAdapter({
     return {
       effect: descriptor.argv[1] === "--version"
         ? "runtime-inspection"
-        : descriptor.argv[2] === "dev"
+        : descriptor.argv[2] === "start"
           ? "process"
           : "project-preparation",
       allowed: true,
@@ -230,7 +230,8 @@ function isAllowedNpmDescriptor(
     ["ci"],
     ["run", "db:generate"],
     ["run", "db:push"],
-    ["run", "dev"],
+    ["run", "build"],
+    ["run", "start"],
   ].some((allowed) =>
     allowed.length === argv.length &&
     allowed.every((argument, index) => argument === argv[index])

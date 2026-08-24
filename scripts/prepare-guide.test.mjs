@@ -22,7 +22,10 @@ test("debe_recorrer_pasos_y_no_iniciar_login", async () => {
   assert.deepEqual(operations, ["check", "prepare", "start"]);
   assert.equal(result.started, true);
   assert.equal(result.session.status, "login-required");
-  assert.match(lines.join("\n"), /\/login/);
+  assert.match(lines.join("\n"), /claude auth login/);
+  assert.match(lines.join("\n"), /claude auth status/);
+  assert.match(lines.join("\n"), /http:\/\/localhost:3000\/ajustes/);
+  assert.match(lines.join("\n"), /npx playwright install chromium/);
   assert.doesNotMatch(lines.join("\n"), /taskkill|iniciar\.bat|password|CLAUDE_CLI_PATH=/i);
 });
 

@@ -17,7 +17,7 @@ next-env.d.ts
 !.env.example
 *.key
 *.pem
-secrets/
+/secrets/
 config/keys.enc
 
 # Base de datos local

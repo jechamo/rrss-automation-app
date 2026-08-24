@@ -17,7 +17,7 @@
 | Grafo de nodos | **React Flow (@xyflow/react)** | Pipeline visual animado (Diseño §5). |
 | Estado cliente | **Zustand** (ligero) + React Query | Estado de UI y sincronización con API. |
 | Base de datos | **SQLite + Prisma** | Historial/runs/piezas, tipado, multiproyecto (D-14). |
-| Navegación web | **Playwright** | Crawl de la appweb (REQ-001) y grabación móvil (REQ-006). |
+| Navegación web | **fetch + Playwright** | `fetch` para el crawl HTML inicial; Playwright para login, rutas, navegación privada y grabación. |
 | Vídeo/montaje | **FFmpeg local** (principal) + conector cloud opcional | Montaje pluggable (D-12). |
 | IA (motor) | **Claude Code CLI** y **Claude Agent SDK** (seleccionable) | Sin coste de API con plan Pro (D-02). |
 | IA vídeo | **Gemini API** | Comprensión de vídeo cuando sea indispensable (D-03). |
@@ -47,7 +47,7 @@
 │   ├─ AiEngine (CLI | Agent SDK)  ◄─ seleccionable + test       │
 │   ├─ Connectors (fal.ai, HeyGen, ElevenLabs, Gemini, GitHub)   │
 │   ├─ Montage (FFmpeg local | Cloud)                            │
-│   ├─ WebCrawler (Playwright)                                   │
+│   ├─ WebCrawler (fetch, sin ejecutar JavaScript)                │
 │   └─ RepoAnalyzer (git + AiEngine)                             │
 │                                                                │
 │  Persistencia                                                  │
@@ -58,7 +58,7 @@
 └──────────────────────────────────────────────────────────────┘
         │                 │                 │
      Playwright        FFmpeg          APIs externas
-   (web objetivo)   (local video)   (fal/HeyGen/11L/Gemini)
+ (login/rutas/vídeo) (local video)   (fal/HeyGen/11L/Gemini)
 ```
 
 ---
@@ -79,7 +79,7 @@ rrss-automation-app/
 │  │  ├─ pipeline/           # engine de runs/nodos/estados
 │  │  ├─ ai/                 # AiEngine + impl CLI y Agent SDK
 │  │  ├─ connectors/         # conectores externos (interfaz común)
-│  │  ├─ crawler/            # Playwright
+│  │  ├─ crawler/            # fetch + análisis HTML, sin JavaScript
 │  │  ├─ repo/               # análisis de repos (local/GitHub)
 │  │  ├─ montage/            # FFmpeg / cloud
 │  │  └─ secrets/            # vault cifrado
@@ -743,7 +743,9 @@ locución como pista maestra, mezcla música opcional, quema ASS y crea `mix-<id
 `[Entrada] → [Crawl web] → [Análisis código] → [Fusión IA] → [Dossier listo]`
 
 - **Entrada**: valida URL y fuente de código; si es GitHub privado, usa el token del vault.
-- **Crawl web** (`core/crawler`): Playwright renderiza landing + páginas clave (pricing, features, about); extrae textos, CTAs, capturas → artefacto JSON + imágenes en `/data`.
+- **Crawl web** (`core/crawler`): `fetch` descarga landing + páginas clave same-origin y expresiones
+  regulares extraen textos y CTAs del HTML. No ejecuta JavaScript ni toma capturas. Playwright no
+  participa en este nodo; se usa después para login, navegación privada, rutas y grabaciones.
 - **Análisis código** (`core/repo`):
   - `local` → lee la ruta directamente.
   - `github_public/private` → `git clone` superficial a carpeta temporal (token si privado).
@@ -765,7 +767,7 @@ locución como pista maestra, mezcla música opcional, quema ASS y crea `mix-<id
 | REQ-003 | ai, connectors, pipeline |
 | REQ-004 | ai(WebSearch/WebFetch), virales, pipeline |
 | REQ-005 | ai, connectors(fal/heygen/elevenlabs), montage, pipeline |
-| REQ-006 | crawler(Playwright móvil), ai, fal, elevenlabs, montage |
+| REQ-006 | media(Playwright móvil), ai, fal, elevenlabs, montage |
 | REQ-007 | skills (catálogo/instalación) |
 | REQ-008 | secrets, connectors (test), Ajustes UI |
 | REQ-009 | UI (React Flow, carrusel 360, tema) |

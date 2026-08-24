@@ -11,7 +11,11 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
-    include: ["src/components/**/*.test.tsx"],
+    include: [
+      "src/components/**/*.test.tsx",
+      "src/core/health/**/*.test.ts",
+      "src/core/secrets/**/*.test.ts",
+    ],
     setupFiles: ["./vitest.setup.ts"],
   },
 });

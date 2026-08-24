@@ -15,7 +15,7 @@
  * Node >= 18, sin dependencias.
  */
 import { readFileSync, readdirSync, writeFileSync, rmSync, mkdtempSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
+import { isAbsolute, join, relative, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 
@@ -62,7 +62,8 @@ function ficherosVersionados() {
 }
 
 function comprobarSintaxis(ruta) {
-  const r = spawnSync(process.execPath, ['--check', join(ROOT, ruta)], { encoding: 'utf8' });
+  const rutaAbsoluta = isAbsolute(ruta) ? ruta : join(ROOT, ruta);
+  const r = spawnSync(process.execPath, ['--check', rutaAbsoluta], { encoding: 'utf8' });
   if (r.status === 0) return null;
   // El mensaje de Node incluye la ruta absoluta del host; se recorta a la ruta del repositorio.
   const bruto = `${r.stderr || ''}`.split('\n').filter(Boolean).slice(0, 3).join(' ').trim();
@@ -112,8 +113,8 @@ function selftest() {
     if (!detecta) fallos++;
     const sano = join(temporal, 'sano.mjs');
     writeFileSync(sano, 'export const a = 1;\n', 'utf8');
-    const limpio = comprobarSintaxis(relative(ROOT, sano)) === null;
-    console.log(`  ${limpio ? '✓' : '✗'} sintaxis válida aceptada`);
+    const limpio = comprobarSintaxis(sano) === null;
+    console.log(`  ${limpio ? '✓' : '✗'} ruta absoluta con sintaxis válida aceptada`);
     if (!limpio) fallos++;
   } finally {
     rmSync(temporal, { recursive: true, force: true });

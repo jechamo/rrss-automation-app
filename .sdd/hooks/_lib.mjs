@@ -44,14 +44,33 @@ export const PATRONES_SECRETO = [
 
 /** Ficheros que nunca deben entrar al repositorio, por lo que son. */
 export const RUTAS_PROHIBIDAS = [
-  { re: /(^|\/)\.env($|\.)/, motivo: 'Los ficheros .env contienen secretos.' },
-  { re: /(^|\/)(secrets?|credentials?)\//i, motivo: 'Directorio de secretos.' },
-  { re: /\.(pem|key|p12|pfx|keystore|jks)$/i, motivo: 'Material criptográfico.' },
-  { re: /(^|\/)id_(rsa|dsa|ecdsa|ed25519)/, motivo: 'Clave SSH privada.' },
+  { id: 'env', re: /(^|\/)\.env($|\.)/, motivo: 'Los ficheros .env contienen secretos.' },
+  { id: 'secret-directory', re: /(^|\/)(secrets?|credentials?)\//i, motivo: 'Directorio de secretos.' },
+  { id: 'key-material', re: /\.(pem|key|p12|pfx|keystore|jks)$/i, motivo: 'Material criptográfico.' },
+  { id: 'ssh-key', re: /(^|\/)id_(rsa|dsa|ecdsa|ed25519)/, motivo: 'Clave SSH privada.' },
 ];
 
 /** `.env.example` y compañía sí se versionan: documentan nombres, no valores. */
 export const esPlantillaEnv = (ruta) => /(^|\/)\.env\.(example|sample|template|dist)$/.test(ruta);
+
+/** Código del Vault: se permite la fuente, nunca ficheros de datos o material criptográfico. */
+export function esCodigoVaultVersionable(ruta) {
+  const normalizada = String(ruta ?? '').replaceAll('\\', '/').replace(/^\.\//, '');
+  return !normalizada.split('/').includes('..') &&
+    /^src\/core\/secrets\/[A-Za-z0-9._/-]+\.(?:[cm]?js|tsx?)$/u.test(normalizada);
+}
+
+/** Motivo compartido por el hook y el escáner; `null` significa ruta permitida. */
+export function motivoRutaProhibida(ruta) {
+  const normalizada = String(ruta ?? '').replaceAll('\\', '/');
+  if (esPlantillaEnv(normalizada)) return null;
+  for (const patron of RUTAS_PROHIBIDAS) {
+    if (!patron.re.test(normalizada)) continue;
+    if (patron.id === 'secret-directory' && esCodigoVaultVersionable(normalizada)) continue;
+    return patron.motivo;
+  }
+  return null;
+}
 
 export const projectRoot = (input = {}) => input.cwd || process.cwd();
 
@@ -226,7 +245,7 @@ export function listDirs(path) {
   }
 }
 
-function rutaConfinadaSinEnlaces(root, path) {
+export function rutaConfinadaSinEnlaces(root, path) {
   const rootAbs = resolve(root);
   const target = resolve(path);
   const rel = relative(rootAbs, target);
@@ -464,6 +483,59 @@ export function saleAgente(root, sesion, agente) {
 export function agenteActivo(root, sesion) {
   const pila = leerPila(root, sesion);
   return pila.length ? pila[pila.length - 1] : null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Autoría
+//
+// El registro de ciclo de vida deja una línea por cada arranque y parada. Eso sirve para
+// auditar la sesión, pero no para responder la pregunta que de verdad importa al cerrar una
+// tarea: *quién* trabajó en esta spec. Un subagente invocado quince veces produce quince
+// pares de líneas y la respuesta se pierde entre el ruido.
+//
+// La autoría se registra una sola vez por (sesión, agente, spec). Es un hecho, no un evento.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const rutaAutoria = (root, sesion) =>
+  join(root, '.sdd', 'state', `autoria-${(sesion || 'default').replace(/[^\w-]/g, '')}.json`);
+
+function leerAutorias(root, sesion) {
+  try {
+    const v = JSON.parse(readIfExists(rutaAutoria(root, sesion)) || '[]');
+    return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Marca la autoría si es la primera vez y devuelve `true` solo entonces.
+ *
+ * Con `ruta`, la clave es «este agente ya tocó este fichero»; sin ella, «este agente ya
+ * trabajó en esta spec». La primera la usa la pre-escritura, que corre en cinco de los seis
+ * entornos; la segunda el ciclo de subagente, que solo corre en dos.
+ *
+ * La marca vive bajo `.sdd/state/`, que no se versiona: es estado de sesión, no evidencia.
+ * La evidencia es la línea que se escribe en la bitácora append-only. Si la ruta de estado
+ * no resuelve dentro del repositorio —sesión hostil, enlace, montaje— devuelve `false` y no
+ * escribe nada: perder la deduplicación es un ruido aceptable; escribir fuera del proyecto
+ * no lo es.
+ */
+export function marcarAutoria(root, { sesion, agente, spec, ruta } = {}) {
+  if (!agente || agente === 'desconocido') return false;
+  const clave = ruta ? `${agente}#${ruta}` : `${agente}@${spec || 'sin-spec'}`;
+  const destino = rutaAutoria(root, sesion);
+  try {
+    if (!rutaConfinadaSinEnlaces(root, destino)) return false;
+    if (leerAutorias(root, sesion).includes(clave)) return false;
+    const padre = resolve(destino, '..');
+    mkdirSync(padre, { recursive: true });
+    if (!rutaConfinadaSinEnlaces(root, padre) || !rutaConfinadaSinEnlaces(root, destino)) return false;
+    writeFileSync(destino, JSON.stringify([...leerAutorias(root, sesion), clave].slice(-128)), 'utf8');
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Últimas N entradas (encabezados `## `) de la bitácora. */

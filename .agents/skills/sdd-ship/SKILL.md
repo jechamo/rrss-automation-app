@@ -5,6 +5,10 @@ description: "Prepara la entrega: verificación final de gates, PR con trazabili
 
 # /sdd-ship — Entregar
 
+## Contexto — lee exactamente esto
+
+Ejecuta `context --phase ship --spec NNN --json`. Usa resúmenes de gates; abre la salida completa solo ante fallo y nunca desde logs crudos persistidos.
+
 Agente responsable: `@release-manager`.
 
 ## Regla absoluta
@@ -24,13 +28,32 @@ documentación oficial de la aplicación.
 ```bash
 node scripts/sdd-project.mjs run --fast     # lint · test · typecheck · build · smells
 node scripts/sdd-project.mjs run --slow     # coverage · e2e · deps-audit · docs
+node scripts/check-sdd.mjs --trace-audit --strict --base <base exacta>
 node scripts/check-sdd.mjs --strict
 ```
 
+`run --slow` se ejecuta una vez sobre el contenido funcional definitivo. Si después solo cambia
+CHANGELOG, bitácora, evidencia, campos de estado/progreso de la spec o informes, usa:
+
+```bash
+node scripts/sdd-project.mjs run --release --summary-json
+```
+
+Este modo reejecuta trace-audit, secretos, strict y diff documental. Solo declara
+`coverage`/`e2e`/`a11y` como `reused` cuando el slow anterior es ancestral y coinciden runtime,
+checks y huella de todas las entradas no editoriales. Si no puede demostrarlo, se detiene y
+propone el slow completo; no lo ejecuta sin que agente o persona elijan. Un tag o una GitHub
+Release sobre el mismo SHA no cambia bytes y no exige repetir ningún gate.
+Reescribir requisitos, plan o pruebas nunca cuenta como estado editorial y obliga a repetir slow.
+El HMAC local detecta corrupción y mezcla entre clones, pero no autentica frente a procesos del
+mismo usuario. Bitácora/evidence solo conservan historia por prepend/append y los informes
+anteriores son inmutables. Un push solo de tag no repite gates: la autoridad de publicación es la
+CI completa del workflow exacto `sdd-gates.yml` sobre el mismo SHA de `main`.
+
 **Los ejecutas tú, no los git hooks.** Los hooks solo existen donde hay git local; en un host sin
 ellos, esto es el único control antes del commit. Cada ejecución deja sello en
-`.sdd/state/last-gate-run.json` con el estado del árbol: si el sello no coincide, algo cambió
-después y hay que repetir.
+`.sdd/state/last-gate-run.json` con el estado del árbol: si no coincide ni el sello slow ni un
+sello release vigente y trazable, algo cambió después y hay que repetir.
 
 Recorre después la DoD de `AGENTS.md` §7 y ejecuta lo ejecutable, pegando la salida real.
 Si `/sdd-verify` no se ha pasado, ejecútalo antes. Cualquier gate en rojo → **para**.

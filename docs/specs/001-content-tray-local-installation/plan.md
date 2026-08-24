@@ -224,11 +224,11 @@ proveedores ni secretos en alcance; sí filesystem, configuración y procesos lo
 
 | Control | ASVS | OWASP | Aplica | Decisión / justificación | Tarea | Test | Evidencia |
 |---|---|---|---|---|---|---|---|
-| SEC-001 | V5 validación | A03 entrada no confiable | sí | Validar argumentos, plataforma y rutas bajo la raíz; no leer `.env`. | T-001-02 | `installation.test.ts::debe_rechazar_ruta_fuera_del_proyecto` | `evidence.md#SEC-001` |
-| SEC-002 | V8 datos; V12 ficheros | A02 datos sensibles | sí | DB y sidecars existentes se bloquean; reset requiere consentimiento separado y resguardo, nunca borrado automático. | T-001-03 | `installation.test.ts::debe_bloquear_datos_existentes_sin_reset_confirmado` | `evidence.md#SEC-002` |
-| SEC-003 | V14 configuración segura | A03 inyección; A05 configuración | sí | Procesos con argv y `shell:false`; no se termina por imagen global, solo PID/puerto confirmado. | T-001-04 | `install-local.test.mjs::debe_requerir_confirmacion_por_pid` | `evidence.md#SEC-003` |
-| SEC-004 | V7 errores/logs; V8 datos | A02 divulgación; A09 logging | sí | DTO de diagnósticos solo usa categoría, estado y recuperación; prohíbe valores, rutas personales y contenido local. | T-001-02 | `installation.test.ts::debe_sanear_diagnostico_local` | `evidence.md#SEC-004` |
-| SEC-005 | V14 dependencias | A06 componentes vulnerables | sí | Dependencias se preparan con npm bajo consentimiento; no instala globalmente ni modifica PATH. | T-001-04 | `install-local.test.mjs::debe_clasificar_instalacion_global_como_efecto_externo` | `evidence.md#SEC-005` |
+| SEC-INPUT-001 | ASVS 5.0.0 V5 validación | A05:2025 Injection | sí | Validar argumentos, plataforma y rutas bajo la raíz; no leer `.env`. | T-001-02 | `installation.test.mjs::debe_rechazar_ruta_fuera_del_proyecto` | `evidence.md#SEC-INPUT-001` |
+| SEC-DATA-002 | ASVS 5.0.0 V8 datos; V12 ficheros | A04:2025 Cryptographic Failures | sí | DB y sidecars existentes se bloquean; reset requiere consentimiento separado y resguardo, nunca borrado automático. | T-001-03 | `installation.test.mjs::debe_bloquear_datos_existentes_sin_reset_confirmado` | `evidence.md#SEC-DATA-002` |
+| SEC-PROC-003 | ASVS 5.0.0 V14 configuración segura | A02:2025 Security Misconfiguration | sí | Procesos con argv y `shell:false`; no se termina por imagen global, solo PID/puerto confirmado. | T-001-04 | `install-local.test.mjs::debe_requerir_confirmacion_por_pid` | `evidence.md#SEC-PROC-003` |
+| SEC-DIAG-004 | ASVS 5.0.0 V7 errores/logs; V8 datos | A10:2025 Mishandling of Exceptional Conditions | sí | DTO de diagnósticos solo usa categoría, estado y recuperación; prohíbe valores, rutas personales y contenido local. | T-001-02 | `installation.test.mjs::debe_sanear_diagnostico_local` | `evidence.md#SEC-DIAG-004` |
+| SEC-DEPS-005 | ASVS 5.0.0 V14 dependencias | A03:2025 Software Supply Chain Failures | sí | Dependencias se preparan con npm bajo consentimiento; no instala globalmente ni modifica PATH. | T-001-04 | `install-local.test.mjs::debe_clasificar_instalacion_global_como_efecto_externo` | `evidence.md#SEC-DEPS-005` |
 
 > **Corrección de fidelidad posterior al gate, sin cambio de alcance.** Todo test nombrado en esta
 > sección y en §9.1 como `installation.test.ts` se materializa como `installation.test.mjs` por la
@@ -243,13 +243,13 @@ ejecutada con riesgo y siguiente paso, no como verde.
 
 | Control | WCAG 2.2 | Heurística | Aplica | Decisión / justificación | Tarea | Test | Evidencia |
 |---|---|---|---|---|---|---|---|
-| UX-A11Y-001 | 1.4.3, 1.4.11 | H8 | sí | Medir contraste final de texto, foco y controles. | T-001-06 | `ContentTray.test.tsx::debe_mantener_contraste_y_estado_activo` | `evidence.md#UX-A11Y-001` |
-| UX-A11Y-002 | 1.4.1 | H1 | sí | Estado con texto/icono/etiqueta además de color. | T-001-06 | `ContentTray.test.tsx::debe_exponer_estado_activo_en_texto` | `evidence.md#UX-A11Y-002` |
-| UX-A11Y-003 | 2.4.7, 2.4.3 | H3 | sí | Foco visible y orden tras seleccionar o plegar. | T-001-06 | `ContentTray.test.tsx::debe_conservar_foco_del_control_activado` | `evidence.md#UX-A11Y-003` |
-| UX-A11Y-004 | 2.5.8 | H8 | sí | Controles de carrusel y lista con área suficiente en zoom/estrecho. | T-001-06 | `ContentTray.test.tsx::debe_mantener_controles_accesibles` | `evidence.md#UX-A11Y-004` |
-| UX-A11Y-005 | 4.1.2 | H1 | sí | Nombre, posición, activo y expandido accesibles. | T-001-06 | `PieceCarousel.test.tsx::debe_nombrar_indicador_y_pieza_activa` | `evidence.md#UX-A11Y-005` |
-| UX-A11Y-006 | 4.1.3 | H1 | sí | Anuncio educado para selección y asertivo solo para bloqueo. | T-001-06 | `ContentTray.test.tsx::debe_anunciar_detalle_actualizado` | `evidence.md#UX-A11Y-006` |
-| UX-A11Y-007 | 2.3.3 | H8 | sí | Alternativa estable con movimiento reducido. | T-001-06 | `PieceCarousel.test.tsx::debe_conservar_seleccion_sin_movimiento` | `evidence.md#UX-A11Y-007` |
+| UX-A11Y-001 | WCAG 2.2 · 1.4.3, 1.4.11 | H8 | sí | Medir contraste final de texto, foco y controles. | T-001-06 | `ContentTray.test.tsx::debe_mantener_contraste_y_estado_activo` | `evidence.md#UX-A11Y-001` |
+| UX-A11Y-002 | WCAG 2.2 · 1.4.1 | H1 | sí | Estado con texto/icono/etiqueta además de color. | T-001-06 | `ContentTray.test.tsx::debe_exponer_estado_activo_en_texto` | `evidence.md#UX-A11Y-002` |
+| UX-A11Y-003 | WCAG 2.2 · 2.4.7, 2.4.3 | H3 | sí | Foco visible y orden tras seleccionar o plegar. | T-001-06 | `ContentTray.test.tsx::debe_conservar_foco_del_control_activado` | `evidence.md#UX-A11Y-003` |
+| UX-A11Y-004 | WCAG 2.2 · 2.5.8 | H8 | sí | Controles de carrusel y lista con área suficiente en zoom/estrecho. | T-001-06 | `ContentTray.test.tsx::debe_mantener_controles_accesibles` | `evidence.md#UX-A11Y-004` |
+| UX-A11Y-005 | WCAG 2.2 · 4.1.2 | H1 | sí | Nombre, posición, activo y expandido accesibles. | T-001-06 | `PieceCarousel.test.tsx::debe_nombrar_indicador_y_pieza_activa` | `evidence.md#UX-A11Y-005` |
+| UX-A11Y-006 | WCAG 2.2 · 4.1.3 | H1 | sí | Anuncio educado para selección y asertivo solo para bloqueo. | T-001-06 | `ContentTray.test.tsx::debe_anunciar_detalle_actualizado` | `evidence.md#UX-A11Y-006` |
+| UX-A11Y-007 | WCAG 2.2 · 2.3.3 | H8 | sí | Alternativa estable con movimiento reducido. | T-001-06 | `PieceCarousel.test.tsx::debe_conservar_seleccion_sin_movimiento` | `evidence.md#UX-A11Y-007` |
 | UX-FORM-001 | 3.3.2, 3.3.4 | H5 | sí | Consentimiento visible, separado y no afirmativo por defecto. | T-001-05 | `install-local.test.mjs::debe_exigir_confirmacion_separada_para_reset` | `evidence.md#UX-FORM-001` |
 | UX-COPY-001 | 3.3.1, 3.3.3 | H9 | sí | Diagnóstico: categoría, recuperación y alternativa sin datos locales. | T-001-03 | `installation.test.ts::debe_devolver_recuperacion_segura` | `evidence.md#UX-COPY-001` |
 | UX-PERF-001 | n/a | H1 | sí | Selección local p95 <100 ms; carga larga comunica progreso y salida segura. | T-001-06 | `ContentTray.test.tsx::debe_actualizar_detalle_en_una_activacion` | `evidence.md#UX-PERF-001` |

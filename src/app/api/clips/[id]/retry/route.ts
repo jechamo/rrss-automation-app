@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   try {
-    const job = readClipJob(id);
+    readClipJob(id);
     if (isClipProcessing(id)) {
       return NextResponse.json({ error: "El análisis ya está en curso." }, { status: 409 });
     }

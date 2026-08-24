@@ -86,3 +86,17 @@ test("debe_inspeccionar_sesion_con_auth_status_inyectado", () => {
   assert.deepEqual(calls[1].args, ["auth", "status"]);
   assert.doesNotMatch(JSON.stringify(report), /Users\\ejemplo|claude\.exe/);
 });
+
+test("debe_rechazar_un_override_de_windows_que_requiera_shell", () => {
+  const picked = pickClaudeBinary({
+    exists: (candidate) => candidate === "C:\\override malicioso.cmd",
+    env: { CLAUDE_CLI_PATH: "C:\\override malicioso.cmd" },
+    home: "C:\\Users\\ejemplo",
+    platform: "win32",
+    projectRoot: "C:\\repo",
+    listDirectories: () => [],
+  });
+
+  assert.equal(picked.found, false);
+  assert.equal(picked.source, "missing");
+});

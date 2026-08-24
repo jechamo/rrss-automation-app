@@ -5,6 +5,10 @@ description: Convierte una spec aprobada en plan técnico, modelo de datos, cont
 
 # /sdd-plan — Cómo
 
+## Contexto — lee exactamente esto
+
+Ejecuta `context --phase plan --spec NNN --json`. `trace-status --json` sustituye releer matrices; abre constitución/ADR solo si el contexto los enlaza.
+
 Agente responsable: `@planner`, con consulta a especialistas.
 
 ## Entrada

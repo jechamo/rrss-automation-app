@@ -5,6 +5,10 @@ description: Punto de entrada del circuito SDD. Clasifica la petición, detecta 
 
 # /sdd-start — Puerta de entrada
 
+## Contexto — lee exactamente esto
+
+Ejecuta `context --phase orchestrate --json` y `status --json`. Esos snapshots sustituyen recorridos amplios del repositorio.
+
 Delega en el agente `orchestrator`. Sigue estos pasos **en orden**.
 
 ## 1. Diagnóstico del proyecto

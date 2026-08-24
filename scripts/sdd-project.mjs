@@ -13,12 +13,22 @@
 import {
   existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, cpSync,
   appendFileSync, lstatSync, realpathSync, openSync, closeSync, unlinkSync, fstatSync,
+  statSync,
 } from 'node:fs';
 import { join, dirname, resolve, relative, isAbsolute, sep } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { validateDocsConfig, matchesDocPattern } from './lib/docs-contract.mjs';
 import { PATRONES_SECRETO } from '../.sdd/hooks/_lib.mjs';
+import {
+  esAprobadorHumano, hashPropuesta, validarAprobacionCambio, validarCambioCompacto, validarCircuito,
+  validarSolicitudAprobacion,
+} from './lib/circuito.mjs';
+import { acotarResumen, ejecutarProcesoResumido, resumirEjecucion } from './lib/gate-summary.mjs';
+import {
+  contextoReutilizacionRelease, crearEntradaEvidenciaGates, evaluarReutilizacionRelease,
+  resultadoReutilizado,
+} from './lib/release-gates.mjs';
 
 const ROOT = process.cwd();
 const argv = process.argv.slice(2);
@@ -26,10 +36,12 @@ const comando = argv.find((a) => !a.startsWith('-')) || 'status';
 const indiceComando = argv.indexOf(comando);
 const operando = argv.slice(indiceComando + 1).find((a) => !a.startsWith('-')) || null;
 const JSON_OUT = argv.includes('--json');
+const SUMMARY_OUT = argv.includes('--summary-json');
 const DRY = argv.includes('--dry-run');
 const CHECKS_PATH = join(ROOT, '.sdd', 'checks.json');
 const DOCS_PATH = join(ROOT, '.sdd', 'docs.json');
 const GENERATORS_PATH = join(ROOT, '.sdd', 'generators.json');
+const CIRCUIT_PATH = join(ROOT, '.sdd', 'circuit.json');
 
 /**
  * Vocabulario cerrado de gates. Un identificador libre convierte `checks.json` en un cajón de
@@ -81,21 +93,26 @@ Estado y diagnóstico
   inventory [--json]                  inventario de agentes, skills y artefactos
   trace-status --spec NNN [--json]    trazabilidad de una spec
   debt [--json]                       conteo de marcadores de deuda
+  detect-circuit [--json]             propone una frontera proporcional sin escribir
 
 Gates de producto y documentación
   product-status [--json]             estado del baseline de producto
   approve-product --approved-by <persona> [--json]
   docs-status [--json]                estado del contrato documental
   approve-docs --approved-by <persona> [--json]
+  approve-circuit --hash <sha256> --approved-by <persona> --decision-ref <DEC/ADR> [--json]
 
 Trabajo sobre specs
   new-spec <nombre> [--json]          crea la siguiente spec numerada
+  new-change <nombre> --mode compact [--json]
+  approve-change --spec NNN --approved-by <persona> --decision-ref <DEC/ADR> [--json]
   new-adr <titulo> [--json]           crea el siguiente ADR numerado
   scaffold --spec NNN --phase design|plan|tasks|verify [--dry-run]
   trace-correct --from-spec NNN --to-spec NNN --session <id> --reason <texto> [--json]
 
 Ejecución y configuración
-  run [--ci] [--fast|--slow]          ejecuta los gates declarados en .sdd/checks.json
+  context --phase <fase> [--spec NNN] [--task T-*] [--json]
+  run [--ci] [--fast|--slow|--release] [--summary-json]
   verify [--json]                     verificación completa antes de entregar
   configure --accept-detected [--dry-run]
   generate <id> [--dry-run] [--json]  ejecuta un generador declarado
@@ -179,6 +196,17 @@ function validarRutaSinEnlaces(ruta, base = ROOT) {
   }
 }
 
+function referenciasDecisionLocales() {
+  const refs = new Set();
+  const diary = leer(join(ROOT, 'docs', 'bitacora', 'DECISIONS.md')) || '';
+  for (const ref of diary.match(/\b(?:DEC|ADR)-[A-Za-z0-9._-]+\b/g) || []) refs.add(ref);
+  for (const entry of nombres('docs/architecture/adr', (item) => item.isFile())) {
+    const ref = entry.match(/^(ADR-[A-Za-z0-9._-]+)/)?.[1];
+    if (ref) refs.add(ref);
+  }
+  return refs;
+}
+
 function resolverSpecPorId(valor, etiqueta) {
   const id = String(valor || '');
   if (!/^\d{3}$/.test(id))
@@ -242,9 +270,14 @@ function adquirirBloqueoTraceCorrect() {
       }
     } catch (error) {
       if (error?.code !== 'EEXIST') throw error;
-      validarRutaSinEnlaces(lockPath);
       if (Date.now() >= deadline)
         throw new Error(`trace-correct no pudo obtener el lock exclusivo en ${timeout} ms; no se escribió nada. Revisa manualmente ${lockPath} y no lo borres si otro proceso sigue activo.`);
+      try {
+        validarRutaSinEnlaces(lockPath);
+      } catch (validationError) {
+        if (validationError?.code === 'ENOENT') continue;
+        throw validationError;
+      }
       Atomics.wait(TRACE_LOCK_WAIT, 0, 0, 25);
     }
   }
@@ -464,6 +497,95 @@ function detectar() {
   }
 
   return { stacks, suggestions, evidence, writes: false };
+}
+
+function entradaRegular(relativa, tipo) {
+  try {
+    const stat = lstatSync(join(ROOT, relativa));
+    if (stat.isSymbolicLink()) return false;
+    return tipo === 'dir' ? stat.isDirectory() : stat.isFile();
+  } catch { return false; }
+}
+
+function propuestaCircuito() {
+  const exactos = ['README.md'];
+  try {
+    for (const entry of readdirSync(join(ROOT, 'docs', 'guides'), { withFileTypes: true }))
+      if (entry.isFile()) exactos.push(`docs/guides/${entry.name}`);
+  } catch { /* superficie opcional */ }
+  for (const base of ['public', 'assets', 'styles', 'src/styles']) {
+    if (!entradaRegular(base, 'dir')) continue;
+    try {
+      for (const entry of readdirSync(join(ROOT, base), { withFileTypes: true }))
+        if (entry.isFile()) exactos.push(`${base}/${entry.name}`);
+    } catch { /* no propone lo que no puede inspeccionar */ }
+  }
+
+  const compactos = ['src/components/', 'components/', 'app/components/']
+    .filter((path) => entradaRegular(path.replace(/\/$/, ''), 'dir'));
+  const stacks = detectar().stacks;
+  const executableExtensions = ['.js', '.mjs', '.cjs', '.ts', '.tsx', '.jsx'];
+  if (stacks.includes('python')) executableExtensions.push('.py');
+  if (stacks.includes('rust')) executableExtensions.push('.rs');
+  if (stacks.includes('java-maven') || stacks.includes('java-gradle')) executableExtensions.push('.java', '.kt');
+  if (stacks.includes('go')) executableExtensions.push('.go');
+
+  const proposal = {
+    light: { allowedFiles: [...new Set(exactos.filter((path) => entradaRegular(path, 'file')))].sort() },
+    compact: { allowedPrefixes: compactos },
+    deniedPrefixes: [
+      'src/domain/', 'src/auth/', 'src/security/', 'app/api/', 'api/', 'contracts/', 'migrations/',
+      'prisma/', 'supabase/', 'database/', 'infra/', 'scripts/', '.sdd/', '.agents/', '.claude/',
+      '.codex/', '.cursor/', '.gemini/', '.github/', 'docs/specs/', 'docs/product/',
+      'docs/architecture/', 'docs/security/', 'docs/sdd/',
+    ],
+    executableExtensions: [...new Set(executableExtensions)].sort(),
+    sensitiveSegments: [
+      'auth', 'security', 'domain', 'contracts', 'api', 'routes', 'migrations', 'prisma',
+      'supabase', 'database', 'infra', 'scripts', '.sdd', '.agents', '.github',
+    ],
+    limits: { modules: 1, criteria: 3, tasks: 3, intentBytes: 12288, auditWindow: 20 },
+    quota: 0.4,
+  };
+  const base = { schemaVersion: 1, grammar: 'portable-path-v1', detectorVersion: 1, proposal };
+  return { ...base, status: 'pending', proposalHash: hashPropuesta(base) };
+}
+
+function detectarCircuito() {
+  validarArgumentos({ banderas: ['--json'] });
+  const result = propuestaCircuito();
+  imprimir({ ...result, writes: false, next: `node scripts/sdd-project.mjs approve-circuit --hash ${result.proposalHash} --approved-by <persona> --decision-ref <DEC/ADR>` });
+}
+
+function aprobarCircuito() {
+  validarArgumentos({ valores: ['--hash', '--approved-by', '--decision-ref'], banderas: ['--json'] });
+  const supplied = String(opcion('--hash') || '');
+  const approvedBy = String(opcion('--approved-by') || '').trim();
+  const decisionRef = String(opcion('--decision-ref') || '').trim();
+  if (!/^[0-9a-f]{64}$/i.test(supplied)) throw new Error('approve-circuit requiere --hash SHA-256 de detect-circuit.');
+  const dirty = spawnSync('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: ROOT, encoding: 'utf8' });
+  if (dirty.status !== 0 || dirty.stdout.trim())
+    throw new Error('approve-circuit requiere un árbol limpio; la aprobación crea un commit de activación dedicado.');
+  const current = propuestaCircuito();
+  const request = validarSolicitudAprobacion({ suppliedHash: supplied, expectedHash: current.proposalHash, approvedBy, decisionRef });
+  if (!request.ok) throw new Error(`${request.reason}. Revisa detect-circuit y la aprobación humana.`);
+  const decisionRefs = referenciasDecisionLocales();
+  if (!decisionRefs.has(decisionRef))
+    throw new Error(`La referencia ${decisionRef} no existe en la bitácora ni en docs/architecture/adr/.`);
+  const git = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' });
+  const activationCommit = (git.stdout || '').trim();
+  if (!/^[0-9a-f]{40}$/i.test(activationCommit)) throw new Error('No se pudo obtener el commit de activación.');
+  const config = {
+    ...current,
+    status: 'approved',
+    approval: { approvedBy, approvedAt: new Date().toISOString(), decisionRef },
+    activationCommit,
+  };
+  const validation = validarCircuito(config, { decisionRefs });
+  if (!validation.active) throw new Error(`La configuración aprobada no es válida: ${validation.reason}.`);
+  mkdirSync(dirname(CIRCUIT_PATH), { recursive: true });
+  writeFileSync(CIRCUIT_PATH, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
+  imprimir({ approved: true, proposalHash: supplied, approvedBy, decisionRef, activationCommit });
 }
 
 function cargarChecks() {
@@ -834,6 +956,68 @@ function nuevaSpec() {
   });
 }
 
+function nuevoCambioCompacto() {
+  validarArgumentos({ valores: ['--mode'], banderas: ['--json'], operandoPermitido: true });
+  if (opcion('--mode') !== 'compact') throw new Error('new-change solo admite --mode compact.');
+  const slug = slugSeguro(operando);
+  const base = nombres('docs/specs', (x) => x.isDirectory());
+  const numero = siguienteNumero(base, /^(\d{3})-/);
+  const nombre = `${numero}-${slug}`;
+  const template = join(ROOT, 'docs', 'specs', '_TEMPLATE', 'change.md');
+  const destination = join(ROOT, 'docs', 'specs', nombre);
+  const content = leer(template);
+  if (content === null) throw new Error('No existe docs/specs/_TEMPLATE/change.md.');
+  if (existsSync(destination)) throw new Error(`El cambio ya existe: docs/specs/${nombre}`);
+  mkdirSync(destination, { recursive: false });
+  writeFileSync(join(destination, 'change.md'), content
+    .replaceAll('<slug>', slug)
+    .replaceAll('CG-NNN-slug', `CG-${numero}-${slug}`)
+    .replace('| Spec | NNN |', `| Spec | ${numero} |`)
+    .replaceAll('T-NNN-', `T-${numero}-`)
+    .replaceAll('YYYY-MM-DD', new Date().toISOString().slice(0, 10)), 'utf8');
+  imprimir({ created: true, mode: 'compact', spec: nombre, path: `docs/specs/${nombre}/change.md`, approved: false });
+}
+
+function aprobarCambioCompacto() {
+  validarArgumentos({ valores: ['--spec', '--approved-by', '--decision-ref'], banderas: ['--json'] });
+  const approvedBy = String(opcion('--approved-by') || '').trim();
+  const decisionRef = String(opcion('--decision-ref') || '').trim();
+  if (!esAprobadorHumano(approvedBy) || approvedBy.length > 160 || /[\r\n|<>]/.test(approvedBy))
+    throw new Error('approve-change requiere --approved-by material.');
+  const decisionRefs = referenciasDecisionLocales();
+  if (!/^(?:DEC|ADR)-[A-Za-z0-9._-]+$/.test(decisionRef) || !decisionRefs.has(decisionRef))
+    throw new Error('approve-change requiere --decision-ref existente en bitácora o ADR.');
+  const spec = resolverSpecPorId(idSpecRequerido(), '--spec');
+  const path = join(spec.dir, 'change.md');
+  const content = leer(path);
+  if (content === null) throw new Error(`${spec.nombre} no es un cambio compacto.`);
+  const circuit = (() => { try { return JSON.parse(leer(CIRCUIT_PATH) || 'null'); } catch { return null; } })();
+  const circuitValidation = validarCircuito(circuit, { decisionRefs });
+  if (!circuitValidation.active) throw new Error(`.sdd/circuit.json no está aprobado: ${circuitValidation.reason}.`);
+  const validation = validarCambioCompacto(content, circuit, { decisionRefs });
+  if (!validation.ok) throw new Error(`change.md compacto inválido: ${validation.reason}; escala a full.`);
+  const modulePath = join(ROOT, validation.module);
+  validarRutaSinEnlaces(modulePath);
+  for (const route of validation.routes) validarRutaSinEnlaces(join(ROOT, route));
+  let moduleStat;
+  try { moduleStat = lstatSync(modulePath); } catch { throw new Error('change.md requiere un módulo que ya exista.'); }
+  if (moduleStat.isSymbolicLink() || (!moduleStat.isDirectory() && !moduleStat.isFile()))
+    throw new Error('change.md requiere un módulo regular, no un enlace o tipo especial.');
+  const seal = createHash('sha256').update(validation.intention).digest('hex');
+  const at = new Date().toISOString();
+  const next = content
+    .replace('| Estado | pendiente-aprobación |', '| Estado | approved |')
+    .replace('| Aprobado por | pendiente |', `| Aprobado por | ${approvedBy} |`)
+    .replace('| Fecha de aprobación | pendiente |', `| Fecha de aprobación | ${at} |`)
+    .replace('| Referencia de decisión | pendiente |', `| Referencia de decisión | ${decisionRef} |`)
+    .replace('| Sello de intención | pendiente |', `| Sello de intención | ${seal} |`);
+  if (next === content) throw new Error('change.md no está pendiente o no conserva la plantilla canónica.');
+  const durable = validarAprobacionCambio(next, { decisionRefs });
+  if (!durable.ok) throw new Error(`La aprobación compacta no es durable: ${durable.reason}.`);
+  writeFileSync(path, next, 'utf8');
+  imprimir({ schemaVersion: 1, approved: true, spec: spec.nombre, approvedBy, approvedAt: at, decisionRef, seal });
+}
+
 function nuevoAdr() {
   const slug = slugSeguro(operando);
   const base = nombres('docs/architecture/adr', (x) => x.isFile());
@@ -1018,8 +1202,9 @@ function snapshotSpecs(filtro = null) {
       'spec', 'clarifications', 'design', 'plan', 'data-model', 'tasks', 'test-plan', 'evidence', 'research',
     ].map((idArtefacto) => [idArtefacto.replace('-', ''), existsSync(join(dir, `${idArtefacto}.md`))]));
     artefactos.contracts = existsSync(join(dir, 'contracts'));
-    const specTexto = leer(join(dir, 'spec.md')) || '';
-    const tareas = estadoTareas(leer(join(dir, 'tasks.md')) || '');
+    artefactos.change = existsSync(join(dir, 'change.md'));
+    const specTexto = leer(join(dir, 'spec.md')) || leer(join(dir, 'change.md')) || '';
+    const tareas = estadoTareas(leer(join(dir, 'tasks.md')) || leer(join(dir, 'change.md')) || '');
     const item = { id, name: nombre, state: estadoSpec(specTexto), phase: null, tasks: tareas, artifacts: artefactos };
     item.phase = faseSpec(item, tareas, artefactos);
     item.active = tareas.pending > 0 || tareas.inProgress > 0 || tareas.blocked > 0;
@@ -1133,6 +1318,128 @@ function traceStatus() {
   }
   const missing = Object.values(families).reduce((total, family) => total + family.orphans.length + family.unresolved.length, 0);
   imprimir({ schemaVersion: 1, spec: spec.nombre, complete: missing === 0, missing, families });
+}
+
+const CONTEXT_PHASES = {
+  specify: ['0.', '1.', '2.5', '8 bis.'],
+  clarify: ['0.', '1.', '2.5', '8 bis.'],
+  design: ['0.', '8 bis.'],
+  plan: ['0.', '3.', '4.', '5.', '7.'],
+  tasks: ['0.', '3.', '4.', '5.', '7.'],
+  implement: ['0.', '4.', '5.', '6.', '7.', '11.'],
+  verify: ['0.', '7.', '8 bis.', '9.'],
+  ship: ['0.', '7.', '8 bis.', '9.'],
+  light: ['0.', '2.6', '6.', '7.'],
+  compact: ['0.', '2.6', '6.', '7.'],
+  orchestrate: ['0.', '1.', '2.', '10.'],
+};
+
+function seccionesMarkdown(texto) {
+  const matches = [...String(texto).matchAll(/^(#{2,3})\s+(.+)$/gm)];
+  const sections = matches.map((match, index) => ({
+    level: match[1].length,
+    title: match[2].trim(),
+    start: match.index,
+    end: matches.find((next, nextIndex) => nextIndex > index && next[1].length <= match[1].length)?.index ?? texto.length,
+  }));
+  const duplicates = [...new Set(sections.map((item) => item.title)
+    .filter((title, index, all) => all.indexOf(title) !== index))];
+  if (duplicates.length) throw new Error(`Política ambigua: encabezados duplicados (${duplicates.join(', ')}).`);
+  return sections;
+}
+
+function seleccionarPolitica(fase, { securitySensitive = true, uxApplicable = true } = {}) {
+  const wanted = CONTEXT_PHASES[fase];
+  if (!wanted) throw new Error(`Fase desconocida: ${fase}. Usa ${Object.keys(CONTEXT_PHASES).join(', ')}.`);
+  const texto = leer(join(ROOT, 'docs/sdd/OPERATING-MODEL.md'));
+  if (texto === null) throw new Error('Falta docs/sdd/OPERATING-MODEL.md.');
+  const sections = seccionesMarkdown(texto);
+  const required = new Set([...wanted, '0.', '7.', '8.', '13.']);
+  const selected = [];
+  for (const prefix of required) {
+    const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const candidates = sections.filter((item) => new RegExp(`^${escaped}(?:\\s|$)`).test(item.title));
+    if (candidates.length !== 1) throw new Error(`Política incompatible: se esperaba un encabezado único para §${prefix}`);
+    selected.push(candidates[0]);
+  }
+  selected.sort((a, b) => a.start - b.start);
+  const effective = selected.filter((item) => uxApplicable || !item.title.startsWith('8 bis.'));
+  return {
+    sections: effective.map((item) => item.title),
+    policy: effective.map((item) => {
+      if (!securitySensitive && item.title.startsWith('8.')) {
+        const matrix = sections.find((child) => child.level === 3 && child.title.startsWith('8.1'));
+        if (!matrix || matrix.start <= item.start || matrix.start >= item.end)
+          throw new Error('Política incompatible: no se pudo aislar el núcleo universal de seguridad.');
+        return texto.slice(item.start, matrix.start).trim();
+      }
+      return texto.slice(item.start, item.end).trim();
+    }).join('\n\n'),
+  };
+}
+
+function bloqueTarea(texto, taskId) {
+  const pattern = new RegExp(`^###\\s+${taskId.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\$&')}\\b`, 'm');
+  const found = pattern.exec(texto);
+  if (!found) {
+    const line = texto.split(/\r?\n/).find((item) => new RegExp(`\\b${taskId}\\b`).test(item));
+    if (line) return line.trim();
+    throw new Error(`No existe la tarea ${taskId} en tasks.md o change.md.`);
+  }
+  const rest = texto.slice(found.index);
+  const next = rest.slice(found[0].length).search(/^###\s+/m);
+  return next < 0 ? rest.trim() : rest.slice(0, found[0].length + next).trim();
+}
+
+function contextoSpec(specId, taskId) {
+  if (!specId && !taskId) return { spec: null, taskContext: '' };
+  if (!specId) throw new Error('--task requiere --spec NNN.');
+  const spec = resolverSpecPorId(specId, '--spec');
+  const changeSource = leer(join(spec.dir, 'change.md'));
+  const taskSource = leer(join(spec.dir, 'tasks.md')) || changeSource || '';
+  const taskText = taskId ? bloqueTarea(taskSource, taskId) : '';
+  const ids = new Set(extraerIdsFamilia(taskText, 'RF')
+    .concat(extraerIdsFamilia(taskText, 'CA'), extraerIdsFamilia(taskText, 'SEC'), extraerIdsFamilia(taskText, 'UX')));
+  const relevantFiles = changeSource !== null ? ['change.md'] : ['spec.md', 'plan.md', 'test-plan.md'];
+  const relevant = relevantFiles.flatMap((file) => {
+    const source = leer(join(spec.dir, file)) || '';
+    const lines = source.split(/\r?\n/).filter((line) =>
+      /Impacto de (?:seguridad|usabilidad|documentaci[oó]n)/i.test(line) ||
+      [...ids].some((id) => contieneId(line, id)) ||
+      (!ids.size && /\b(?:RF|CA)-\d+\b/.test(line)));
+    const blocks = [...source.matchAll(/^#{2,3}\s+(.+)$/gm)].flatMap((match, index, all) => {
+      const title = match[1];
+      const wanted = [...ids].some((id) => contieneId(title, id)) || (!ids.size && /^CA-\d+\b/.test(title));
+      if (!wanted) return [];
+      const end = all[index + 1]?.index ?? source.length;
+      return [source.slice(match.index, end).trim()];
+    });
+    return [...lines, ...blocks];
+  });
+  return {
+    spec: spec.nombre,
+    taskContext: [taskText, ...new Set(relevant)].filter(Boolean).join('\n'),
+  };
+}
+
+function emitirContexto() {
+  validarArgumentos({ valores: ['--phase', '--spec', '--task'], banderas: ['--json'] });
+  const phase = opcion('--phase');
+  if (!phase) throw new Error('context requiere --phase <fase>.');
+  const specId = opcion('--spec');
+  let securitySensitive = true;
+  let uxApplicable = true;
+  if (specId) {
+    const resolved = resolverSpecPorId(specId, '--spec');
+    const source = leer(join(resolved.dir, 'spec.md')) || leer(join(resolved.dir, 'change.md')) || '';
+    securitySensitive = !/Impacto de seguridad[^\n|]*\|\s*`?no-sensible/i.test(source) &&
+      !/Seguridad:\s*`?no-sensible/i.test(source);
+    uxApplicable = /Impacto de usabilidad[^\n|]*\|\s*`?aplicable/i.test(source) ||
+      /Usabilidad:\s*`?aplicable/i.test(source);
+  }
+  const selected = seleccionarPolitica(phase, { securitySensitive, uxApplicable });
+  const scoped = contextoSpec(specId, opcion('--task'));
+  imprimir({ schemaVersion: 1, phase, ...selected, ...scoped, untrustedInputs: ['spec', 'task', 'git', 'tool-output'] });
 }
 
 function normalizarPatronProyecto(valor, etiqueta) {
@@ -1372,51 +1679,169 @@ const SELLO_PATH = join(ROOT, '.sdd', 'state', 'last-gate-run.json');
  * distinción sobre la que se sostiene todo este sistema. Lo lee `guard-bash.mjs` antes de dejar
  * pasar un commit o un push.
  */
-function escribirSello(velocidad, ok, resultados) {
+function escribirSello(velocidad, ok, resultados, metadata = {}) {
   const huella = huellaArbol();
-  if (huella === null) return; // fuera de un repositorio git no hay nada que sellar
+  if (huella === null) return false; // fuera de un repositorio git no hay nada que sellar
+  try { validarRutaSinEnlaces(SELLO_PATH); } catch { return false; }
   const previo = (() => { try { return JSON.parse(leer(SELLO_PATH) || '{}'); } catch { return {}; } })();
+  const entrada = crearEntradaEvidenciaGates({ root: ROOT, kind: velocidad || 'all', ok,
+    tree: huella, at: new Date().toISOString(), results: resultados,
+    runId: metadata.runId || null, config: metadata.config });
+  if (['slow', 'release'].includes(velocidad) && !entrada.evidenceMac) return false;
   const registro = {
     ...previo,
-    [velocidad || 'all']: { ok, tree: huella, at: new Date().toISOString(), checks: resultados.map((r) => r.id) },
+    [velocidad || 'all']: entrada,
   };
   try {
     mkdirSync(dirname(SELLO_PATH), { recursive: true });
     writeFileSync(SELLO_PATH, `${JSON.stringify(registro, null, 2)}\n`, 'utf8');
-  } catch { /* el sello es una ayuda, no un requisito: si no se puede escribir, no se rompe el run */ }
+    return true;
+  } catch { return false; }
 }
 
 function ejecutarChecks() {
+  validarArgumentos({ banderas: ['--ci', '--fast', '--slow', '--release', '--summary-json', '--json'] });
   const config = cargarChecks();
-  // Sin bandera se ejecuta todo: el comportamiento anterior no cambia. `--fast` y `--slow`
-  // existen para partir el coste entre el commit y el push.
-  const filtro = argv.includes('--fast') ? 'fast' : argv.includes('--slow') ? 'slow' : null;
+  const modos = ['--fast', '--slow', '--release'].filter((flag) => argv.includes(flag));
+  if (modos.length > 1) throw new Error(`run admite un solo modo: ${modos.join(', ')}.`);
+  // Sin bandera se ejecuta todo. Release conserva la verificación fresca de trazas/secretos/docs
+  // y solo reutiliza los tres checks conductuales cuyo contenido material siga idéntico.
+  const filtro = argv.includes('--fast') ? 'fast' : argv.includes('--slow') ? 'slow' :
+    argv.includes('--release') ? 'release' : null;
   const resultados = [];
   const omitidos = [];
   let fallo = false;
+  const startedAt = new Date().toISOString();
+  const runId = `${startedAt.replace(/[:.]/g, '-')}-${randomBytes(4).toString('hex')}`;
+  const ejecutar = (id, command, speed, args = null) => {
+    if (SUMMARY_OUT) return { ...ejecutarProcesoResumido({ id, command, args, cwd: ROOT,
+      shell: !args, timeoutMs: 15 * 60_000, maxBuffer: 1024 * 1024 }), execution: 'executed' };
+    const inicio = Date.now();
+    const options = {
+      cwd: ROOT,
+      encoding: 'utf8',
+      stdio: 'inherit',
+      timeout: 15 * 60_000,
+      maxBuffer: 1024 * 1024,
+    };
+    const result = args
+      ? spawnSync(command, args, { ...options, shell: false })
+      : spawnSync(command, { ...options, shell: true });
+    const timedOut = result.error?.code === 'ETIMEDOUT';
+    return { ...resumirEjecucion({
+      id, command: args ? [command, ...args].join(' ') : command,
+      status: result.status, signal: result.signal, durationMs: Date.now() - inicio,
+      stdout: result.stdout, stderr: result.stderr || result.error?.message, timedOut,
+    }), execution: 'executed' };
+  };
+  const slowChecks = Object.entries(config.checks || {})
+    .filter(([id, check]) => check?.command && check.enabled !== false && velocidadDe(check, id) === 'slow')
+    .map(([id]) => id);
+  let releaseDecision = null;
+  let previousSlow = null;
+  if (filtro === 'release') {
+    validarRutaSinEnlaces(SELLO_PATH);
+    const state = (() => { try { return JSON.parse(leer(SELLO_PATH) || '{}'); } catch { return {}; } })();
+    previousSlow = state.slow || null;
+    releaseDecision = evaluarReutilizacionRelease(previousSlow,
+      contextoReutilizacionRelease(ROOT, config, previousSlow, slowChecks));
+    if (!releaseDecision.ok) {
+      resultados.push({ ...resumirEjecucion({ id: 'release-reuse', command: 'validar evidencia slow reutilizable',
+        status: 1, signal: null, durationMs: 0, stdout: '',
+        stderr: `${releaseDecision.reason} Ejecuta: ${releaseDecision.fallbackCommand}` }), execution: 'executed' });
+      fallo = true;
+    }
+  }
+  let base = null;
+  if (['slow', 'release'].includes(filtro) && !fallo) {
+    const candidates = [process.env.SDD_DIFF_BASE, 'origin/main', 'HEAD~1'].filter(Boolean);
+    const baseRef = candidates.find((ref) => spawnSync('git', ['rev-parse', '--verify', `${ref}^{commit}`],
+      { cwd: ROOT, encoding: 'utf8' }).status === 0);
+    if (baseRef) base = (spawnSync('git', ['rev-parse', `${baseRef}^{commit}`],
+      { cwd: ROOT, encoding: 'utf8' }).stdout || '').trim();
+    if (!base) {
+      const audit = resumirEjecucion({ id: 'trace-audit', command: 'git base requerida', status: 1,
+        signal: null, durationMs: 0, stdout: '', stderr: 'run --slow no pudo resolver una base material para trace-audit.' });
+      resultados.push({ ...audit, execution: 'executed' });
+      fallo = true;
+    } else {
+      const audit = ejecutar('trace-audit', process.execPath, 'slow',
+        ['scripts/check-sdd.mjs', '--trace-audit', '--strict', '--base', base]);
+      resultados.push(audit);
+      if (audit.status !== 0) fallo = true;
+    }
+  }
+  if (filtro === 'release' && !fallo) {
+    for (const [id, args] of [
+      ['secret-scan', ['scripts/scan-secrets.mjs', '--json']],
+      ['sdd-strict', ['scripts/check-sdd.mjs', '--strict']],
+      ['docs-diff', ['scripts/check-sdd.mjs', '--docs-diff', '--base', base]],
+    ]) {
+      const result = ejecutar(id, process.execPath, 'release', args);
+      resultados.push(result);
+      if (result.status !== 0) fallo = true;
+    }
+  }
   for (const [id, check] of Object.entries(config.checks || {})) {
     if (!check?.command || check.enabled === false) continue;
     const velocidad = velocidadDe(check, id);
-    if (filtro && velocidad !== filtro) { omitidos.push(id); continue; }
-    const inicio = Date.now();
-    const resultado = spawnSync(check.command, { cwd: ROOT, shell: true, encoding: 'utf8', stdio: 'inherit' });
-    resultados.push({ id, command: check.command, speed: velocidad, status: resultado.status, durationMs: Date.now() - inicio });
+    if (filtro === 'release') {
+      if (velocidad !== 'slow') { omitidos.push(id); continue; }
+      if (releaseDecision?.reusedChecks.includes(id)) {
+        const source = previousSlow.results.find((result) => result.id === id);
+        resultados.push(resultadoReutilizado(source, previousSlow));
+        continue;
+      }
+    } else if (filtro && velocidad !== filtro) { omitidos.push(id); continue; }
+    if (fallo && filtro === 'release') { omitidos.push(id); continue; }
+    const resultado = ejecutar(id, check.command, velocidad);
+    resultados.push(resultado);
     if (resultado.status !== 0 && check.required !== false) fallo = true;
   }
   const noConfigurados = (config.unconfigured || []).filter((id) =>
-    !filtro || (GATES[gateBase(id)] || 'fast') === filtro);
+    !filtro || (filtro === 'release' ? (GATES[gateBase(id)] || 'fast') === 'slow' :
+      (GATES[gateBase(id)] || 'fast') === filtro));
+  if (resultados.length && !escribirSello(filtro, !fallo, resultados, { runId, config }) &&
+      ['slow', 'release'].includes(filtro)) {
+    resultados.push({ ...resumirEjecucion({ id: 'gate-evidence', command: 'persistir evidencia autenticada',
+      status: 1, signal: null, durationMs: 0, stdout: '',
+      stderr: 'No se pudo crear o persistir el sello HMAC local; la ejecución no es reutilizable.' }),
+    execution: 'executed' });
+    fallo = true;
+  }
   const estado = fallo ? 'fail' : resultados.length ? 'pass' : 'unconfigured';
-  if (!JSON_OUT) {
+  const resumen = acotarResumen({
+    schemaVersion: 1, runId, ok: !fallo, status: estado, speed: filtro,
+    startedAt,
+    results: resultados, skipped: omitidos, unconfigured: noConfigurados,
+  });
+  if (SUMMARY_OUT) {
+    const stateDir = join(ROOT, '.sdd', 'state', 'gate-runs');
+    validarRutaSinEnlaces(stateDir);
+    mkdirSync(stateDir, { recursive: true });
+    validarRutaSinEnlaces(stateDir);
+    const target = join(stateDir, `${runId}.json`);
+    validarRutaSinEnlaces(target);
+    const descriptor = openSync(target, 'wx', 0o600);
+    try { writeFileSync(descriptor, `${JSON.stringify(resumen, null, 2)}\n`, 'utf8'); }
+    finally { closeSync(descriptor); }
+    const old = readdirSync(stateDir, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && /^\d{4}-.*\.json$/.test(entry.name)).map((entry) => entry.name).sort().reverse();
+    const cutoff = Date.now() - 7 * 24 * 60 * 60_000;
+    for (const obsolete of old.filter((name, index) => index >= 20 || statSync(join(stateDir, name)).mtimeMs < cutoff)) {
+      const path = join(stateDir, obsolete);
+      validarRutaSinEnlaces(path);
+      unlinkSync(path);
+    }
+    console.log(JSON.stringify(resumen));
+  } else if (!JSON_OUT) {
     const alcance = filtro ? ` (${filtro})` : '';
     const veredicto = estado === 'fail' ? 'FAIL' : estado === 'pass' ? 'PASS' : 'NO EJECUTADO';
     console.log(`\n${resultados.length} check(s) ejecutado(s)${alcance}: ${veredicto}`);
     for (const r of resultados) console.log(`  ${r.status === 0 ? '✓' : '✗'} ${r.id} — ${r.command}`);
     if (omitidos.length) console.log(`  · omitidos por velocidad: ${omitidos.join(', ')}`);
     if (noConfigurados.length) console.log(`  · no configurados: ${noConfigurados.join(', ')}`);
-  } else console.log(JSON.stringify({
-    ok: !fallo, status: estado, speed: filtro, results: resultados, skipped: omitidos, unconfigured: noConfigurados,
-  }));
-  if (resultados.length) escribirSello(filtro, !fallo, resultados);
+  } else console.log(JSON.stringify(resumen));
   if (fallo) process.exitCode = 1;
 }
 
@@ -1543,13 +1968,17 @@ if (argv.includes('--help') || argv.includes('-h') || comando === 'help') {
 
 try {
   if (comando === 'detect') imprimir(detectar());
+  else if (comando === 'detect-circuit') detectarCircuito();
   else if (comando === 'inventory') imprimir(inventario());
   else if (comando === 'product-status') imprimir(estadoProducto());
   else if (comando === 'approve-product') aprobarProducto();
   else if (comando === 'docs-status') imprimir(estadoDocumentacion());
   else if (comando === 'approve-docs') aprobarDocumentacion();
+  else if (comando === 'approve-circuit') aprobarCircuito();
   else if (comando === 'trace-correct') corregirTraza();
   else if (comando === 'new-spec') nuevaSpec();
+  else if (comando === 'new-change') nuevoCambioCompacto();
+  else if (comando === 'approve-change') aprobarCambioCompacto();
   else if (comando === 'new-adr') nuevoAdr();
   else if (comando === 'scaffold') scaffold();
   else if (comando === 'trace-status') traceStatus();
@@ -1557,6 +1986,7 @@ try {
   else if (comando === 'verify') verificar();
   else if (comando === 'configure') configurar();
   else if (comando === 'run') ejecutarChecks();
+  else if (comando === 'context') emitirContexto();
   else if (comando === 'debt') informeDeuda();
   else if (comando === 'skills-export') exportarSkills();
   else if (comando === 'status') imprimir(snapshotEstado());

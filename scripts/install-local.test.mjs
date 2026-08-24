@@ -555,6 +555,42 @@ test("debe_medir_opcionales_desde_metadatos_sin_ejecutar_binarios", async () => 
   }
 });
 
+test("debe_degradar_navegacion_si_el_paquete_existe_pero_chromium_no", async () => {
+  const harness = createHarness({ optionalTools: true, browserAvailable: false });
+  try {
+    const output = [];
+    const result = await runMain(harness, "check", {
+      output: { write: (line) => output.push(line) },
+    });
+    assert.equal(
+      result.receipt.optional.find(({ id }) => id === "browser-navigation")?.status,
+      "optional-degraded",
+    );
+    assert.match(output.join("\n"), /npx playwright install chromium/u);
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test("debe_rechazar_un_ready_que_no_identifique_rrss_studio", async () => {
+  const incomplete = await installLocal.inspectReadyEndpoint(async () => ({
+    ok: true,
+    json: async () => ({ status: "ready" }),
+  }));
+  const complete = await installLocal.inspectReadyEndpoint(async () => ({
+    ok: true,
+    json: async () => ({
+      service: "rrss-studio",
+      schemaVersion: 1,
+      status: "ready",
+      checks: { application: "ok", database: "ok", vault: "empty" },
+    }),
+  }));
+
+  assert.equal(incomplete, false);
+  assert.equal(complete, true);
+});
+
 test("debe_aceptar_db_solo_con_marcador_vinculado", async () => {
   const compatible = createHarness({ prepared: true });
   const incompatible = createHarness({
@@ -621,10 +657,12 @@ test("debe_invalidar_marcador_al_sustituir_la_db_gestionada", async () => {
 
 test("debe_preparar_con_env_manual_sin_leerlo_ni_sobrescribirlo", async () => {
   const originalEnv = "CONFIGURACION_MANUAL_NO_LEER";
+  const commands = [];
   const harness = createHarness({
     envContent: originalEnv,
     spawnSync(_executable, argv) {
       const command = npmCommand(argv);
+      commands.push(command);
       if (command === "ci") {
         mkdirSync(path.join(harness.projectRoot, "node_modules"));
       }
@@ -649,6 +687,62 @@ test("debe_preparar_con_env_manual_sin_leerlo_ni_sobrescribirlo", async () => {
       originalEnv,
     );
     assert.equal(harness.reads.includes(".env"), false);
+    assert.ok(commands.indexOf("run db:push") < commands.indexOf("run build"));
+    assert.equal(commands.includes("run build"), true);
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test("debe_bloquear_prepare_si_el_build_falla_y_no_escribir_marcador", async () => {
+  const harness = createHarness({
+    spawnSync(_executable, argv) {
+      const command = npmCommand(argv);
+      if (command === "ci") mkdirSync(path.join(harness.projectRoot, "node_modules"));
+      if (command === "run db:push") {
+        writeFileSync(path.join(harness.projectRoot, "prisma", "dev.db"), "DB");
+      }
+      return { status: command === "run build" ? 1 : 0 };
+    },
+  });
+  try {
+    const result = await runMain(harness, "prepare", { prompt: async () => true });
+    assert.equal(result.receipt.overallStatus, "blocked");
+    assert.equal(result.technicalFailure, true);
+    assert.equal(
+      existsSync(path.join(harness.projectRoot, "data", "installation", "managed-v1.json")),
+      false,
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test("debe_preparar_aunque_otra_instancia_ocupe_el_puerto", async () => {
+  const commands = [];
+  const harness = createHarness({
+    ports: [{ pid: 4312 }],
+    spawnSync(_executable, argv) {
+      const command = npmCommand(argv);
+      commands.push(command);
+      if (command === "ci") mkdirSync(path.join(harness.projectRoot, "node_modules"));
+      if (command === "run db:push") {
+        writeFileSync(path.join(harness.projectRoot, "prisma", "dev.db"), "DB");
+      }
+      return { status: 0 };
+    },
+  });
+  try {
+    const result = await runMain(harness, "prepare", { prompt: async () => true });
+
+    assert.equal(result.receipt.overallStatus, "blocked");
+    assert.equal(commands.includes("ci"), true);
+    assert.equal(commands.includes("run db:push"), true);
+    assert.equal(commands.includes("run build"), true);
+    assert.equal(
+      existsSync(path.join(harness.projectRoot, "data", "installation", "managed-v1.json")),
+      true,
+    );
   } finally {
     harness.cleanup();
   }
@@ -767,7 +861,7 @@ test("debe_hacer_backup_retirar_db_prisma_y_marcador_en_orden", async () => {
       ),
     );
 
-    assert.equal(result.receipt.overallStatus, "ready");
+    assert.equal(result.receipt.overallStatus, "ready", JSON.stringify(result));
     assert.ok(events.indexOf("backup") < events.indexOf("retirada"));
     assert.ok(events.indexOf("retirada") < events.indexOf("prisma"));
     assert.ok(events.indexOf("prisma") < events.indexOf("marcador"));
@@ -918,6 +1012,28 @@ test("debe_esperar_hasta_puerto_ocupado_sin_exigir_pid_del_hijo", async () => {
   }
 });
 
+test("debe_esperar_health_ready_y_no_solo_el_puerto", async () => {
+  const child = new EventEmitter();
+  child.pid = 777;
+  child.exitCode = null;
+  child.unref = () => {};
+  let healthCalls = 0;
+  const harness = createHarness({
+    prepared: true,
+    ports: [null, null, { pid: 9001 }, { pid: 9001 }, { pid: 9001 }],
+    inspectHealth: async () => ++healthCalls >= 2,
+    spawn: () => child,
+    sleep: async () => {},
+  });
+  try {
+    const result = await runMain(harness, "start", { prompt: async () => true });
+    assert.equal(result.receipt.overallStatus, "ready", JSON.stringify(result));
+    assert.equal(healthCalls, 2);
+  } finally {
+    harness.cleanup();
+  }
+});
+
 test("debe_exigir_consentimiento_process_aunque_el_puerto_este_libre", async () => {
   let prompts = 0;
   let starts = 0;
@@ -989,6 +1105,7 @@ test("debe_desacoplar_start_y_observar_error_antes_de_pid_y_unref", async () => 
     });
 
     assert.equal(result.receipt.overallStatus, "ready");
+    assert.deepEqual(spawnCalls[0]?.argv.slice(1), ["run", "start"]);
     assert.deepEqual(spawnCalls[0]?.options, {
       shell: false,
       cwd: harness.projectRoot,
@@ -1001,6 +1118,15 @@ test("debe_desacoplar_start_y_observar_error_antes_de_pid_y_unref", async () => 
   } finally {
     harness.cleanup();
   }
+});
+
+test("debe_fijar_next_a_loopback_en_desarrollo_y_produccion", () => {
+  const manifest = JSON.parse(
+    readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+  );
+
+  assert.match(manifest.scripts.dev, /-H 127\.0\.0\.1/u);
+  assert.match(manifest.scripts.start, /-H 127\.0\.0\.1/u);
 });
 
 test("debe_bloquear_start_por_timeout_sin_listener", async () => {
@@ -1119,6 +1245,30 @@ test("debe_requerir_confirmacion_por_pid", async () => {
 
     assert.equal(result.receipt.overallStatus, "blocked");
     assert.deepEqual(taskkills, []);
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test("debe_mostrar_puerto_y_pid_antes_de_confirmar_un_taskkill", async () => {
+  const prompts = [];
+  const output = [];
+  const harness = createHarness({
+    prepared: true,
+    ports: [{ pid: 4312 }, { pid: 9999 }],
+  });
+  try {
+    await runMain(harness, "start", {
+      prompt: async (request) => {
+        prompts.push(request);
+        return false;
+      },
+      output: { write: (line) => output.push(line) },
+    });
+
+    assert.equal(prompts[0]?.port, 3000);
+    assert.equal(prompts[0]?.pid, 4312);
+    assert.match(output.join("\n"), /puerto 3000 \(PID 4312\)/u);
   } finally {
     harness.cleanup();
   }
@@ -1418,6 +1568,8 @@ function createHarness(options = {}) {
     inspectPort:
       options.inspectPort ??
       (() => ports[Math.min(portIndex++, ports.length - 1)]),
+    inspectHealth: options.inspectHealth ?? (async () => true),
+    detectBrowser: async () => options.browserAvailable ?? Boolean(options.optionalTools),
     sleep: options.sleep,
     startTimeoutMs: options.startTimeoutMs,
     startPollIntervalMs: options.startPollIntervalMs,

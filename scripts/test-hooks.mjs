@@ -12,10 +12,11 @@
  * Node >= 18, sin dependencias.
  */
 import { spawnSync } from 'node:child_process';
-import { rmSync, mkdirSync, writeFileSync, readFileSync, existsSync, mkdtempSync, symlinkSync, linkSync } from 'node:fs';
+import { rmSync, mkdirSync, writeFileSync, readFileSync, existsSync, mkdtempSync, symlinkSync, linkSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
-import { findActiveSpec } from '../.sdd/hooks/_lib.mjs';
+import { esCodigoVaultVersionable, findActiveSpec, motivoRutaProhibida } from '../.sdd/hooks/_lib.mjs';
+import { decidirTerritorio, cargarTerritorios } from '../.sdd/hooks/territorios.mjs';
 
 const ROOT = process.cwd();
 const SESION = 'test-hooks';
@@ -260,6 +261,20 @@ console.log('\nguard-write · lo que nunca se toca');
 agenteActivo(null);
 comprueba('.env se bloquea', decisionDe('guard-write.mjs', escribir('.env')), 'deny');
 comprueba('.env.example se permite', decisionDe('guard-write.mjs', escribir('.env.example')), 'allow');
+comprueba('el código del Vault se permite',
+  decisionDe('guard-write.mjs', escribir('src/core/secrets/vault.ts')), 'allow');
+comprueba('el directorio raíz de secretos se bloquea',
+  decisionDe('guard-write.mjs', escribir('secrets/vault.ts')), 'deny');
+comprueba('un directorio de credenciales se bloquea',
+  decisionDe('guard-write.mjs', escribir('src/credentials/export.ts')), 'deny');
+comprueba('un secreto literal se bloquea también dentro del código del Vault',
+  decisionDe('guard-write.mjs', escribir('src/core/secrets/vault.ts', {
+    content: `const apiKey = "${CLAVE_FALSA}"`,
+  })), 'deny');
+comprueba('la excepción compartida reconoce solo fuente del Vault',
+  esCodigoVaultVersionable('src/core/secrets/login.ts'), true);
+comprueba('la excepción compartida no permite material de clave',
+  motivoRutaProhibida('src/core/secrets/master.key') !== null, true);
 comprueba('node_modules se bloquea', decisionDe('guard-write.mjs', escribir('node_modules/x/index.js')), 'deny');
 comprueba(
   'execution-log.jsonl se bloquea',
@@ -295,58 +310,93 @@ comprueba(
 // Es la guarda que impide que un agente haga el trabajo de otro.
 console.log('\nguard-write · territorio por agente');
 
-const restriccionesTerritorio = (() => {
-  try {
-    const cfg = JSON.parse(readFileSync(join(ROOT, '.sdd', 'territories.json'), 'utf8'));
-    return cfg.modo !== 'audit' && Object.keys(cfg.territorios || {}).length > 0;
-  } catch {
-    return false;
-  }
-})();
+// ─── territorios: la regla, no el hook ───────────────────────────────────────
+// Hasta la spec 013 esta sección estaba muerta: la condición miraba `cfg.territorios`
+// cuando la clave real es `territories`, y además exigía un modo distinto de `audit`.
+// Nunca se ejecutó ni una sola comprobación. Ahora la regla vive en una función pura y
+// se dirige con una tabla, así que se verifica sin depender de ningún entorno.
+console.log('\nterritorios · decidirTerritorio (regla compartida por los seis entornos)');
 
-if (restriccionesTerritorio) {
+const REPARTO = {
+  version: 1,
+  modo: 'deny',
+  coordinadores: ['orchestrator', 'implementer'],
+  territories: [
+    { name: 'arquitectura-sdd', agent: 'architect', paths: ['docs/architecture/**'] },
+    { name: 'especificacion-sdd', agent: 'spec-analyst', paths: ['docs/specs/**/spec.md'] },
+  ],
+};
 
-agenteActivo('database-expert');
-comprueba('bbdd → componente de front se bloquea', decisionDe('guard-write.mjs', escribir('src/components/A.tsx')), 'deny');
-comprueba('bbdd → migración se permite', decisionDe('guard-write.mjs', escribir('migrations/001.sql')), 'allow');
-comprueba('bbdd → ADR se bloquea', decisionDe('guard-write.mjs', escribir('docs/architecture/adr/ADR-2.md')), 'deny');
-comprueba('bbdd → ruta de nadie se permite', decisionDe('guard-write.mjs', escribir('scripts/util.mjs')), 'allow');
-comprueba('bbdd → su propio test se permite', decisionDe('guard-write.mjs', escribir('tests/db/x.test.ts')), 'allow');
+const decidir = (agente, ruta, modo = 'deny') =>
+  decidirTerritorio({ agente, ruta, modo, config: REPARTO }).decision;
 
-agenteActivo('frontend-expert');
-comprueba('front → migración se bloquea', decisionDe('guard-write.mjs', escribir('migrations/002.sql')), 'deny');
-comprueba('front → componente se permite', decisionDe('guard-write.mjs', escribir('src/components/A.tsx')), 'allow');
-comprueba(
-  'front → caso de uso se bloquea',
-  decisionDe('guard-write.mjs', escribir('src/application/PagarPedido.ts')),
-  'deny',
-);
-
-agenteActivo('spec-analyst');
-comprueba('spec-analyst → código se bloquea', decisionDe('guard-write.mjs', escribir('src/domain/Order.ts')), 'deny');
-comprueba('spec-analyst → su spec se permite', decisionDe('guard-write.mjs', escribir('docs/specs/042-x/spec.md')), 'allow');
-
-agenteActivo('implementer');
-comprueba(
-  'implementer (coordinador) no tiene territorio',
-  decisionDe('guard-write.mjs', escribir('src/components/A.tsx')),
-  'allow',
-);
-
-agenteActivo(null);
-comprueba(
-  'hilo principal sin subagente no se restringe',
-  decisionDe('guard-write.mjs', escribir('src/components/A.tsx')),
-  'allow',
-);
-} else {
-  agenteActivo('database-expert');
-  comprueba(
-    'un mapa virgen en audit no inventa territorios de aplicación',
-    decisionDe('guard-write.mjs', escribir('src/components/A.tsx')),
-    'allow',
-  );
+for (const [agente, ruta, modo, esperado] of [
+  ['architect', 'docs/architecture/constitution.md', 'deny', 'allow'],
+  ['spec-analyst', 'docs/architecture/constitution.md', 'deny', 'deny'],
+  ['spec-analyst', 'docs/architecture/constitution.md', 'ask', 'ask'],
+  ['spec-analyst', 'docs/architecture/constitution.md', 'audit', 'allow'],
+  ['spec-analyst', 'docs/architecture/constitution.md', 'off', 'allow'],
+  ['spec-analyst', 'docs/specs/013-x/spec.md', 'deny', 'allow'],
+  ['architect', 'docs/specs/013-x/spec.md', 'deny', 'deny'],
+  ['orchestrator', 'docs/architecture/constitution.md', 'deny', 'allow'],
+  ['implementer', 'docs/architecture/constitution.md', 'deny', 'allow'],
+  ['spec-analyst', 'scripts/util.mjs', 'deny', 'allow'],
+  [null, 'docs/architecture/constitution.md', 'deny', 'allow'],
+]) {
+  comprueba(`${agente || 'hilo principal'} → ${ruta} en modo ${modo}`, decidir(agente, ruta, modo), esperado);
 }
+
+// la_normalizacion_de_ruta_no_elude_el_territorio · SEC-TERR-001 · CA-01
+console.log('\nterritorios · la_normalizacion_de_ruta_no_elude_el_territorio');
+for (const variante of [
+  'docs/architecture/../architecture/constitution.md',
+  'docs\\architecture\\constitution.md',
+  './docs/architecture/constitution.md',
+  'docs//architecture//constitution.md',
+  'docs/specs/../architecture/constitution.md',
+]) {
+  comprueba(`la ruta equivalente \`${variante}\` decide igual que la canónica`,
+    decidir('spec-analyst', variante), 'deny');
+}
+
+// un_reparto_corrupto_no_degrada_a_permitir · SEC-TERR-002 · CA-02
+console.log('\nterritorios · un_reparto_corrupto_no_degrada_a_permitir');
+comprueba('un reparto ausente no bloquea el trabajo',
+  cargarTerritorios(null).modo, 'off');
+comprueba('un reparto truncado resuelve al modo más restrictivo',
+  cargarTerritorios('{"modo":"audit","territories":[').modo, 'deny');
+comprueba('un reparto sin lista de territorios resuelve al modo más restrictivo',
+  cargarTerritorios('{"modo":"audit"}').modo, 'deny');
+comprueba('un modo desconocido resuelve al modo más restrictivo',
+  cargarTerritorios('{"modo":"permisivo","territories":[]}').modo, 'deny');
+comprueba('un reparto válido conserva su modo',
+  cargarTerritorios(JSON.stringify(REPARTO)).modo, 'deny');
+comprueba('un modo desconocido no se interpreta como permiso',
+  decidirTerritorio({ agente: 'spec-analyst', ruta: 'docs/architecture/x.md', modo: 'permisivo', config: REPARTO }).decision,
+  'deny');
+
+// el_rechazo_por_territorio_dice_quien_que_y_de_quien · UX-COPY-001 · CA-03
+console.log('\nterritorios · el_rechazo_por_territorio_dice_quien_que_y_de_quien');
+{
+  const r = decidirTerritorio({ agente: 'spec-analyst', ruta: 'docs/architecture/constitution.md', modo: 'deny', config: REPARTO });
+  comprueba('el motivo nombra al agente que escribe', /spec-analyst/.test(r.motivo), true);
+  comprueba('el motivo nombra la ruta rechazada', /docs\/architecture\/constitution\.md/.test(r.motivo), true);
+  comprueba('el motivo nombra al agente dueño', /architect/.test(r.motivo), true);
+  comprueba('el motivo nombra el territorio', /arquitectura-sdd/.test(r.motivo), true);
+}
+
+// El reparto real de este repositorio tiene que ser coherente con la regla que acabamos
+// de verificar: si alguien reordena territorios, esto lo detecta.
+{
+  const real = cargarTerritorios(readFileSync(join(ROOT, '.sdd', 'territories.json'), 'utf8'));
+  comprueba('el reparto de este repositorio es válido', real.ok, true);
+  comprueba('el reparto de este repositorio declara un modo conocido',
+    ['off', 'audit', 'ask', 'deny'].includes(real.modo), true);
+  comprueba('docs/architecture es territorio de architect',
+    decidirTerritorio({ agente: 'spec-analyst', ruta: 'docs/architecture/x.md', modo: 'deny', config: real.config }).dueno,
+    'architect');
+}
+
 
 // ─── guard-bash ──────────────────────────────────────────────────────────────
 console.log('\nguard-bash · comandos');
@@ -379,8 +429,9 @@ comprueba('npm test se permite', decisionDe('guard-bash.mjs', ejecutar('npm test
   writeFileSync(sello, JSON.stringify({ fast: { ok: true, tree: '0'.repeat(16), at: new Date().toISOString() } }), 'utf8');
   const enRepositorio = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], { encoding: 'utf8' }).status === 0;
   if (enRepositorio) {
+    const avisoOtroArbol = avisoDe('git commit -m x');
     comprueba('con sello de otro árbol, el commit lo señala',
-      /pasaron sobre otro estado del árbol/.test(avisoDe('git commit -m x')), true);
+      /⚠ Gates:/.test(avisoOtroArbol) && !/Gates: pasados sobre este mismo estado/.test(avisoOtroArbol), true);
   } else {
     comprueba('fuera de un repositorio git, el sello no inventa un aviso',
       /pasaron sobre otro estado del árbol/.test(avisoDe('git commit -m x')), false);
@@ -407,6 +458,14 @@ comprueba('npm test se permite', decisionDe('guard-bash.mjs', ejecutar('npm test
       readFileSync(join(process.cwd(), '.sdd/hooks/_lib.mjs'), 'utf8'), 'utf8');
     writeFileSync(join(proyecto, 'scripts/lib/docs-contract.mjs'),
       readFileSync(join(process.cwd(), 'scripts/lib/docs-contract.mjs'), 'utf8'), 'utf8');
+    writeFileSync(join(proyecto, 'scripts/lib/circuito.mjs'),
+      readFileSync(join(process.cwd(), 'scripts/lib/circuito.mjs'), 'utf8'), 'utf8');
+    writeFileSync(join(proyecto, 'scripts/lib/gate-summary.mjs'),
+      readFileSync(join(process.cwd(), 'scripts/lib/gate-summary.mjs'), 'utf8'), 'utf8');
+    writeFileSync(join(proyecto, 'scripts/lib/release-gates.mjs'),
+      readFileSync(join(process.cwd(), 'scripts/lib/release-gates.mjs'), 'utf8'), 'utf8');
+    writeFileSync(join(proyecto, 'scripts/check-sdd.mjs'), 'process.exit(0);\n', 'utf8');
+    writeFileSync(join(proyecto, 'scripts/scan-secrets.mjs'), 'process.exit(0);\n', 'utf8');
     writeFileSync(join(proyecto, '.sdd/checks.json'), JSON.stringify({
       version: 1,
       checks: {
@@ -414,6 +473,13 @@ comprueba('npm test se permite', decisionDe('guard-bash.mjs', ejecutar('npm test
       },
       unconfigured: [],
     }), 'utf8');
+    spawnSync('git', ['config', 'user.email', 'test@example.invalid'], { cwd: proyecto, encoding: 'utf8' });
+    spawnSync('git', ['config', 'user.name', 'Test'], { cwd: proyecto, encoding: 'utf8' });
+    spawnSync('git', ['add', '.'], { cwd: proyecto, encoding: 'utf8' });
+    spawnSync('git', ['commit', '-qm', 'baseline'], { cwd: proyecto, encoding: 'utf8' });
+    writeFileSync(join(proyecto, 'baseline-2.txt'), 'base\n', 'utf8');
+    spawnSync('git', ['add', 'baseline-2.txt'], { cwd: proyecto, encoding: 'utf8' });
+    spawnSync('git', ['commit', '-qm', 'segundo baseline'], { cwd: proyecto, encoding: 'utf8' });
     const payload = (command) => ({ session_id: SESION, cwd: proyecto, tool_name: 'Bash', tool_input: { command } });
     spawnSync(process.execPath, ['scripts/sdd-project.mjs', 'run', '--slow'], { cwd: proyecto, encoding: 'utf8' });
     const selloReal = JSON.parse(readFileSync(join(proyecto, '.sdd/state/last-gate-run.json'), 'utf8'));
@@ -425,6 +491,16 @@ comprueba('npm test se permite', decisionDe('guard-bash.mjs', ejecutar('npm test
     spawnSync(process.execPath, ['scripts/sdd-project.mjs', 'run', '--slow'], { cwd: proyecto, encoding: 'utf8' });
     comprueba('un sello slow completo sobre el árbol actual no avisa de gates',
       /Gates: pasados sobre este mismo estado/.test(salidaDe('guard-bash.mjs', payload('git push origin main'))), true);
+
+    spawnSync(process.execPath, ['scripts/sdd-project.mjs', 'run', '--release'], { cwd: proyecto, encoding: 'utf8' });
+    const selloRelease = JSON.parse(readFileSync(join(proyecto, '.sdd/state/last-gate-run.json'), 'utf8'));
+    comprueba('un sello release completo y vigente satisface la guarda de push',
+      /Gates: pasados sobre este mismo estado/.test(salidaDe('guard-bash.mjs', payload('git push origin main'))), true);
+    selloRelease.release.evidenceHash = '0'.repeat(64);
+    delete selloRelease.slow;
+    writeFileSync(join(proyecto, '.sdd/state/last-gate-run.json'), JSON.stringify(selloRelease), 'utf8');
+    comprueba('un sello release manipulado no satisface la guarda de push',
+      /Gates: pasados sobre este mismo estado/.test(salidaDe('guard-bash.mjs', payload('git push origin main'))), false);
 
     writeFileSync(join(proyecto, 'contenido.txt'), 'base\n', 'utf8');
     spawnSync('git', ['add', 'contenido.txt'], { cwd: proyecto, encoding: 'utf8' });
@@ -453,14 +529,24 @@ comprueba('npm test se permite', decisionDe('guard-bash.mjs', ejecutar('npm test
 comprueba('git status se permite', decisionDe('guard-bash.mjs', ejecutar('git status')), 'allow');
 
 // ─── contratos por host ──────────────────────────────────────────────────────
-console.log('\ncontratos de hooks · cinco hosts');
-const contratos = [
-  ['Claude Code', '.claude/settings.json'],
-  ['Cursor', '.cursor/hooks.json'],
-  ['Antigravity', '.agents/hooks.json'],
-  ['Codex', '.codex/hooks.json'],
-  ['Copilot/VS Code', '.github/hooks/sdd.json'],
+// Son SEIS entornos, no cinco. Gemini estaba fuera de esta lista y por eso su carencia
+// —no tiene contrato de hooks— no constaba en ninguna parte: un hueco invisible es peor
+// que un hueco conocido. Aquí cada entorno declara qué observa y qué no.
+console.log('\ncontratos de hooks · seis entornos, con sus carencias');
+
+// preEscritura: puede invocar la guarda antes de escribir un fichero.
+// subagente:    puede observar el inicio y el fin de un subagente, que es lo que permite
+//               el estado `observed`. Sin él, la delegación solo puede corroborarse.
+const ENTORNOS = [
+  { host: 'Claude Code', contrato: '.claude/settings.json', preEscritura: true, subagente: true },
+  { host: 'Codex', contrato: '.codex/hooks.json', preEscritura: true, subagente: true },
+  { host: 'Cursor', contrato: '.cursor/hooks.json', preEscritura: true, subagente: false },
+  { host: 'Copilot/VS Code', contrato: '.github/hooks/sdd.json', preEscritura: true, subagente: false },
+  { host: 'Antigravity', contrato: '.agents/hooks.json', preEscritura: true, subagente: false },
+  { host: 'Gemini', contrato: null, preEscritura: false, subagente: false },
 ];
+
+const contratos = ENTORNOS.filter((e) => e.contrato).map((e) => [e.host, e.contrato]);
 
 function comandosEn(valor, out = []) {
   if (Array.isArray(valor)) for (const x of valor) comandosEn(x, out);
@@ -494,6 +580,122 @@ comprueba('Antigravity usa hooks nombrados con event',
 const codexHooks = readFileSync(join(ROOT, '.codex/hooks.json'), 'utf8');
 comprueba('Codex separa la guarda de shell de la guarda de escritura',
   /guard-bash\.mjs/.test(codexHooks) && /guard-write\.mjs/.test(codexHooks) ? 'ok' : 'fail', 'ok');
+
+// ─── capacidades declaradas por entorno ──────────────────────────────────────
+// Lo que se verifica aquí es que la declaración escrita coincide con el contrato real.
+// Si alguien añade el evento de subagente a Cursor y no actualiza la tabla, esto falla;
+// si alguien retira la declaración de Gemini, también. La carencia deja de poder
+// desaparecer sin que nadie se entere.
+console.log('\ncontratos de hooks · las carencias están declaradas, no supuestas');
+for (const e of ENTORNOS) {
+  const texto = e.contrato && existsSync(join(ROOT, e.contrato)) ? readFileSync(join(ROOT, e.contrato), 'utf8') : '';
+  comprueba(`${e.host}: la pre-escritura declarada coincide con el contrato`,
+    /guard-write\.mjs/.test(texto), e.preEscritura);
+  comprueba(`${e.host}: el ciclo de vida de subagente declarado coincide con el contrato`,
+    /[Ss]ubagent/.test(texto), e.subagente);
+}
+comprueba('Gemini consta como entorno sin contrato de hooks',
+  ENTORNOS.some((e) => e.host === 'Gemini' && e.contrato === null && !e.preEscritura), true);
+comprueba('los seis entornos soportados están en la tabla', ENTORNOS.length, 6);
+comprueba('solo dos entornos pueden observar la delegación',
+  ENTORNOS.filter((e) => e.subagente).length, 2);
+comprueba('el reparto de territorios alcanza a cinco de los seis',
+  ENTORNOS.filter((e) => e.preEscritura).length, 5);
+
+// la_autoria_no_escribe_fuera_del_repositorio
+console.log('\nautoría · un hecho por sesión, agente y spec');
+{
+  const proyecto = proyectoTemporal('sdd-hook-autoria-');
+  try {
+    escribeTareas(proyecto, '042-autoria', '### T-042-01\n- **Estado:** pendiente\n');
+    const log = join(proyecto, 'docs', 'specs', '042-autoria', 'execution-log.jsonl');
+    const arranca = (agente, sesion) =>
+      ejecutaHookEn(proyecto, 'subagent-log.mjs', 'start', { session_id: sesion, agent_type: agente });
+    const autorias = () => lineasJson(log).filter((l) => l.evento === 'autoria');
+
+    arranca('backend-expert', 'ses-1');
+    arranca('backend-expert', 'ses-1');
+    arranca('backend-expert', 'ses-1');
+    comprueba('tres arranques del mismo agente dejan una sola autoría', autorias().length, 1);
+    comprueba('el ciclo de vida sí queda registrado las tres veces',
+      lineasJson(log).filter((l) => l.evento === 'subagent-start').length, 3);
+    comprueba('la autoría nombra la spec', autorias()[0]?.spec, '042-autoria');
+
+    arranca('frontend-expert', 'ses-1');
+    comprueba('otro agente sí añade su autoría', autorias().length, 2);
+
+    arranca('backend-expert', 'ses-2');
+    comprueba('otra sesión vuelve a declarar la autoría', autorias().length, 3);
+
+    // Una sesión con forma de ruta no debe convertirse en una escritura fuera del proyecto.
+    const antes = new Set(readdirSync(tmpdir()));
+    arranca('database-expert', '../../fuera-del-repo');
+    comprueba('una sesión hostil no crea nada en el directorio temporal',
+      readdirSync(tmpdir()).filter((n) => !antes.has(n) && /fuera-del-repo/.test(n)).length, 0);
+    comprueba('el estado de autoría vive dentro del repositorio',
+      readdirSync(join(proyecto, '.sdd', 'state')).some((n) => n.startsWith('autoria-')), true);
+    comprueba('la sesión hostil sí registra su autoría, saneada',
+      autorias().some((l) => l.agente === 'database-expert'), true);
+
+    // Sin nombre de agente no hay autoría que declarar: inventarla sería fabricar evidencia.
+    arranca(undefined, 'ses-3');
+    comprueba('un subagente sin nombre no genera autoría',
+      autorias().some((l) => l.agente === 'desconocido'), false);
+  } finally {
+    rmSync(proyecto, { recursive: true, force: true });
+  }
+}
+
+// la_autoria_de_fichero_no_depende_del_ciclo_de_subagente
+//
+// Este es el punto entero: la autoría de fichero la emite la pre-escritura, que existe en
+// cinco de los seis entornos. Si alguien la devuelve al hook de subagente, el alcance cae a
+// dos y esto se pone rojo.
+console.log('\nautoría de fichero · observada por la guarda de escritura');
+{
+  const proyecto = proyectoTemporal('sdd-hook-autoria-write-');
+  try {
+    escribeTareas(proyecto, '043-autoria', '### T-043-01\n- **Estado:** pendiente\n');
+    const log = join(proyecto, 'docs', 'specs', '043-autoria', 'execution-log.jsonl');
+    const autorias = () => lineasJson(log).filter((l) => l.evento === 'autoria');
+    const escribeEn = (ruta) =>
+      ejecutaHookEn(proyecto, 'guard-write.mjs', null,
+        { session_id: 'ses-w', tool_name: 'Write', tool_input: { file_path: ruta } });
+
+    // Sin agente activo no hay a quién atribuirlo: la guarda deja pasar y no inventa autor.
+    escribeEn('README.md');
+    comprueba('sin agente activo no se atribuye autoría', autorias().length, 0);
+
+    ejecutaHookEn(proyecto, 'subagent-log.mjs', 'start',
+      { session_id: 'ses-w', agent_type: 'docs-writer' });
+    const previas = autorias().length;
+
+    escribeEn('README.md');
+    const trasPrimera = autorias().filter((l) => l.verificacion === 'observed-write');
+    comprueba('la escritura permitida deja autoría observada por la guarda',
+      trasPrimera.length, 1);
+    comprueba('la autoría de fichero nombra el fichero', trasPrimera[0]?.fichero, 'README.md');
+    comprueba('la autoría de fichero nombra al agente', trasPrimera[0]?.agente, 'docs-writer');
+
+    escribeEn('README.md');
+    comprueba('el mismo agente sobre el mismo fichero no repite la autoría',
+      autorias().filter((l) => l.verificacion === 'observed-write').length, 1);
+
+    escribeEn('docs/README.md');
+    comprueba('otro fichero del mismo agente sí genera autoría',
+      autorias().filter((l) => l.verificacion === 'observed-write').length, 2);
+
+    // Una escritura bloqueada no llega a ocurrir: atribuirla sería registrar un hecho falso.
+    escribeEn('.env');
+    comprueba('una escritura bloqueada no deja autoría',
+      autorias().filter((l) => l.verificacion === 'observed-write').length, 2);
+
+    comprueba('la autoría de subagente y la de fichero se distinguen por verificación',
+      autorias().length > previas, true);
+  } finally {
+    rmSync(proyecto, { recursive: true, force: true });
+  }
+}
 
 console.log('\nsdd-router · intake de producto antes de arquitectura');
 comprueba('un PRD local enruta a sdd-intake',
@@ -588,6 +790,145 @@ console.log('\nSDD_GATES=off · el escape declarado');
   if (antes === undefined) delete process.env.SDD_GATES;
   else process.env.SDD_GATES = antes;
 }
+
+// ─── cobertura · la_cobertura_no_lee_fuera_del_repositorio ───────────────────
+// T-014-01 · Un volcado de V8 es entrada no confiable: sus URL las escribe el proceso medido,
+// no nosotros. Si el lector las resolviera a ciegas, bastaría un volcado ajeno en el directorio
+// para que el gate leyera ficheros de fuera del árbol. Y hay dos trampas de plataforma que en
+// este repositorio se dan las dos a la vez: la ruta contiene un espacio —así que la URL llega
+// percent-encoded— y los ficheros llevan tildes —así que contar desplazamientos sobre bytes
+// desalinea todo lo que venga después del primer acento—.
+console.log('\ncobertura · la_cobertura_no_lee_fuera_del_repositorio');
+{
+  const { rutaDeVolcado, lineasSinCubrir, porcentaje } = await import('./lib/coverage-v8.mjs');
+  const raiz = 'C:/Users/BK71217/OneDrive - Bankinter/TFM/repo';
+
+  comprueba('una URL con espacio percent-encoded resuelve a su ruta real',
+    rutaDeVolcado('file:///C:/Users/BK71217/OneDrive%20-%20Bankinter/TFM/repo/scripts/a.mjs', raiz),
+    'scripts/a.mjs');
+
+  comprueba('una URL fuera del repositorio se descarta',
+    rutaDeVolcado('file:///C:/Windows/System32/drivers/etc/hosts', raiz), null);
+
+  comprueba('un ascenso relativo no se cuela',
+    rutaDeVolcado('file:///C:/Users/BK71217/OneDrive%20-%20Bankinter/TFM/repo/../secretos.mjs', raiz),
+    null);
+
+  comprueba('un módulo interno de Node no es un fichero propio',
+    rutaDeVolcado('node:internal/modules/esm/loader', raiz), null);
+
+  comprueba('un esquema que no es file: se descarta',
+    rutaDeVolcado('http://malicioso.example/a.mjs', raiz), null);
+
+  // Los desplazamientos se cuentan sobre la cadena, no sobre el búfer. `configuración` ocupa
+  // 14 unidades UTF-16 y 15 bytes en UTF-8: si el lector usara bytes, marcaría la línea
+  // equivocada a partir de aquí.
+  const fuente = 'const configuración = 1;\nfunction sinUsar() {\n  return 2;\n}\n';
+  const inicio = fuente.indexOf('function');
+  const sinCubrir = lineasSinCubrir(fuente, [{ startOffset: inicio, endOffset: fuente.length - 1, count: 0 }]);
+  comprueba('la tilde no desalinea el mapeo de desplazamiento a línea',
+    JSON.stringify([...sinCubrir].sort((a, b) => a - b)), JSON.stringify([2, 3, 4]));
+
+  comprueba('una línea recorrida no se cuenta como sin cubrir',
+    lineasSinCubrir(fuente, [{ startOffset: 0, endOffset: fuente.length, count: 3 }]).size, 0);
+
+  comprueba('el porcentaje sin nada medido es cero, no cien',
+    porcentaje({ cubiertas: 0, ejecutables: 0 }), 0);
+  comprueba('el porcentaje redondea a una decimal',
+    porcentaje({ cubiertas: 2, ejecutables: 3 }), 66.7);
+}
+
+// ─── circuito ligero · la_negacion_prevalece_sobre_el_permiso ────────────────
+// T-015-01 · La frontera del circuito ligero es lo único que separa «ahorrar papeleo» de
+// «saltarse el sistema». Se prueba contra fronteras fabricadas aquí y no contra la real: si
+// usara la del repositorio, el test dejaría de fallar justo cuando alguien la ampliara de más,
+// que es el único cambio peligroso que debería hacerlo saltar.
+console.log('\ncircuito ligero · la_negacion_prevalece_sobre_el_permiso');
+{
+  const { esLigero, clasificar, motivoMaterial, cuota } = await import('./lib/circuito.mjs');
+  const frontera = {
+    version: 1,
+    permitido: ['docs/guides/', 'README.md', 'site/'],
+    prohibido: ['docs/guides/seguridad/', 'site/assets/js/'],
+    cuota: 0.3,
+  };
+
+  comprueba('una ruta permitida y no prohibida es ligera',
+    esLigero('docs/guides/INSTALACION.md', frontera), true);
+
+  comprueba('la negación prevalece sobre el permiso',
+    esLigero('docs/guides/seguridad/TOKENS.md', frontera), false);
+
+  comprueba('una ruta que nadie permite no es ligera',
+    esLigero('scripts/install.mjs', frontera), false);
+
+  // Sin frontera no hay circuito ligero: tratar la ausencia como permiso convertiría un
+  // despiste en la desactivación del control entero.
+  console.log('\ncircuito ligero · sin_frontera_no_hay_circuito_ligero');
+  comprueba('sin frontera no hay circuito ligero', esLigero('README.md', null), false);
+  comprueba('una frontera con JSON que no es objeto no concede nada', esLigero('README.md', 'permitido'), false);
+  comprueba('una frontera sin permisos no concede nada',
+    esLigero('README.md', { version: 1, permitido: [], prohibido: [] }), false);
+  comprueba('una frontera sin lista de negación no se asume vacía por comodidad',
+    esLigero('README.md', { version: 1, permitido: ['README.md'] }), false);
+  console.log('\ncircuito ligero · normalización y veredicto');
+
+  // Normalización: el separador de Windows y el ascenso relativo son las dos formas baratas
+  // de describir la misma ruta prohibida sin que lo parezca.
+  comprueba('el separador de Windows no esquiva la frontera',
+    esLigero('docs\\guides\\seguridad\\TOKENS.md', frontera), false);
+  comprueba('un ascenso relativo no se cuela',
+    esLigero('docs/guides/../../scripts/install.mjs', frontera), false);
+  comprueba('una ruta absoluta no se evalúa como relativa',
+    esLigero('/etc/passwd', frontera), false);
+
+  const veredicto = clasificar(['docs/guides/A.md', 'scripts/install.mjs'], frontera);
+  comprueba('un solo fichero fuera obliga al circuito completo', veredicto.circuito, 'full');
+  comprueba('el veredicto nombra lo que obliga al circuito completo',
+    veredicto.obligan.join(','), 'scripts/install.mjs');
+  comprueba('todo dentro de la frontera es circuito ligero',
+    clasificar(['docs/guides/A.md', 'README.md'], frontera).circuito, 'light');
+  // Un commit vacío no es un cambio de bajo riesgo: es la ausencia de cambio.
+  comprueba('sin ficheros no se concede circuito ligero',
+    clasificar([], frontera).circuito, 'full');
+
+  // Un motivo de relleno es peor que ninguno: ocupa el sitio de la explicación y aparenta
+  // haberla dado.
+  comprueba('un motivo vacío no es un motivo', motivoMaterial(''), false);
+  comprueba('una palabra suelta no es un motivo', motivoMaterial('errata'), false);
+  comprueba('una fórmula de relleno no es un motivo', motivoMaterial('cambio menor'), false);
+  comprueba('un motivo material se acepta',
+    motivoMaterial('Corrige la ruta del instalador en la guía, que apuntaba a scripts/setup.mjs'), true);
+
+  // La cuota pone en duda la frontera, no al autor.
+  comprueba('por debajo de la cuota no hay aviso', cuota({ ligeros: 2, total: 10, maximo: 0.3 }).superada, false);
+  comprueba('por encima de la cuota se avisa', cuota({ ligeros: 5, total: 10, maximo: 0.3 }).superada, true);
+  comprueba('sin commits la proporción es cero y no se divide por cero',
+    cuota({ ligeros: 0, total: 0, maximo: 0.3 }).proporcion, 0);
+}
+
+// ─── circuito ligero · el router sugiere, no decide ──────────────────────────
+// T-015-05 · El router puede recordar que existe un atajo; no puede concederlo. Si un prompt
+// bastara para clasificar el cambio, la frontera sería lo persuasivo que resulte el texto.
+console.log('\nsdd-router · sugiere el circuito ligero sin decidirlo');
+comprueba('un cambio de bajo riesgo sugiere consultar el circuito', (() => {
+  const salida = salidaDe('sdd-router.mjs', preguntar('Renombra una variable interna del cálculo de totales'));
+  return /circuit-status/.test(salida) && /sdd-light/.test(salida) ? 'ok' : 'fail';
+})(), 'ok');
+comprueba('la sugerencia deja claro que no perdona gates', (() => {
+  const salida = salidaDe('sdd-router.mjs', preguntar('Renombra una variable interna del cálculo de totales'));
+  return /nunca un gate/.test(salida) ? 'ok' : 'fail';
+})(), 'ok');
+comprueba('un cambio de autorización no se sugiere como ligero', (() => {
+  const salida = salidaDe('sdd-router.mjs', preguntar('Renombra el campo de permisos del token de autorización'));
+  return !/sdd-light/.test(salida) ? 'ok' : 'fail';
+})(), 'ok');
+comprueba('tocar un hook no se sugiere como ligero', (() => {
+  const salida = salidaDe('sdd-router.mjs', preguntar('Renombra una variable interna del hook de escritura'));
+  return !/sdd-light/.test(salida) ? 'ok' : 'fail';
+})(), 'ok');
+comprueba('si ya se invoca la skill, el router no estorba',
+  salidaDe('sdd-router.mjs', preguntar('/sdd-light corrige la errata')).trim(), '');
 
 // ─── limpieza ────────────────────────────────────────────────────────────────
 try {

@@ -5,6 +5,10 @@ description: Muestra en qué punto del circuito SDD está el proyecto, qué spec
 
 # /sdd-status — Dónde estoy
 
+## Contexto — lee exactamente esto
+
+Lee solo `status --json`; pide `context --phase orchestrate --json` únicamente si debes explicar una regla de enrutado.
+
 Solo lectura. Rápido y sin adornos. Empieza por un único snapshot determinista.
 
 ## Snapshot

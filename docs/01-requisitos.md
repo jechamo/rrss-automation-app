@@ -38,7 +38,7 @@ Estas decisiones se han confirmado en la fase de dudas y son la base del diseño
 | D-04 | Modo de entrega | Implementación **requisito a requisito**; el usuario valida cada uno antes de pasar al siguiente. |
 | D-05 | Primer requisito (MVP) | **REQ-001** (análisis de appweb) es la base y se construye primero. |
 | D-06 | Publicación RRSS | **Manual asistida** al inicio (dejar listo + abrir la red para publicar con 1 clic). APIs oficiales más adelante. |
-| D-07 | Análisis web (REQ-001) | **Crawl inteligente** de páginas clave (landing, pricing, features, about) con Playwright. |
+| D-07 | Análisis web (REQ-001) | **Crawl HTTP** de páginas clave (landing, pricing, features, about) con `fetch`, sin ejecutar JavaScript. Playwright se reserva para login, navegación, verificación de rutas y grabación. |
 | D-08 | Análisis de código (REQ-001) | Soportar: **ruta local**, **GitHub público**, **GitHub privado (con token)** y **solo web (sin código)**. |
 | D-09 | Idioma del contenido | **Español** por defecto. |
 | D-10 | Gestión de API keys | **Pantalla de Ajustes cifrada en local**, con zona de configuración por proveedor (probar conexión, estado OK/error). |
@@ -78,8 +78,9 @@ generar mediante IA un **dossier de negocio** completo.
   - Sin código: análisis solo de la web.
 
 **Proceso:**
-- **Web**: crawl inteligente (Playwright) de páginas clave (landing, pricing/precios, features, about/nosotros),
-  extrayendo textos, CTAs y capturas.
+- **Web**: crawl HTTP con `fetch` de páginas clave (landing, pricing/precios, features,
+  about/nosotros), extrayendo del HTML textos y CTAs. No ejecuta JavaScript ni produce capturas;
+  una SPA que renderice solo en cliente puede aportar un dossier inicial incompleto.
 - **Código**: análisis del repo con Claude Code CLI (estructura, funcionalidades, stack, features del producto).
 - Fusión de ambas fuentes en un dossier.
 

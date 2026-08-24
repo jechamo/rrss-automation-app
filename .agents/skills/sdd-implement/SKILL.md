@@ -5,6 +5,10 @@ description: Ejecuta las tareas de tasks.md en ciclo TDD estricto rojo-verde-ref
 
 # /sdd-implement — Construir con TDD
 
+## Contexto — lee exactamente esto
+
+Por tarea ejecuta `context --phase implement --spec NNN --task T-* --json`. No releas `tasks.md`, la plantilla o el expediente completo en cada ciclo.
+
 Agente responsable: `@implementer`, con delegación a especialistas.
 
 ## Puerta de entrada
@@ -37,7 +41,8 @@ no está hecha con el camino feliz: los seis estados —vacío, cargando, parcia
 ### 2 · 🟢 GREEN
 - El código **mínimo** que pone el test en verde. Nada de generalizar por adelantado.
 - Ejecuta el test → verde. Pega la salida.
-- Ejecuta la **suite completa** → verde. Si rompiste otra cosa, arréglalo ahora.
+- Ejecuta la **suite completa** con su modo de resumen sanitizado → verde. En contexto entra el
+  resumen; la salida completa solo se consulta si falla. Si rompiste otra cosa, arréglalo ahora.
 
 ### 3 · 🔵 REFACTOR
 - Con verde, limpia: nombres, duplicación de conocimiento, funciones largas, niveles de
@@ -47,14 +52,14 @@ no está hecha con el camino feliz: los seis estados —vacío, cargando, parcia
 - Vuelve a ejecutar. Verde otra vez.
 
 ### 4 · Cerrar tarea
-- **Gates rápidos del proyecto**, y pega la salida:
+- **Gates rápidos del proyecto**, y pega solo el resumen:
   ```bash
-  node scripts/sdd-project.mjs run --fast
+  node scripts/sdd-project.mjs run --fast --summary-json
   ```
   No lo dejes para los git hooks: solo existen donde hay git local, y hay hosts sin ninguno.
 - `tasks.md` → `hecho`.
 - **Registra la evidencia** en `evidence.md`: agente que ejecutó, comando exacto, resultado
-  (🔴 y 🟢 con su salida) y artefacto. Si algún control previsto **no** se ejecutó, escríbelo
+  (🔴 con el fallo relevante y 🟢 con su resumen) y artefacto. Si algún control previsto **no** se ejecutó, escríbelo
   en la sección de controles no ejecutados con su riesgo y su dueño. "No ejecutado" es un
   resultado válido; "pasa" sin ejecución, no.
 - Para cada `SEC-*` aplicable registra comando/caso adverso, salida real y artefacto en la tabla
