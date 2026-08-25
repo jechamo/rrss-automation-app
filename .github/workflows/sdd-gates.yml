@@ -39,9 +39,13 @@ jobs:
       - name: Run fast project gates
         run: node scripts/sdd-project.mjs run --fast
       - name: Validate documentation against exact PR base
+        if: ${{ hashFiles('.sdd/docs.json') != '' }}
         env:
           SDD_DOCS_BASE: ${{ github.event.pull_request.base.sha || ((github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || 'HEAD~1') }}
         run: node scripts/check-sdd.mjs --docs-diff --base "$SDD_DOCS_BASE"
+      - name: Report documentation diff gate as not configured
+        if: ${{ hashFiles('.sdd/docs.json') == '' }}
+        run: echo "::notice::.sdd/docs.json no está configurado; docs-diff permanece explícitamente no configurado."
       - name: Validate hook contracts
         run: node scripts/test-hooks.mjs
 
