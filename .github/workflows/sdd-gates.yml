@@ -38,14 +38,18 @@ jobs:
       # todo el historial, debe declarar un gate real y verificable en `.sdd/checks.json`.
       - name: Run fast project gates
         run: node scripts/sdd-project.mjs run --fast
+      - name: Detect enforced documentation diff contract
+        id: docs-contract
+        run: >-
+          node -e "const fs=require('node:fs'); let configured=false; try { const value=JSON.parse(fs.readFileSync('.sdd/docs.json','utf8')); configured=value?.mode==='enforce'&&Array.isArray(value.documentSets)&&value.documentSets.length>0; } catch {} fs.appendFileSync(process.env.GITHUB_OUTPUT,'configured='+configured+'\n');"
       - name: Validate documentation against exact PR base
-        if: ${{ hashFiles('.sdd/docs.json') != '' }}
+        if: ${{ steps.docs-contract.outputs.configured == 'true' }}
         env:
           SDD_DOCS_BASE: ${{ github.event.pull_request.base.sha || ((github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || 'HEAD~1') }}
         run: node scripts/check-sdd.mjs --docs-diff --base "$SDD_DOCS_BASE"
       - name: Report documentation diff gate as not configured
-        if: ${{ hashFiles('.sdd/docs.json') == '' }}
-        run: echo "::notice::.sdd/docs.json no está configurado; docs-diff permanece explícitamente no configurado."
+        if: ${{ steps.docs-contract.outputs.configured != 'true' }}
+        run: echo "::notice::docs-diff requiere .sdd/docs.json en modo enforce; el contrato actual permanece explícitamente no exigible."
       - name: Validate hook contracts
         run: node scripts/test-hooks.mjs
 
