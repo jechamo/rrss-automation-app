@@ -1,0 +1,27 @@
+---
+description: Ciclo TDD obligatorio y estrategia de tests. Aplica al escribir o modificar tests y código de producción.
+globs: ["**/*.test.*", "**/*.spec.*", "**/tests/**", "**/__tests__/**"]
+alwaysApply: false
+---
+
+# TDD
+
+Ciclo: **RED → GREEN → REFACTOR**.
+
+1. Escribe el test que falla. Ejecútalo y **muestra el fallo**.
+2. Escribe el código mínimo que lo pone en verde. Nada de más.
+3. Refactoriza con los tests en verde aplicando SOLID.
+
+## Reglas
+
+- Un test por comportamiento, no por método.
+- Nombre: `debe_<comportamiento>_cuando_<condición>`.
+- Patrón Arrange-Act-Assert, con separación visual.
+- Sin lógica en los tests (ni `if`, ni bucles sobre asserts sin `test.each`).
+- No mockees lo que no controlas: envuélvelo en un puerto y mockea el puerto.
+- Los tests unitarios no tocan red, disco, reloj ni aleatoriedad: inyecta esas dependencias.
+- Tests de integración con contenedores reales (testcontainers) mejor que con mocks.
+- Contract tests en cada frontera entre sistemas.
+- Casos límite obligatorios: vacío, nulo, uno, muchos, límite, desbordamiento, concurrencia, fallo de red.
+- Cobertura mínima 80 % en dominio/aplicación. Mutation testing en el core.
+- Prohibido `.only`, `.skip` o tests comentados en la rama principal.

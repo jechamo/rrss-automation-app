@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      { "command": "node ./.sdd/hooks/session-context.mjs --host=cursor" }
+    ],
+    "beforeShellExecution": [
+      { "command": "node ./.sdd/hooks/guard-bash.mjs --host=cursor" }
+    ],
+    "beforeFileEdit": [
+      { "command": "node ./.sdd/hooks/guard-write.mjs --host=cursor" }
+    ],
+    "afterFileEdit": [
+      { "command": "node ./.sdd/hooks/format-and-lint.mjs --host=cursor" }
+    ],
+    "stop": [
+      { "command": "node ./.sdd/hooks/session-log.mjs --host=cursor" }
+    ]
+  }
+}

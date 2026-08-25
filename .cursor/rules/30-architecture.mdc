@@ -1,0 +1,33 @@
+---
+description: Fronteras arquitectónicas y patrones de diseño. Aplica al crear módulos, capas o integraciones.
+globs: ["src/**", "app/**", "lib/**", "packages/**", "services/**"]
+alwaysApply: false
+---
+
+# Arquitectura
+
+Consulta [constitution.md](mdc:docs/architecture/constitution.md) antes de crear un módulo.
+
+## Fronteras
+
+```
+domain/        → entidades, value objects, reglas de negocio, puertos. CERO dependencias externas.
+application/   → casos de uso, orquestación, DTOs. Depende solo de domain.
+infrastructure/→ adaptadores: BD, HTTP, colas, terceros. Implementa los puertos de domain.
+interfaces/    → controladores, CLI, UI, jobs. Traduce entrada/salida. Sin lógica de negocio.
+```
+
+Las dependencias apuntan **hacia dentro**. Si `domain/` importa algo de `infrastructure/`,
+está mal: invierte la dependencia con un puerto.
+
+## Reglas
+
+- Un módulo = un contexto acotado. Comunicación entre módulos solo por su API pública.
+- Los modelos de la BD **no** son los modelos del dominio. Mapea.
+- Anti-Corruption Layer en toda integración con un sistema externo.
+- Efectos secundarios en los bordes; el núcleo, puro y testeable.
+- Patrones: aplica el de la tabla de [AGENTS.md](mdc:AGENTS.md) §5 cuando aparezca el problema.
+  Justifica en `plan.md` cuál usas y por qué.
+- Prohibidos: Singleton mutable global, God Object, Service Locator, `utils/` cajón de sastre,
+  herencia de más de 2 niveles.
+- Todo cambio de frontera → ADR en `docs/architecture/adr/`.

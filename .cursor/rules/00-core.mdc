@@ -1,0 +1,42 @@
+---
+description: Reglas núcleo del proyecto — circuito SDD, arquitectura, SOLID, TDD y seguridad. Siempre activas.
+alwaysApply: true
+---
+
+# Núcleo del proyecto
+
+La entrada es [AGENTS.md](mdc:AGENTS.md). Carga la política aplicable con
+`node scripts/sdd-project.mjs context --phase <fase>`.
+Arquitectura vigente: [constitution.md](mdc:docs/architecture/constitution.md).
+
+## Reglas duras
+
+1. **Sin spec aprobada no se escribe código.** Specs en `docs/specs/NNN-slug/`.
+   Con PRD global o diseño opcional: intake → init (solo greenfield) → specify → clarify →
+   design si hay UI → plan → tasks → implement → verify → ship. Producto se aprueba antes
+   de arquitectura.
+2. **TDD**: test rojo primero, código mínimo, refactor. Sin excepciones.
+3. **Dependencias hacia dentro**: dominio → aplicación → infraestructura. Nunca al revés.
+4. **SOLID + DRY + KISS + YAGNI**. No construyas lo que no está en la spec.
+5. **Patrones solo cuando aparece el problema**, nunca por moda.
+6. **Seguridad**: validación en frontera, consultas parametrizadas, cero secretos,
+   autorización en servidor, sin PII en logs.
+7. **Bitácora**: toda decisión relevante se registra en `docs/bitacora/DECISIONS.md`
+   y, si es estructural, en un ADR.
+8. **Handoff**: al terminar una fase, cierra con el bloque `### HANDOFF` de AGENTS.md. Si no
+   hay delegación automática, indica perfil/comando y rutas durables a releer.
+
+## Agentes
+
+Los perfiles detallados están en `.claude/agents/*.md`. Referéncialos con `@` cuando
+necesites un especialista (`@architect`, `@test-engineer`, `@security-auditor`, …).
+El router por defecto es `@orchestrator`.
+Hay 20 agentes y 27 skills canónicas. No crees `.cursor/commands/` para duplicar una skill.
+
+## Prohibido
+
+- Código sin test previo.
+- Lógica de negocio en controladores o componentes de UI.
+- Añadir dependencias sin justificarlas en `research.md`.
+- `git push --force`, tocar producción o secretos sin permiso explícito.
+- Declarar algo terminado sin ejecutar los tests y mostrar la salida.

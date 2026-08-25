@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Glob(**)",
+      "Grep(**)",
+
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git blame:*)",
+      "Bash(git show:*)",
+
+      "Bash(ls:*)",
+      "Bash(cloc:*)",
+      "Bash(date:*)",
+
+      "Bash(npm test:*)",
+      "Bash(npm run test:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm run format:*)",
+      "Bash(npm audit:*)",
+      "Bash(npm ci:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pytest:*)",
+      "Bash(ruff:*)",
+      "Bash(pip-audit:*)",
+      "Bash(cargo test:*)",
+      "Bash(go test:*)",
+
+      "Bash(node .sdd/hooks/*)",
+      "Bash(node scripts/check-sdd.mjs:*)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(npm publish:*)",
+      "Bash(docker:*)",
+      "Bash(terraform apply:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)",
+      "Read(./**/id_rsa*)",
+      "Read(./secrets/**)",
+      "Write(./.env)",
+      "Write(./.env.*)",
+      "Bash(rm -rf /:*)",
+      "Bash(git push --force:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(curl:* | sh)",
+      "Bash(chmod 777:*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node .sdd/hooks/session-context.mjs" }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node .sdd/hooks/sdd-router.mjs" }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|edit/|editFiles|createFile|applyPatch",
+        "hooks": [
+          { "type": "command", "command": "node .sdd/hooks/guard-write.mjs" }
+        ]
+      },
+      {
+        "matcher": "Bash|runInTerminal|runCommands|terminal",
+        "hooks": [
+          { "type": "command", "command": "node .sdd/hooks/guard-bash.mjs" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|edit/|editFiles|createFile|applyPatch",
+        "hooks": [
+          { "type": "command", "command": "node .sdd/hooks/format-and-lint.mjs" }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node .sdd/hooks/subagent-log.mjs start" }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node .sdd/hooks/subagent-log.mjs stop" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node .sdd/hooks/session-log.mjs" }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "SDD_GATES": "on",
+    "SDD_SPECS_DIR": "docs/specs",
+    "SDD_BITACORA": "docs/bitacora/DECISIONS.md"
+  }
+}

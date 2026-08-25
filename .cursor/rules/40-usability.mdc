@@ -1,0 +1,72 @@
+---
+description: Reglas de usabilidad y accesibilidad WCAG 2.2 AA para interfaz, formularios, microcopy y velocidad percibida.
+globs: ["**/*.{tsx,jsx,vue,svelte,astro,html,css,scss}", "docs/design/**"]
+alwaysApply: false
+---
+
+# Usabilidad y accesibilidad
+
+Contrato canónico: [`A11Y-CHECKLIST.md`](../../docs/design/A11Y-CHECKLIST.md) —el suelo legal— y
+[`USABILITY-CHECKLIST.md`](../../docs/design/USABILITY-CHECKLIST.md) —lo que hace que además
+funcione—. Una pantalla puede ser perfectamente accesible y perfectamente confusa.
+
+## Accesibilidad
+
+- Usa el **elemento nativo**. Un `div` con `onClick` no recibe foco, no responde a teclado y no se
+  anuncia como botón. ARIA solo donde el HTML no llega: mal ARIA es peor que ninguna.
+- Todo interactivo alcanzable con `Tab` y activable con `Enter`/`Espacio`. Orden de tabulación
+  igual al orden visual.
+- **Foco siempre visible.** No elimines el contorno sin poner algo mejor en su lugar.
+- Diálogos: atrapan el foco, `Escape` cierra, el foco vuelve al elemento que los abrió.
+- Contraste ≥ 4.5:1 texto normal, ≥ 3:1 texto grande y controles. Nada comunicado **solo** por color.
+- Objetivos táctiles ≥ 24×24 px con separación (≥ 44×44 px cómodos en móvil).
+- Controles de solo icono con nombre accesible: "Eliminar del carrito", no "Papelera".
+- Cambios dinámicos anunciados con región activa; errores con rol de alerta y ligados a su campo.
+- Imágenes con alternativa que describe la **función**, no la apariencia; decorativas, vacías.
+- Respeta `prefers-reduced-motion`. Texto legible al 200 % sin solapes.
+
+## Formularios
+
+- **Etiqueta siempre visible** y asociada. El texto de ejemplo muestra el formato, no sustituye a
+  la etiqueta: desaparece al escribir y deja a la persona sin saber qué rellenaba.
+- Tipo de campo semántico (correo, teléfono, número, fecha): en móvil cambia el teclado.
+- Ancho proporcional al contenido esperado. Una columna, no dos.
+- **Valida al salir del campo y al enviar**, nunca mientras se escribe.
+- El error desaparece al reenfocar el campo. El mensaje va junto al campo, no solo en un resumen.
+- El botón de envío se desactiva **solo durante el envío**, jamás por validación pendiente: un
+  botón muerto sin explicación es un callejón sin salida.
+- Protección contra doble envío. Autocompletado del navegador habilitado con el tipo correcto.
+- Revelación progresiva: los campos que dependen de una elección aparecen tras esa elección.
+- En iOS, tamaño de fuente ≥ 16 px en campos para no provocar zoom al enfocar.
+
+## Microcopy
+
+- **Botones: verbo + sustantivo.** "Añadir al carrito", no "Enviar". Tras leer el botón se sabe
+  exactamente qué va a pasar.
+- Errores: **qué está mal → cómo se arregla → alternativa**. "El correo debe incluir @", no
+  "Entrada inválida". Sin culpar y en menos de quince palabras.
+- Estados de carga contextuales: "Aplicando descuento…", no "Cargando…".
+- Estados vacíos con salida y acción concreta, no un callejón.
+- Confirmaciones específicas: "Pedido realizado, confirmación enviada", no "Éxito".
+- Claridad por encima de ingenio. Si un modelo genera variantes, la persona elige.
+
+## Velocidad percibida
+
+- **Toda acción responde en menos de 100 ms**, aunque solo sea cambiando el estado del control.
+- Esqueleto con la forma del contenido real, no pantalla en blanco ni un giro centrado.
+- 300 ms–1 s: indicador simple · 1–3 s: progreso · > 3 s: progreso con estimación y cancelación.
+- Carga progresiva: primero lo crítico, después lo secundario, lo terciario bajo demanda.
+- Sin saltos de layout: reserva las dimensiones antes de que llegue el contenido.
+- **Actualización optimista solo si es fácil de revertir y el fallo es raro**, y siempre con la
+  reversión escrita. **Nunca** en pagos, alta de cuenta, cambio de contraseña ni borrados
+  irreversibles: ahí se espera confirmación real y esa espera se comunica.
+
+## Trazabilidad
+
+Si la spec declara `Impacto de usabilidad: aplicable`, cada comprobación aplicable es un control
+`UX-<AREA>-NNN` en `plan.md` §9.3 —áreas `A11Y`, `FORM`, `COPY`, `PERF`— con tarea, test y
+evidencia. Un control sin salida real se declara **no ejecutado** con riesgo y propietario; no
+cuenta como verificado y bloquea la entrega.
+
+El analizador automático detecta alrededor de un tercio de los problemas. Lo demás aparece
+**desconectando el ratón** y recorriendo el flujo entero.

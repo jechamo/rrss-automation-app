@@ -1,0 +1,29 @@
+---
+description: Reglas de seguridad OWASP Top 10:2025 y ASVS 5.0.0 para aplicación, APIs y datos.
+globs: ["**/*.{ts,tsx,js,jsx,py,go,java,cs,rb,php,sql}"]
+alwaysApply: false
+---
+
+# Seguridad
+
+Contrato canónico: [`AUTH-TOKENS.md`](../../docs/security/AUTH-TOKENS.md) y
+[`SECURITY-CHECKLIST.md`](../../docs/security/SECURITY-CHECKLIST.md).
+
+- **Nunca** concatenes SQL. Consultas parametrizadas o query builder siempre.
+- Valida todo input externo en la frontera con esquema (zod, pydantic, DTO validado).
+- Autorización comprobada en **servidor**, en cada caso de uso. La UI no protege nada.
+- Cero secretos en el código. Variables de entorno + gestor de secretos.
+- Contraseñas con Argon2id o bcrypt (coste ≥ 12). Nunca MD5/SHA1.
+- JWT solo si la arquitectura lo decide: allowlist de `alg`, rechazo de `none`, firma y claims
+  `iss`, `aud`, `exp`, `nbf`, `sub`, `iat`, tipo/scopes y `jti` cuando aplique; access/refresh
+  separados, claves y refresh rotables, detección de reutilización y revocación probada.
+- Cookies: `httpOnly` + `Secure` + `SameSite`; si se envían automáticamente, elige y prueba una
+  defensa CSRF adicional. `SameSite` solo es defensa en profundidad.
+- Escapa por contexto en la salida. Sin `innerHTML`/`dangerouslySetInnerHTML` sin sanitizar.
+- CORS explícito por origen. Nada de `*` con credenciales.
+- Rate limiting e idempotencia en endpoints de autenticación y mutantes.
+- Logs sin PII, sin tokens, sin cuerpos completos de petición.
+- Rutas de fichero y URLs de entrada: valida contra path traversal y SSRF (allowlist).
+- Deserialización: nunca de fuente no confiable sin esquema.
+- Dependencias: lockfile commiteado, SCA en CI, revisa paquetes nuevos.
+- Errores al cliente: genéricos. El detalle va al log del servidor.
