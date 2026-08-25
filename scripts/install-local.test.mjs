@@ -136,6 +136,7 @@ test("debe_invocar_procesos_sin_shell", () => {
     projectRoot,
     nodeExecutable,
     npmCliPath,
+    pathApi: path.win32,
     spawn(executable, argv, options) {
       invocations.push({ executable, argv, options });
       return { status: 0 };
@@ -178,6 +179,7 @@ test("debe_clasificar_instalacion_global_como_efecto_externo", () => {
     projectRoot,
     nodeExecutable,
     npmCliPath,
+    pathApi: path.win32,
     spawn() {
       assert.fail("Una instalación global no debe ejecutarse.");
     },
@@ -219,6 +221,7 @@ test("debe_rechazar_npm_cli_fuera_de_la_ruta_aprobada", () => {
     projectRoot,
     nodeExecutable,
     npmCliPath,
+    pathApi: path.win32,
     spawn() {
       assert.fail("No debe invocar una ruta no aprobada.");
     },
@@ -304,6 +307,7 @@ test("debe_invocar_netstat_absoluto_en_modo_read_only", () => {
   const observation = installLocal.probeWindowsPort({
     port: 3000,
     netstatExecutable,
+    canonicalize: path.win32.resolve,
     spawnProcess(executable, argv, options) {
       calls.push({ executable, argv, options });
       return {
@@ -1535,6 +1539,7 @@ function createHarness(options = {}) {
   const system = {
     nodeExecutable,
     npmExecPath: npmCliPath,
+    canonicalizeSystemExecutable: path.win32.resolve,
     appVersion: "0.1.0",
     exists: options.exists ?? existsSync,
     readText(filePath) {

@@ -114,7 +114,10 @@ export function createLocalInstallationRuntime({
           port,
           spawnProcess: system.spawnSync ?? spawnSync,
           systemRoot: system.systemRoot ?? process.env.SystemRoot ?? "C:\\Windows",
-          canonicalize: system.realpath ?? realpathSync.native,
+          canonicalize:
+            system.canonicalizeSystemExecutable ??
+            system.realpath ??
+            realpathSync.native,
           netstatExecutable:
             system.netstatExecutable ??
             path.join(
@@ -176,7 +179,8 @@ export function createLocalInstallationRuntime({
             "taskkill.exe",
           ),
         systemRoot: system.systemRoot ?? process.env.SystemRoot ?? "C:\\Windows",
-        canonicalize: localSystem.realpath,
+        canonicalize:
+          system.canonicalizeSystemExecutable ?? localSystem.realpath,
         spawn: localSystem.spawnSync,
       }),
       devProcesses: createProcessAdapter({

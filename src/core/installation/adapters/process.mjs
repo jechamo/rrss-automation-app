@@ -21,6 +21,7 @@ class ProcessAdapterError extends Error {
  *   nodeExecutable?: string,
  *   npmCliPath?: string,
  *   taskkillExecutable?: string,
+ *   pathApi?: typeof path,
  *   spawn: (executable: string, argv: string[], options: {
  *     shell: false,
  *     cwd?: string,
@@ -37,6 +38,7 @@ export function createProcessAdapter({
   systemRoot = "C:\\Windows",
   taskkillExecutable = "C:\\Windows\\System32\\taskkill.exe",
   canonicalize = path.resolve,
+  pathApi = path,
   spawn,
 }) {
   /**
@@ -48,9 +50,10 @@ export function createProcessAdapter({
       projectRoot,
       nodeExecutable,
       npmCliPath,
+      pathApi,
     )) {
       return {
-        effect: isOutsideProjectEffect(descriptor)
+        effect: isOutsideProjectEffect(descriptor, pathApi)
           ? "outside-project"
           : "forbidden",
         allowed: false,
@@ -174,7 +177,7 @@ function assertProcessDescriptor(descriptor) {
 /**
  * @param {{executable?: string, argv?: string[]}} descriptor
  */
-function isOutsideProjectEffect(descriptor) {
+function isOutsideProjectEffect(descriptor, pathApi = path) {
   const executable = executableName(descriptor?.executable);
   const argv = Array.isArray(descriptor?.argv)
     ? descriptor.argv.map((argument) => argument.toLowerCase())
@@ -182,7 +185,7 @@ function isOutsideProjectEffect(descriptor) {
   const invokesNpm =
     executable === "npm" ||
     (executable === "node" &&
-      path.basename(argv[0] ?? "").toLowerCase() === "npm-cli.js");
+      pathApi.basename(argv[0] ?? "").toLowerCase() === "npm-cli.js");
 
   return (
     (invokesNpm &&
@@ -198,25 +201,27 @@ function isOutsideProjectEffect(descriptor) {
  * @param {string | undefined} projectRoot
  * @param {string | undefined} nodeExecutable
  * @param {string | undefined} npmCliPath
+ * @param {typeof path} pathApi
  */
 function isAllowedNpmDescriptor(
   descriptor,
   projectRoot,
   nodeExecutable,
   npmCliPath,
+  pathApi,
 ) {
   if (
-    !isCanonicalAbsoluteMatch(descriptor?.executable, nodeExecutable) ||
-    !isApprovedNpmCli(npmCliPath) ||
-    !isCanonicalAbsoluteMatch(descriptor?.argv?.[0], npmCliPath)
+    !isCanonicalAbsoluteMatch(descriptor?.executable, nodeExecutable, pathApi) ||
+    !isApprovedNpmCli(npmCliPath, pathApi) ||
+    !isCanonicalAbsoluteMatch(descriptor?.argv?.[0], npmCliPath, pathApi)
   ) {
     return false;
   }
   if (
     projectRoot &&
     (!descriptor.cwd ||
-      path.resolve(descriptor.cwd).toLowerCase() !==
-        path.resolve(projectRoot).toLowerCase())
+      pathApi.resolve(descriptor.cwd).toLowerCase() !==
+        pathApi.resolve(projectRoot).toLowerCase())
   ) {
     return false;
   }
@@ -238,21 +243,22 @@ function isAllowedNpmDescriptor(
   );
 }
 
-function isApprovedNpmCli(candidate) {
+function isApprovedNpmCli(candidate, pathApi) {
   return (
     typeof candidate === "string" &&
-    path.isAbsolute(candidate) &&
-    path.basename(candidate).toLowerCase() === "npm-cli.js"
+    pathApi.isAbsolute(candidate) &&
+    pathApi.basename(candidate).toLowerCase() === "npm-cli.js"
   );
 }
 
-function isCanonicalAbsoluteMatch(candidate, approved) {
+function isCanonicalAbsoluteMatch(candidate, approved, pathApi) {
   return (
     typeof candidate === "string" &&
     typeof approved === "string" &&
-    path.isAbsolute(candidate) &&
-    path.isAbsolute(approved) &&
-    path.resolve(candidate).toLowerCase() === path.resolve(approved).toLowerCase()
+    pathApi.isAbsolute(candidate) &&
+    pathApi.isAbsolute(approved) &&
+    pathApi.resolve(candidate).toLowerCase() ===
+      pathApi.resolve(approved).toLowerCase()
   );
 }
 

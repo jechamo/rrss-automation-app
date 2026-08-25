@@ -58,8 +58,12 @@ Thumbs.db
 
 # Datos locales del agente (memoria/sesiones), salvo los skills de proyecto (REQ-007)
 .claude/*
+!.claude/agents/
+!.claude/agents/**
 !.claude/skills/
 .cursor/*
+!.cursor/agents/
+!.cursor/agents/**
 !.cursor/skills/
 
 # ─── SDD (instalado por sdd init) ───
