@@ -86,6 +86,21 @@ export function parseOperation(argv = process.argv) {
   return operation;
 }
 
+export function parseCliOptions(argv = process.argv) {
+  const operation = parseOperation(argv);
+  const flags = argv.slice(3);
+  const unsupportedFlag = flags.find((flag) => flag !== "--yes");
+  if (unsupportedFlag || (flags.includes("--yes") && operation !== "prepare")) {
+    const error = new Error("Opción de instalación no válida.");
+    error.code = "INVALID_INSTALLATION_OPERATION";
+    throw error;
+  }
+  return {
+    operation,
+    assumePreparationConsent: flags.includes("--yes"),
+  };
+}
+
 export function createLocalInstallationRuntime({
   projectRoot = fileURLToPath(new URL("..", import.meta.url)),
   platform = { name: process.platform, release: os.release() },
@@ -631,12 +646,16 @@ export async function main({
   },
 } = {}) {
   try {
-    const operation = parseOperation(argv);
-    const runtime = createRuntime({ prompt, output });
+    const { operation, assumePreparationConsent } = parseCliOptions(argv);
+    const effectivePrompt = (request) =>
+      assumePreparationConsent && request?.effect === "project-preparation"
+        ? true
+        : prompt(request);
+    const runtime = createRuntime({ prompt: effectivePrompt, output });
     const result = await runInstallationAssistant({
       operation,
       runtime,
-      prompt,
+      prompt: effectivePrompt,
       output,
     });
     setExitCode(result.receipt.overallStatus === "ready" ? 0 : 1);

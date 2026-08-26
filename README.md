@@ -116,6 +116,9 @@ configuración local).
 node scripts/install-local.mjs prepare
 ```
 
+En automatizaciones controladas puede usarse `prepare --yes`; solo confirma la preparación
+dentro del proyecto y nunca autoriza `reset` ni la detención de procesos.
+
 Resultado esperado: el asistente muestra el plan y pide consentimiento
 `project-preparation`. Si aceptas, instala dependencias, prepara SQLite y exige
 un `npm run build` correcto antes de escribir el marcador de preparación. Si
@@ -218,7 +221,7 @@ Tras el uso local básico, habilita solo lo que necesites:
 |---|---|
 | `preparar.bat` o `npm run setup:guide` | Recorrido guiado: check, prepare, indicar `claude auth login/status`, comprobar sesión, start. |
 | `npm run setup:local` o `node scripts/install-local.mjs` | `check`. Sin cambios. |
-| `node scripts/install-local.mjs prepare` | Preparación dentro del proyecto, con consentimiento. |
+| `node scripts/install-local.mjs prepare [--yes]` | Preparación dentro del proyecto; `--yes` solo automatiza este consentimiento. |
 | `node scripts/install-local.mjs start` | Arranque local, con consentimiento de proceso. |
 | `node scripts/install-local.mjs reset` | Resguardo y reinicio de persistencia, con confirmación separada. |
 

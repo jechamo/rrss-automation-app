@@ -47,6 +47,52 @@ test("debe_importar_sin_ejecutar_y_usar_check_por_defecto_en_main", async () => 
   assert.deepEqual(exitCodes, [0]);
 });
 
+test("debe_aceptar_yes_solo_para_la_preparacion_no_interactiva", async () => {
+  const inputs = [];
+  let promptCalls = 0;
+  const result = await installLocal.main({
+    argv: ["node", "script", "prepare", "--yes"],
+    output: { write() {} },
+    setExitCode() {},
+    prompt: async () => {
+      promptCalls += 1;
+      return false;
+    },
+    createRuntime: () => ({
+      execute(_operation, input) {
+        inputs.push(input);
+        if (inputs.length === 1) {
+          return {
+            receipt: blockedDataReceipt(),
+            consentRequests: [
+              {
+                effect: "project-preparation",
+                scope: "project",
+                rejectionOutcome: "blocked",
+              },
+            ],
+          };
+        }
+        return { receipt: readyReceipt(), consentRequests: [] };
+      },
+    }),
+  });
+
+  assert.equal(promptCalls, 0);
+  assert.equal(result.receipt.overallStatus, "ready");
+  assert.deepEqual(inputs[1].confirmations, [
+    { effect: "project-preparation", approved: true },
+  ]);
+  assert.throws(
+    () => installLocal.parseCliOptions(["node", "script", "reset", "--yes"]),
+    { code: "INVALID_INSTALLATION_OPERATION" },
+  );
+  assert.throws(
+    () => installLocal.parseCliOptions(["node", "script", "prepare", "--force"]),
+    { code: "INVALID_INSTALLATION_OPERATION" },
+  );
+});
+
 test("debe_fijar_exit_code_no_cero_para_bloqueo_y_error", async () => {
   const exitCodes = [];
   const blocked = await installLocal.main({

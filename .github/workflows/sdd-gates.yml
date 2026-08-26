@@ -101,7 +101,7 @@ jobs:
         shell: bash
         working-directory: 'RRSS Studio limpio'
         run: |
-          printf 'y\n' | node scripts/install-local.mjs prepare
+          node scripts/install-local.mjs prepare --yes
           npm run smoke:empty-db
           npm run smoke:dependency-overrides
           npm run test:install
