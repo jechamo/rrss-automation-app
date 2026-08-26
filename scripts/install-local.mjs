@@ -658,7 +658,7 @@ export async function main({
       prompt: effectivePrompt,
       output,
     });
-    setExitCode(result.receipt.overallStatus === "ready" ? 0 : 1);
+    setExitCode(result.completed ? 0 : 1);
     return result;
   } catch (error) {
     const receipt = technicalFailureReceipt(error);
@@ -1180,6 +1180,24 @@ export function runInstallationAssistant({
   });
 }
 
+export function installationOperationCompleted(
+  operation,
+  { receipt, technicalFailure = false } = {},
+) {
+  if (technicalFailure || !Array.isArray(receipt?.required)) {
+    return false;
+  }
+  if (operation === "prepare") {
+    return (
+      receipt.required.length > 0 &&
+      receipt.required.every(
+        (check) => check.status === "ok" || check.id === "local-port-process",
+      )
+    );
+  }
+  return receipt.overallStatus === "ready";
+}
+
 async function executeCanonicalInstallation({
   operation,
   runtime,
@@ -1220,11 +1238,16 @@ async function executeCanonicalInstallation({
       });
     }
     const receipt = normalizeReceipt(result?.receipt);
-    renderReceipt(receipt, output);
+    const completed = installationOperationCompleted(operation, {
+      receipt,
+      technicalFailure: result?.technicalFailure === true,
+    });
+    renderReceipt(receipt, output, { operation, completed });
     return {
       receipt,
       consentRequests: requests,
       technicalFailure: result?.technicalFailure === true,
+      completed,
     };
   } catch (error) {
     const receipt = technicalFailureReceipt(error);
@@ -1385,7 +1408,7 @@ function blockedByRejectedConsent(receipt, effect) {
  * @param {{required: object[], optional: object[], overallStatus: string}} receipt
  * @param {{write: (line: string) => void}} output
  */
-function renderReceipt(receipt, output) {
+function renderReceipt(receipt, output, { operation, completed } = {}) {
   for (const check of receipt.required) {
     const label = SAFE_LABEL_BY_CATEGORY.get(check.category) ?? "requisito";
     output.write(
@@ -1415,6 +1438,12 @@ function renderReceipt(receipt, output) {
   const hasLimitedOptionals = receipt.optional.some(
     (check) => check.status !== "ok",
   );
+  if (operation === "prepare" && completed) {
+    output.write(
+      "Preparación completada. Ejecuta start para comprobar el proceso local.",
+    );
+    return;
+  }
   writeConsoleState(output, {
     kind:
       receipt.overallStatus !== "ready"

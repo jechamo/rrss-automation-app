@@ -49,11 +49,13 @@ test("debe_importar_sin_ejecutar_y_usar_check_por_defecto_en_main", async () => 
 
 test("debe_aceptar_yes_solo_para_la_preparacion_no_interactiva", async () => {
   const inputs = [];
+  const output = [];
+  const exitCodes = [];
   let promptCalls = 0;
   const result = await installLocal.main({
     argv: ["node", "script", "prepare", "--yes"],
-    output: { write() {} },
-    setExitCode() {},
+    output: { write: (line) => output.push(line) },
+    setExitCode: (code) => exitCodes.push(code),
     prompt: async () => {
       promptCalls += 1;
       return false;
@@ -73,13 +75,19 @@ test("debe_aceptar_yes_solo_para_la_preparacion_no_interactiva", async () => {
             ],
           };
         }
-        return { receipt: readyReceipt(), consentRequests: [] };
+        return { receipt: preparedReceipt(), consentRequests: [] };
       },
     }),
   });
 
   assert.equal(promptCalls, 0);
-  assert.equal(result.receipt.overallStatus, "ready");
+  assert.equal(result.receipt.overallStatus, "blocked");
+  assert.equal(result.completed, true);
+  assert.deepEqual(exitCodes, [0]);
+  assert.equal(
+    output.at(-1),
+    "Preparación completada. Ejecuta start para comprobar el proceso local.",
+  );
   assert.deepEqual(inputs[1].confirmations, [
     { effect: "project-preparation", approved: true },
   ]);
@@ -1666,6 +1674,15 @@ function managedMarker(schema, databasePath) {
 
 function readyReceipt(optional = []) {
   return createPreparationReceipt(completeRequiredChecks(), optional);
+}
+
+function preparedReceipt(optional = []) {
+  return createPreparationReceipt(
+    completeRequiredChecks({
+      "local-port-process": { status: "blocked" },
+    }),
+    optional,
+  );
 }
 
 function blockedDataReceipt() {
