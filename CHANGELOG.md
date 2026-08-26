@@ -7,4 +7,5 @@ Todos los cambios relevantes de este proyecto se documentarán aquí siguiendo
 
 - Actualizado el baseline SDD a v0.9.1 y endurecido el instalador local: Vault versionado y
   atómico, base nueva vacía, readiness de aplicación/DB/Vault, build obligatorio, detección de
-  Chromium y smoke reproducible de Windows sin autorizar resets ni sobrescribir datos existentes.
+  Chromium, smoke reproducible de Windows y ejecución manual del CI sin autorizar resets ni
+  sobrescribir datos existentes.
