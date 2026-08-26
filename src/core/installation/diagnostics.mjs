@@ -64,6 +64,10 @@ const APPROVED_STATIC_NEXT_STEPS = new Set([
   "Confirma el proceso o puerto concreto antes de continuar.",
   "El resguardo se conservó. Restaura los datos manualmente o reintenta la preparación.",
   "Operación válida: check|prepare|reset|start.",
+  "Falló la instalación bloqueada por package-lock.",
+  "Falló la generación local del cliente de base de datos.",
+  "Falló la creación de la base de datos local vacía.",
+  "Falló el build obligatorio de la aplicación.",
   "Revisa la plantilla de configuración del proyecto. Alternativa segura: detén la preparación y conserva el estado actual.",
 ]);
 

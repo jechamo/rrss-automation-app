@@ -326,6 +326,7 @@ export function createLocalInstallationRuntime({
         : ["install"],
       "dependencies",
       projectRoot,
+      "dependency-install",
     );
     if (!localSystem.exists(path.join(projectRoot, ".env"))) {
       localSystem.copy(
@@ -338,6 +339,7 @@ export function createLocalInstallationRuntime({
       ["run", "db:generate"],
       "data",
       projectRoot,
+      "database-client",
     );
     resolveProjectWritePath(projectRoot, path.join("prisma", "dev.db"));
     invokeRequiredProcess(
@@ -345,12 +347,14 @@ export function createLocalInstallationRuntime({
       ["run", "db:push"],
       "data",
       projectRoot,
+      "database-initialization",
     );
     invokeRequiredProcess(
       processes,
       ["run", "build"],
       "dependencies",
       projectRoot,
+      "application-build",
     );
     const markerDirectory = resolveProjectWritePath(
       projectRoot,
@@ -973,7 +977,7 @@ function startPrerequisitesReady(receipt) {
   );
 }
 
-function invokeRequiredProcess(processes, argv, category, projectRoot) {
+function invokeRequiredProcess(processes, argv, category, projectRoot, step) {
   const { nodeExecutable, npmCliPath } = processes.paths;
   const result = processes.invoke({
     executable: nodeExecutable,
@@ -982,7 +986,7 @@ function invokeRequiredProcess(processes, argv, category, projectRoot) {
     cwd: projectRoot,
   });
   if (result?.status !== 0 && result?.exitCode !== 0) {
-    throw new InstallationStepFailure({ category });
+    throw new InstallationStepFailure({ category, step });
   }
 }
 
@@ -1062,6 +1066,13 @@ const SAFE_OPTIONAL_LABEL_BY_ID = new Map([
   ["browser-navigation", "navegación automatizada"],
 ]);
 
+const SAFE_FAILURE_NEXT_STEP = new Map([
+  ["dependency-install", "Falló la instalación bloqueada por package-lock."],
+  ["database-client", "Falló la generación local del cliente de base de datos."],
+  ["database-initialization", "Falló la creación de la base de datos local vacía."],
+  ["application-build", "Falló el build obligatorio de la aplicación."],
+]);
+
 const SAFE_LOADING_BY_OPERATION = new Map([
   ["check", { step: "diagnóstico", category: "plataforma" }],
   ["prepare", { step: "preparación", category: "dependencias" }],
@@ -1081,10 +1092,11 @@ export class InstallationStepFailure extends Error {
    * @param {{
    *   category?: string,
    *   receipt?: object,
-   *   recovery?: "backup-preserved"
+   *   recovery?: "backup-preserved",
+   *   step?: "dependency-install" | "database-client" | "database-initialization" | "application-build"
    * }} failure
    */
-  constructor({ category, receipt, recovery } = {}) {
+  constructor({ category, receipt, recovery, step } = {}) {
     super("Falló un paso de instalación.");
     this.name = "InstallationStepFailure";
     this.code = "INSTALLATION_STEP_FAILURE";
@@ -1093,6 +1105,7 @@ export class InstallationStepFailure extends Error {
       : "configuration";
     this.receipt = receipt;
     this.recovery = recovery;
+    this.step = SAFE_FAILURE_NEXT_STEP.has(step) ? step : undefined;
   }
 }
 
@@ -1344,7 +1357,7 @@ function technicalFailureReceipt(error, previousReceipt) {
         ? "El resguardo se conservó. Restaura los datos manualmente o reintenta la preparación."
         : error?.code === "INVALID_INSTALLATION_OPERATION"
           ? "Operación válida: check|prepare|reset|start."
-          : undefined,
+          : SAFE_FAILURE_NEXT_STEP.get(error?.step),
   });
   const replacementIndex = preservedReceipt.required.findIndex(
     (check) => check.id === failureCheck.id || check.category === category,

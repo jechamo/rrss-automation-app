@@ -753,6 +753,7 @@ test("debe_preparar_con_env_manual_sin_leerlo_ni_sobrescribirlo", async () => {
 });
 
 test("debe_bloquear_prepare_si_el_build_falla_y_no_escribir_marcador", async () => {
+  const output = [];
   const harness = createHarness({
     spawnSync(_executable, argv) {
       const command = npmCommand(argv);
@@ -764,9 +765,14 @@ test("debe_bloquear_prepare_si_el_build_falla_y_no_escribir_marcador", async () 
     },
   });
   try {
-    const result = await runMain(harness, "prepare", { prompt: async () => true });
+    const result = await runMain(harness, "prepare", {
+      prompt: async () => true,
+      output: { write: (line) => output.push(line) },
+    });
     assert.equal(result.receipt.overallStatus, "blocked");
     assert.equal(result.technicalFailure, true);
+    assert.match(output.join("\n"), /Falló el build obligatorio/u);
+    assert.doesNotMatch(output.join("\n"), /node_modules|package\.json/u);
     assert.equal(
       existsSync(path.join(harness.projectRoot, "data", "installation", "managed-v1.json")),
       false,
