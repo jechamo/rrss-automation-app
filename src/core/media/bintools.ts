@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { executableCandidatesFromPath } from "./path-candidates";
+import { executableCandidatesFromPath } from "./path-candidates.js";
 
 export type SystemToolName = "ffmpeg" | "ffprobe" | "yt-dlp";
 
