@@ -21,6 +21,7 @@ class ProcessAdapterError extends Error {
  *   nodeExecutable?: string,
  *   npmCliPath?: string,
  *   taskkillExecutable?: string,
+ *   inheritOutput?: boolean,
  *   pathApi?: typeof path,
  *   spawn: (executable: string, argv: string[], options: {
  *     shell: false,
@@ -40,6 +41,7 @@ export function createProcessAdapter({
   canonicalize = path.resolve,
   pathApi = path,
   spawn,
+  inheritOutput = false,
 }) {
   /**
    * @param {{executable: string, argv: string[], shell: false}} descriptor
@@ -93,6 +95,7 @@ export function createProcessAdapter({
     return spawn(descriptor.executable, descriptor.argv, {
       shell: false,
       ...(projectRoot ? { cwd: projectRoot } : {}),
+      ...(!detachedStart && inheritOutput ? { stdio: "inherit" } : {}),
       ...(detachedStart
         ? { detached: true, stdio: "ignore", windowsHide: true }
         : {}),

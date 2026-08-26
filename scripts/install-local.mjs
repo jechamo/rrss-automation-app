@@ -186,6 +186,8 @@ export function createLocalInstallationRuntime({
         projectRoot,
         nodeExecutable,
         npmCliPath,
+        inheritOutput:
+          system.inheritCommandOutput ?? process.env.CI === "true",
         taskkillExecutable:
           system.taskkillExecutable ??
           path.join(

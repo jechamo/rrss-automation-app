@@ -225,6 +225,37 @@ test("debe_invocar_procesos_sin_shell", () => {
   ]);
 });
 
+test("debe_mostrar_salida_de_preparacion_solo_cuando_se_solicita", () => {
+  const invocations = [];
+  const projectRoot = "C:\\SyntheticProject";
+  const nodeExecutable = "C:\\SyntheticNode\\node.exe";
+  const npmCliPath = "C:\\SyntheticNode\\node_modules\\npm\\bin\\npm-cli.js";
+  const adapter = createProcessAdapter({
+    projectRoot,
+    nodeExecutable,
+    npmCliPath,
+    pathApi: path.win32,
+    inheritOutput: true,
+    spawn(executable, argv, options) {
+      invocations.push({ executable, argv, options });
+      return { status: 0 };
+    },
+  });
+
+  adapter.invoke({
+    executable: nodeExecutable,
+    argv: [npmCliPath, "run", "build"],
+    shell: false,
+    cwd: projectRoot,
+  });
+
+  assert.deepEqual(invocations[0].options, {
+    shell: false,
+    cwd: projectRoot,
+    stdio: "inherit",
+  });
+});
+
 test("debe_clasificar_instalacion_global_como_efecto_externo", () => {
   const projectRoot = "C:\\SyntheticProject";
   const nodeExecutable = "C:\\SyntheticNode\\node.exe";
