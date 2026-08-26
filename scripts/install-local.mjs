@@ -232,6 +232,14 @@ export function createLocalInstallationRuntime({
       }
     }
     preparationEnvironment.PATH = safePathEnvironment;
+    const buildEnvironment = {
+      ...preparationEnvironment,
+      HOME: projectRoot,
+      USERPROFILE: projectRoot,
+      APPDATA: projectRoot,
+      LOCALAPPDATA: projectRoot,
+      NEXT_TELEMETRY_DISABLED: "1",
+    };
     processRuntime = {
       npmCliPath,
       processes: createProcessAdapter({
@@ -248,6 +256,7 @@ export function createLocalInstallationRuntime({
           system.canonicalizeSystemExecutable ?? localSystem.realpath,
         spawn: localSystem.spawnSync,
         environment: preparationEnvironment,
+        buildEnvironment,
       }),
       devProcesses: createProcessAdapter({
         projectRoot,

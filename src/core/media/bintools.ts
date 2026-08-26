@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -56,6 +55,11 @@ const EXECUTABLE_PATH_ENTRY_EXTENSIONS = new Set([
   ".ps1",
 ]);
 
+function runtimeEnvironmentValue(name: string): string {
+  const value = Reflect.get(process.env, name);
+  return typeof value === "string" ? value.trim() : "";
+}
+
 export function executableCandidatesFromPath(
   pathValue: string,
   names: readonly string[],
@@ -98,7 +102,7 @@ function probe(name: SystemToolName, candidate: string): { ok: boolean; version:
 
 function candidateFromPath(
   name: SystemToolName,
-  pathValue = process.env.PATH ?? "",
+  pathValue = runtimeEnvironmentValue("PATH"),
   probeCandidate: typeof probe = probe,
 ): string | null {
   for (const candidate of executableCandidatesFromPath(
@@ -133,7 +137,8 @@ function findRecursive(root: string, wanted: Set<string>, depth = 0): string | n
 
 function candidateFromWinGet(name: SystemToolName): string | null {
   if (process.platform !== "win32") return null;
-  const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local");
+  const localAppData = runtimeEnvironmentValue("LOCALAPPDATA");
+  if (!localAppData || !path.isAbsolute(localAppData)) return null;
   const wanted = new Set(executableNames(name).map((value) => value.toLowerCase()));
   const links = path.join(localAppData, "Microsoft", "WinGet", "Links");
   for (const file of executableNames(name)) {

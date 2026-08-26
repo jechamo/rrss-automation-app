@@ -50,8 +50,9 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
   `RUST_LOG=info` en `db push` ante el fallo conocido de su schema engine; el wrapper lo aplica solo
   al subproceso sin modificar el entorno del operador.
 - El instalador limita el `PATH` únicamente en los subprocesos de preparación a Node y
-  `System32`, ambos como directorios absolutos reales. Esto evita que Next trate alias de
-  `WindowsApps` como carpetas, sin cambiar el entorno usado al arrancar RRSS Studio.
+  `System32`, ambos como directorios absolutos reales. Además, el build aísla la detección de
+  carpetas de perfil dentro del proyecto para que el trazador de Next no recorra alias protegidos
+  de Windows. Ninguno de estos límites cambia el entorno usado al arrancar RRSS Studio.
 
 ### 2026-08-21 — Actualización del marco SDD/TDD v0.7.0
 

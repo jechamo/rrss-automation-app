@@ -1,8 +1,14 @@
 import { spawn } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
-import os from "node:os";
 import type { AiEngine, AiResult, AiTask, TestResult } from "./engine";
+
+function runtimeEnvironmentPath(name: string): string | null {
+  const value = Reflect.get(process.env, name);
+  if (typeof value !== "string") return null;
+  const candidate = value.trim();
+  return candidate && path.isAbsolute(candidate) ? candidate : null;
+}
 
 /**
  * Motor de IA basado en el binario de Claude Code CLI en modo headless.
@@ -15,21 +21,25 @@ export class ClaudeCliEngine implements AiEngine {
     const fromEnv = process.env.CLAUDE_CLI_PATH?.trim();
     if (fromEnv && existsSync(fromEnv)) return fromEnv;
 
-    const home = os.homedir();
+    const home =
+      runtimeEnvironmentPath("USERPROFILE") ??
+      runtimeEnvironmentPath("HOME");
 
     // Preferido: binario de la app de escritorio de Claude. Es el que tiene la
     // sesion Pro iniciada (login), asi funciona sin coste de API (D-02). Una copia
     // recien instalada por npm NO esta logueada ("Not logged in · run /login").
-    const managed = this.resolveManaged(home);
-    if (managed) return managed;
+    if (home) {
+      const managed = this.resolveManaged(home);
+      if (managed) return managed;
 
-    const candidates = [
-      path.join(home, ".local", "bin", "claude.exe"),
-      path.join(home, ".local", "bin", "claude"),
-      path.join(home, "AppData", "Roaming", "npm", "claude.cmd"),
-      path.join(home, "AppData", "Local", "Programs", "claude", "claude.exe"),
-    ];
-    for (const c of candidates) if (existsSync(c)) return c;
+      const candidates = [
+        path.join(home, ".local", "bin", "claude.exe"),
+        path.join(home, ".local", "bin", "claude"),
+        path.join(home, "AppData", "Roaming", "npm", "claude.cmd"),
+        path.join(home, "AppData", "Local", "Programs", "claude", "claude.exe"),
+      ];
+      for (const c of candidates) if (existsSync(c)) return c;
+    }
 
     // Respaldo: binario instalado localmente en el proyecto (requiere `claude /login`
     // para tener sesion propia; ver AGENTS.md).

@@ -773,13 +773,13 @@ test("debe_invalidar_marcador_al_sustituir_la_db_gestionada", async () => {
 test("debe_preparar_con_env_manual_sin_leerlo_ni_sobrescribirlo", async () => {
   const originalEnv = "CONFIGURACION_MANUAL_NO_LEER";
   const commands = [];
-  const preparationPaths = [];
+  const processEnvironments = [];
   const harness = createHarness({
     envContent: originalEnv,
     spawnSync(_executable, argv, processOptions) {
       const command = npmCommand(argv);
       commands.push(command);
-      preparationPaths.push(processOptions?.env?.PATH);
+      processEnvironments.push({ command, env: processOptions?.env });
       if (command === "ci") {
         mkdirSync(path.join(harness.projectRoot, "node_modules"));
       }
@@ -807,12 +807,25 @@ test("debe_preparar_con_env_manual_sin_leerlo_ni_sobrescribirlo", async () => {
     assert.ok(commands.indexOf("run db:push") < commands.indexOf("run build"));
     assert.equal(commands.includes("run build"), true);
     assert.equal(
-      preparationPaths.every((value) =>
+      processEnvironments.every(({ env }) => {
+        const value = env?.PATH;
+        return (
         typeof value === "string" &&
         value.split(path.delimiter).includes(path.join(harness.projectRoot, "node-bin")) &&
         !value.includes("WindowsApps")
-      ),
+        );
+      }),
       true,
+    );
+    const buildEnvironment = processEnvironments.find(
+      ({ command }) => command === "run build",
+    )?.env;
+    assert.equal(buildEnvironment?.HOME, harness.projectRoot);
+    assert.equal(buildEnvironment?.USERPROFILE, harness.projectRoot);
+    assert.equal(buildEnvironment?.LOCALAPPDATA, harness.projectRoot);
+    assert.notEqual(
+      processEnvironments.find(({ command }) => command === "ci")?.env?.HOME,
+      harness.projectRoot,
     );
   } finally {
     harness.cleanup();

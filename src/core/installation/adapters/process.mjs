@@ -23,6 +23,7 @@ class ProcessAdapterError extends Error {
  *   taskkillExecutable?: string,
  *   inheritOutput?: boolean,
  *   environment?: Record<string, string | undefined>,
+ *   buildEnvironment?: Record<string, string | undefined>,
  *   pathApi?: typeof path,
  *   spawn: (executable: string, argv: string[], options: {
  *     shell: false,
@@ -45,6 +46,7 @@ export function createProcessAdapter({
   spawn,
   inheritOutput = false,
   environment,
+  buildEnvironment,
 }) {
   /**
    * @param {{executable: string, argv: string[], shell: false}} descriptor
@@ -95,10 +97,14 @@ export function createProcessAdapter({
       descriptor.detached === true &&
       descriptor.stdio === "ignore" &&
       descriptor.windowsHide === true;
+    const invocationEnvironment =
+      descriptor.argv[1] === "run" && descriptor.argv[2] === "build"
+        ? buildEnvironment ?? environment
+        : environment;
     return spawn(descriptor.executable, descriptor.argv, {
       shell: false,
       ...(projectRoot ? { cwd: projectRoot } : {}),
-      ...(environment ? { env: environment } : {}),
+      ...(invocationEnvironment ? { env: invocationEnvironment } : {}),
       ...(!detachedStart && inheritOutput ? { stdio: "inherit" } : {}),
       ...(detachedStart
         ? { detached: true, stdio: "ignore", windowsHide: true }
