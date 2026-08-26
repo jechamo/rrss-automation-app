@@ -3,8 +3,6 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { executableCandidatesFromPath } from "./path-candidates.js";
-
 export type SystemToolName = "ffmpeg" | "ffprobe" | "yt-dlp";
 
 export interface SystemToolStatus {
@@ -50,6 +48,19 @@ const SPECS: Record<SystemToolName, ToolSpec> = {
 };
 
 const cache = new Map<SystemToolName, SystemToolStatus>();
+
+export function executableCandidatesFromPath(
+  pathValue: string,
+  names: readonly string[],
+): string[] {
+  return String(pathValue)
+    .split(path.delimiter)
+    .map((rawDirectory) => rawDirectory.replace(/^"|"$/g, "").trim())
+    .filter(Boolean)
+    .flatMap((directory) =>
+      names.map((executable) => path.join(directory, executable)),
+    );
+}
 
 function executableNames(name: SystemToolName): string[] {
   return process.platform === "win32" ? [`${name}.exe`, name] : [name];

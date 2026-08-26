@@ -1,7 +1,7 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { executableCandidatesFromPath } from "./path-candidates";
+import { executableCandidatesFromPath } from "./bintools";
 
 describe("executableCandidatesFromPath", () => {
   it("trata una entrada PATH ejecutable como candidato fallable, no como directorio recorrible", () => {
