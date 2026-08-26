@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   mkdirSync,
   mkdtempSync,
+  realpathSync,
   readdirSync,
   readFileSync,
   rmSync,
@@ -404,7 +405,10 @@ test("debe_resolver_candidato_inexistente_desde_ancestro_seguro", () => {
     assert.doesNotThrow(() => {
       resolvedPath = resolveProjectPath(projectRoot, candidatePath);
     });
-    assert.equal(resolvedPath, path.join(projectRoot, candidatePath));
+    assert.equal(
+      resolvedPath,
+      path.join(realpathSync.native(projectRoot), candidatePath),
+    );
   } finally {
     rmSync(projectRoot, { recursive: true, force: true });
   }
@@ -430,7 +434,7 @@ test("debe_rechazar_escritura_cuando_un_junction_escapa_del_root", () => {
     );
     assert.equal(
       pathsModule.resolveProjectWritePath(projectRoot, ".env"),
-      path.join(projectRoot, ".env"),
+      path.join(realpathSync.native(projectRoot), ".env"),
     );
   } finally {
     rmSync(sandbox, { recursive: true, force: true });
