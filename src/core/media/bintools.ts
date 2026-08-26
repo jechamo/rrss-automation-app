@@ -48,6 +48,13 @@ const SPECS: Record<SystemToolName, ToolSpec> = {
 };
 
 const cache = new Map<SystemToolName, SystemToolStatus>();
+const EXECUTABLE_PATH_ENTRY_EXTENSIONS = new Set([
+  ".bat",
+  ".cmd",
+  ".com",
+  ".exe",
+  ".ps1",
+]);
 
 export function executableCandidatesFromPath(
   pathValue: string,
@@ -56,7 +63,13 @@ export function executableCandidatesFromPath(
   return String(pathValue)
     .split(path.delimiter)
     .map((rawDirectory) => rawDirectory.replace(/^"|"$/g, "").trim())
-    .filter(Boolean)
+    .filter(
+      (directory) =>
+        path.isAbsolute(directory) &&
+        !EXECUTABLE_PATH_ENTRY_EXTENSIONS.has(
+          path.extname(directory).toLowerCase(),
+        ),
+    )
     .flatMap((directory) =>
       names.map((executable) => path.join(directory, executable)),
     );
@@ -97,8 +110,7 @@ function candidateFromPath(
     // ejecutables, no directorios. spawnSync falla de forma segura sin shell.
     if (probeCandidate(name, candidate).ok) return candidate;
   }
-  // Conserva compatibilidad con aliases/launchers que el sistema pueda resolver.
-  return probeCandidate(name, name).ok ? name : null;
+  return null;
 }
 
 function findRecursive(root: string, wanted: Set<string>, depth = 0): string | null {

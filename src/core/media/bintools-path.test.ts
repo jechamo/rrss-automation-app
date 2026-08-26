@@ -4,9 +4,13 @@ import { describe, expect, it } from "vitest";
 import { executableCandidatesFromPath } from "./bintools";
 
 describe("executableCandidatesFromPath", () => {
-  it("trata una entrada PATH ejecutable como candidato fallable, no como directorio recorrible", () => {
-    const executableEntry = path.join("synthetic", "WindowsApps", "ActionsMcpHost.exe");
-    const toolsDirectory = path.join("synthetic", "Tools");
+  it("descarta una entrada PATH ejecutable en vez de recorrerla", () => {
+    const executableEntry = path.resolve(
+      "synthetic",
+      "WindowsApps",
+      "ActionsMcpHost.exe",
+    );
+    const toolsDirectory = path.resolve("synthetic", "Tools");
 
     expect(
       executableCandidatesFromPath(
@@ -14,8 +18,13 @@ describe("executableCandidatesFromPath", () => {
         ["ffmpeg.exe"],
       ),
     ).toEqual([
-      path.join(executableEntry, "ffmpeg.exe"),
       path.join(toolsDirectory, "ffmpeg.exe"),
     ]);
+  });
+
+  it("descarta entradas PATH relativas", () => {
+    expect(
+      executableCandidatesFromPath("relative-tools", ["ffmpeg"]),
+    ).toEqual([]);
   });
 });
