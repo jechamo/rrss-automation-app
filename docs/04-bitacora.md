@@ -42,13 +42,16 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
   evidencia RED–GREEN–REFACTOR, pero con tests, build, CI, seguridad y rollback.
 - Verificado: Vault versionado, atómico y fail-closed; readiness con integridad/esquema; build
   obligatorio; Chromium real; servidor de producción limitado a `127.0.0.1`; crawler `fetch`
-  documentado; lint y typecheck; 23 pruebas Vitest, 135 de contratos/instalador, 189 de hooks,
+  documentado; lint y typecheck; 26 pruebas Vitest, 138 de contratos/instalador, 189 de hooks,
   build Next y auditoría completa con cero vulnerabilidades.
 - La preparación real en una ruta Windows con espacios creó una SQLite con cero filas, el marcador
   gestionado y `.next/BUILD_ID`. El puerto 3000 siguió ocupado por el local original, por lo que la
   copia terminó correctamente bloqueada solo para el arranque concurrente. Prisma 6 requiere
   `RUST_LOG=info` en `db push` ante el fallo conocido de su schema engine; el wrapper lo aplica solo
   al subproceso sin modificar el entorno del operador.
+- El instalador sanea el `PATH` únicamente en los subprocesos de preparación: descarta entradas que
+  no sean directorios absolutos reales. Esto evita que Next trate ejecutables publicados en el
+  `PATH` de Windows como carpetas, sin cambiar el entorno usado al arrancar RRSS Studio.
 
 ### 2026-08-21 — Actualización del marco SDD/TDD v0.7.0
 

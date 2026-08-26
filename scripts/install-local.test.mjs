@@ -101,6 +101,32 @@ test("debe_aceptar_yes_solo_para_la_preparacion_no_interactiva", async () => {
   );
 });
 
+test("debe_sanear_path_y_conservar_solo_directorios_absolutos", () => {
+  const pathApi = path.win32;
+  const directories = new Set([
+    pathApi.normalize("C:\\Node"),
+    pathApi.normalize("C:\\Windows\\System32"),
+  ]);
+  const result = installLocal.sanitizeExecutablePath(
+    [
+      "C:\\Node",
+      "C:\\Users\\runner\\ActionsMcpHost.exe",
+      ".\\relative",
+      '"C:\\Windows\\System32"',
+      "C:\\Node",
+    ].join(pathApi.delimiter),
+    {
+      pathApi,
+      isDirectory: (candidate) => directories.has(pathApi.normalize(candidate)),
+    },
+  );
+
+  assert.equal(
+    result,
+    ["C:\\Node", "C:\\Windows\\System32"].join(pathApi.delimiter),
+  );
+});
+
 test("debe_fijar_exit_code_no_cero_para_bloqueo_y_error", async () => {
   const exitCodes = [];
   const blocked = await installLocal.main({

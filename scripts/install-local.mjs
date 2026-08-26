@@ -43,6 +43,39 @@ import {
 
 const SUPPORTED_OPERATIONS = new Set(["check", "prepare", "reset", "start"]);
 
+export function sanitizeExecutablePath(
+  pathValue,
+  {
+    pathApi = path,
+    isDirectory = (candidate) => statSync(candidate).isDirectory(),
+  } = {},
+) {
+  if (typeof pathValue !== "string" || pathValue.trim() === "") {
+    return "";
+  }
+  const seen = new Set();
+  return pathValue
+    .split(pathApi.delimiter)
+    .map((entry) => entry.trim().replace(/^"|"$/gu, ""))
+    .filter((entry) => entry !== "" && pathApi.isAbsolute(entry))
+    .filter((entry) => {
+      try {
+        return isDirectory(entry);
+      } catch {
+        return false;
+      }
+    })
+    .filter((entry) => {
+      const identity = pathApi.resolve(entry).toLowerCase();
+      if (seen.has(identity)) {
+        return false;
+      }
+      seen.add(identity);
+      return true;
+    })
+    .join(pathApi.delimiter);
+}
+
 export function resolveNpmCliPath({
   nodeExecutable = process.execPath,
   npmExecPath = process.env.npm_execpath,
@@ -180,6 +213,21 @@ export function createLocalInstallationRuntime({
       exists: localSystem.exists,
       candidates: system.npmCliCandidates,
     });
+    const safePathEnvironment = sanitizeExecutablePath(
+      localSystem.pathEnvironment,
+      {
+        isDirectory(candidate) {
+          return Boolean(localSystem.stat(candidate)?.isDirectory?.());
+        },
+      },
+    );
+    const preparationEnvironment = { ...process.env };
+    for (const key of Object.keys(preparationEnvironment)) {
+      if (key.toLowerCase() === "path") {
+        delete preparationEnvironment[key];
+      }
+    }
+    preparationEnvironment.PATH = safePathEnvironment;
     processRuntime = {
       npmCliPath,
       processes: createProcessAdapter({
@@ -199,6 +247,7 @@ export function createLocalInstallationRuntime({
         canonicalize:
           system.canonicalizeSystemExecutable ?? localSystem.realpath,
         spawn: localSystem.spawnSync,
+        environment: preparationEnvironment,
       }),
       devProcesses: createProcessAdapter({
         projectRoot,
