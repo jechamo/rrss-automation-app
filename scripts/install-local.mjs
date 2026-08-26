@@ -213,8 +213,12 @@ export function createLocalInstallationRuntime({
       exists: localSystem.exists,
       candidates: system.npmCliCandidates,
     });
+    const systemRoot = system.systemRoot ?? process.env.SystemRoot ?? "C:\\Windows";
     const safePathEnvironment = sanitizeExecutablePath(
-      localSystem.pathEnvironment,
+      [
+        path.dirname(nodeExecutable),
+        path.join(systemRoot, "System32"),
+      ].join(path.delimiter),
       {
         isDirectory(candidate) {
           return Boolean(localSystem.stat(candidate)?.isDirectory?.());
@@ -238,12 +242,8 @@ export function createLocalInstallationRuntime({
           system.inheritCommandOutput ?? process.env.CI === "true",
         taskkillExecutable:
           system.taskkillExecutable ??
-          path.join(
-            process.env.SystemRoot ?? "C:\\Windows",
-            "System32",
-            "taskkill.exe",
-          ),
-        systemRoot: system.systemRoot ?? process.env.SystemRoot ?? "C:\\Windows",
+          path.join(systemRoot, "System32", "taskkill.exe"),
+        systemRoot,
         canonicalize:
           system.canonicalizeSystemExecutable ?? localSystem.realpath,
         spawn: localSystem.spawnSync,

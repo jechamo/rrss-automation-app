@@ -49,9 +49,9 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
   copia terminó correctamente bloqueada solo para el arranque concurrente. Prisma 6 requiere
   `RUST_LOG=info` en `db push` ante el fallo conocido de su schema engine; el wrapper lo aplica solo
   al subproceso sin modificar el entorno del operador.
-- El instalador sanea el `PATH` únicamente en los subprocesos de preparación: descarta entradas que
-  no sean directorios absolutos reales. Esto evita que Next trate ejecutables publicados en el
-  `PATH` de Windows como carpetas, sin cambiar el entorno usado al arrancar RRSS Studio.
+- El instalador limita el `PATH` únicamente en los subprocesos de preparación a Node y
+  `System32`, ambos como directorios absolutos reales. Esto evita que Next trate alias de
+  `WindowsApps` como carpetas, sin cambiar el entorno usado al arrancar RRSS Studio.
 
 ### 2026-08-21 — Actualización del marco SDD/TDD v0.7.0
 

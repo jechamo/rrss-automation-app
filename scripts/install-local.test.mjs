@@ -773,11 +773,13 @@ test("debe_invalidar_marcador_al_sustituir_la_db_gestionada", async () => {
 test("debe_preparar_con_env_manual_sin_leerlo_ni_sobrescribirlo", async () => {
   const originalEnv = "CONFIGURACION_MANUAL_NO_LEER";
   const commands = [];
+  const preparationPaths = [];
   const harness = createHarness({
     envContent: originalEnv,
-    spawnSync(_executable, argv) {
+    spawnSync(_executable, argv, processOptions) {
       const command = npmCommand(argv);
       commands.push(command);
+      preparationPaths.push(processOptions?.env?.PATH);
       if (command === "ci") {
         mkdirSync(path.join(harness.projectRoot, "node_modules"));
       }
@@ -804,6 +806,14 @@ test("debe_preparar_con_env_manual_sin_leerlo_ni_sobrescribirlo", async () => {
     assert.equal(harness.reads.includes(".env"), false);
     assert.ok(commands.indexOf("run db:push") < commands.indexOf("run build"));
     assert.equal(commands.includes("run build"), true);
+    assert.equal(
+      preparationPaths.every((value) =>
+        typeof value === "string" &&
+        value.split(path.delimiter).includes(path.join(harness.projectRoot, "node-bin")) &&
+        !value.includes("WindowsApps")
+      ),
+      true,
+    );
   } finally {
     harness.cleanup();
   }
