@@ -3,6 +3,8 @@ import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
+import { executableCandidatesFromPath } from "./path-candidates";
+
 export type SystemToolName = "ffmpeg" | "ffprobe" | "yt-dlp";
 
 export interface SystemToolStatus {
@@ -70,18 +72,22 @@ function probe(name: SystemToolName, candidate: string): { ok: boolean; version:
   }
 }
 
-function candidateFromPath(name: SystemToolName): string | null {
-  const pathValue = process.env.PATH ?? "";
-  for (const rawDir of pathValue.split(path.delimiter)) {
-    const dir = rawDir.replace(/^"|"$/g, "").trim();
-    if (!dir) continue;
-    for (const file of executableNames(name)) {
-      const candidate = path.join(dir, file);
-      if (fs.existsSync(candidate)) return candidate;
-    }
+function candidateFromPath(
+  name: SystemToolName,
+  pathValue = process.env.PATH ?? "",
+  probeCandidate: typeof probe = probe,
+): string | null {
+  for (const candidate of executableCandidatesFromPath(
+    pathValue,
+    executableNames(name),
+  )) {
+    // No usar existsSync/statSync aquí: el trazador de Next convierte rutas
+    // dinámicas de PATH en globs y puede intentar recorrer entradas que son
+    // ejecutables, no directorios. spawnSync falla de forma segura sin shell.
+    if (probeCandidate(name, candidate).ok) return candidate;
   }
   // Conserva compatibilidad con aliases/launchers que el sistema pueda resolver.
-  return probe(name, name).ok ? name : null;
+  return probeCandidate(name, name).ok ? name : null;
 }
 
 function findRecursive(root: string, wanted: Set<string>, depth = 0): string | null {

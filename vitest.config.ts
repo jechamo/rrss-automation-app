@@ -14,6 +14,7 @@ export default defineConfig({
     include: [
       "src/components/**/*.test.tsx",
       "src/core/health/**/*.test.ts",
+      "src/core/media/path-candidates.test.ts",
       "src/core/secrets/**/*.test.ts",
     ],
     setupFiles: ["./vitest.setup.ts"],
