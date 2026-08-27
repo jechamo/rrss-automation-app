@@ -16,7 +16,8 @@ La guía cubre dos declaraciones visibles:
    proveedores externos y herramientas audiovisuales o de navegación. Su ausencia
    limita una función concreta, pero no invalida el uso local básico.
 
-Aún no hay preparación local. Empieza comprobando los requisitos de Windows 11.
+La preparación local está disponible mediante el instalador guiado. Antes de
+ejecutarlo, comprueba los requisitos de Windows 11.
 
 ### Instalador guiado
 
@@ -76,7 +77,7 @@ El asistente identifica, no configura, estas capacidades:
 
 - IA autenticada (sesión local de la herramienta de IA)
 - Proveedores externos (claves en Ajustes, cifradas; nunca en `.env`)
-- Herramientas audiovisuales (FFmpeg/ffprobe)
+- Herramientas audiovisuales básicas (FFmpeg/ffprobe)
 - Navegación automatizada (Playwright y Chromium instalados)
 
 La guía no solicita, muestra, guarda ni valida secretos. Tampoco inicia sesión
@@ -227,6 +228,73 @@ Tras el uso local básico, habilita solo lo que necesites:
 
 Ninguna operación instala globalmente, modifica PATH, autentica IA, configura
 proveedores, lee secretos ni termina procesos por imagen global.
+
+## Herramientas locales: instalación y alcance
+
+El instalador prepara las dependencias npm del proyecto, `.env`, SQLite y el
+build. **No instala herramientas globales ni descarga navegadores o modelos.**
+Después de instalar una herramienta, reinicia RRSS Studio y pulsa **Volver a
+comprobar** en `http://localhost:3000/ajustes`.
+
+| Herramienta | Para qué se usa | ¿La instala `preparar.bat`? | Cómo habilitarla |
+|---|---|---|---|
+| Claude Code CLI | Dossier, análisis, búsqueda, guiones y planificación de contenido. | Sí, como dependencia local del proyecto; también puede reutilizar una instalación gestionada existente. No inicia sesión. | Ejecuta `claude auth login` y verifica con `claude auth status`. No necesita una API key en Ajustes. |
+| FFmpeg + ffprobe | Montaje, recorte, subtítulos, MIX y validación de audio/vídeo. | No. | `winget install Gyan.FFmpeg` instala ambos. Reinicia la aplicación para refrescar la detección. |
+| yt-dlp | Descarga y subtítulos de YouTube; apoyo para vídeo de TikTok e Instagram. | No. | `winget install yt-dlp.yt-dlp` |
+| Chromium de Playwright | Login, verificación de rutas, navegación y grabación automática. | No. | Desde el proyecto: `npx playwright install chromium` |
+| Whisper local | Transcripción sin créditos cuando no hay cues editoriales ni CC de YouTube. | No. | No hay descarga automatizada en el instalador actual. Provisiona `whisper.cpp v1.9.1` en `data/tools/whisper-cpp`, con `bin/Release/whisper-cli.exe` y el modelo multilingüe `models/ggml-small.bin`. |
+
+FFmpeg, ffprobe y yt-dlp se resuelven desde una ruta configurada, `PATH` o una
+instalación de WinGet. Whisper se mantiene dentro del proyecto. Si falta una
+herramienta opcional, la aplicación debe mostrar la limitación concreta en vez
+de declarar un éxito falso.
+
+## Configurar Ajustes y claves
+
+1. Arranca RRSS Studio y abre `http://localhost:3000/ajustes`.
+2. En **Motor de IA**, selecciona Claude y pulsa **Probar conexión**. La sesión
+   es local; no pegues una API key de Anthropic.
+3. En **Proveedores**, configura únicamente los servicios que vayas a usar.
+   Pulsa **Guardar** y después **Probar**.
+4. Revisa **Herramientas del sistema** y usa **Volver a comprobar** tras una
+   instalación o un cambio de ruta.
+
+Las claves se guardan cifradas en el Vault local y no en `.env`. La interfaz no
+vuelve a mostrar su valor completo. La prueba de Scrape Creators consulta el
+saldo real y puede consumir un crédito; fal.ai realiza una validación inicial de
+formato y la validación completa sucede en el primer uso.
+
+| Ajuste | Cuándo se usa | ¿Es obligatorio? | Obtener credencial |
+|---|---|---|---|
+| Claude | Dossier, mapa funcional, competencia, leads, virales y guiones. | Solo para flujos con IA; no usa API key, sino la sesión local de Claude Code. | `claude auth login` |
+| Gemini | Comprensión de vídeo y verificación opcional en el Laboratorio de clips. | No; depende del modo elegido. | [Google AI Studio](https://aistudio.google.com/apikey) |
+| ElevenLabs | Locución por voz seleccionada. | Solo si eliges esa rama de voz. | [ElevenLabs](https://elevenlabs.io/app/settings/api-keys) |
+| HeyGen | Vídeos con avatar y voz. | Solo si eliges HeyGen. | [HeyGen](https://app.heygen.com/settings) |
+| fal.ai | Generación de vídeos o cortes. | Solo si eliges fal.ai. | [fal.ai](https://fal.ai/dashboard/keys) |
+| GitHub Token | Clonar repositorios privados para analizar código. | No para repositorios públicos ni rutas locales. | [GitHub](https://github.com/settings/tokens) |
+| Scrape Creators | Búsqueda estructurada de virales públicos en YouTube, TikTok e Instagram. | Solo en el modo que usa este proveedor. | [Scrape Creators](https://app.scrapecreators.com/) |
+
+No introduzcas en Ajustes contraseñas de la app analizada. Cuando una demo
+necesita login, sus credenciales se guardan desde el proyecto en un registro
+cifrado independiente del Vault.
+
+## Zonas de la aplicación y dependencias
+
+| Zona | Qué permite hacer | Claves o herramientas que puede usar |
+|---|---|---|
+| Dashboard | Abrir proyectos y piezas recientes. | Ninguna. |
+| Nuevo análisis | Crear un proyecto desde una URL, repositorio o ruta local. | Sesión de Claude para generar el análisis; GitHub Token solo si el repositorio es privado. |
+| Pipeline, mapa y dossier | Rastrear la app, extraer funciones y mantener la verdad de negocio. | Claude; Chromium para verificar rutas o navegación dinámica. |
+| Competencia | Descubrir, comparar y editar competidores. | Claude. |
+| Leads | Localizar negocios públicos y proponer una estrategia. | Claude con búsqueda web; no requiere una key de proveedor adicional. |
+| Virales | Buscar, ordenar y descomponer patrones virales. | Claude; Scrape Creators solo en los modos de scraping o híbridos. |
+| Contenido desde viral | Generar guion, vídeo, voz y montaje. | Claude; según la elección, fal.ai o HeyGen, ElevenLabs y Gemini opcional; FFmpeg/ffprobe para el final. yt-dlp puede enriquecer fuentes de TikTok/Instagram. |
+| Contenido propio | Grabar o subir una demo de la app y montarla. | Claude; Chromium para automatización; credenciales cifradas del proyecto si hay login; fal.ai o HeyGen y ElevenLabs según la rama; FFmpeg/ffprobe para el final. |
+| Laboratorio de clips | Convertir un vídeo o YouTube en clips 9:16 subtitulados. | FFmpeg, ffprobe y Whisper local; yt-dlp para YouTube; Gemini solo en **Descubrir con IA** o **Verificar con Gemini**. |
+| Estudio multimedia | Mediateca, grabación REC/STOP y MIX. | FFmpeg/ffprobe; permiso del navegador para compartir pantalla. No requiere API key. |
+| Publicación asistida | Descargar vídeo, copiar el texto y abrir la red social. | Ninguna key de la red social; la app no publica automáticamente. |
+| Ajustes | Elegir motor, guardar/probar claves y comprobar herramientas. | Solo las credenciales que el usuario decida configurar. |
+| Guía | Consultar los flujos detallados y sus posibles errores. | Ninguna. |
 
 ## Stack
 

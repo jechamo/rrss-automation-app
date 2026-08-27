@@ -93,9 +93,9 @@ function SystemToolsCard() {
   }, [load]);
 
   return (
-    <section className="glass p-5">
+    <section className="glass min-w-0 overflow-hidden p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <div className="text-sm font-semibold">Herramientas del sistema</div>
           <p className="mt-1 text-xs text-white/45">
             Se comprueban desde el mismo proceso que ejecuta los montajes. La detección de Claude CLI no se modifica.
@@ -111,20 +111,20 @@ function SystemToolsCard() {
         </button>
       </div>
 
-      <div className="mt-4 grid gap-2">
+      <div className="mt-4 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
         {tools.map((tool) => (
-          <div key={tool.name} className="rounded-xl border border-white/10 bg-black/20 p-3">
-            <div className="flex items-center gap-2 text-sm">
+          <div key={tool.name} className="min-w-0 rounded-xl border border-white/10 bg-black/20 p-3">
+            <div className="flex min-w-0 items-center gap-2 text-sm">
               <span className={tool.found ? "text-[var(--color-state-ok)]" : "text-[var(--color-state-error)]"}>
                 {tool.found ? "✓" : "✕"}
               </span>
-              <span className="font-medium">{tool.label}</span>
-              {tool.found && <span className="ml-auto text-[10px] uppercase text-white/35">{tool.source}</span>}
+              <span className="min-w-0 font-medium">{tool.label}</span>
+              {tool.found && <span className="ml-auto shrink-0 text-[10px] uppercase text-white/35">{tool.source}</span>}
             </div>
             {tool.found ? (
               <>
-                <div className="mt-1 truncate text-[11px] text-white/45" title={tool.path}>{tool.path}</div>
-                <div className="truncate text-[11px] text-white/30" title={tool.version}>{tool.version}</div>
+                <div className="mt-1 min-w-0 truncate text-[11px] text-white/45" title={tool.path}>{tool.path}</div>
+                <div className="min-w-0 truncate text-[11px] text-white/30" title={tool.version}>{tool.version}</div>
               </>
             ) : (
               <code className="mt-2 block rounded bg-black/30 px-2 py-1 text-[11px] text-white/65">
