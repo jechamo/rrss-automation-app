@@ -261,10 +261,17 @@ RRSS Studio aplica estos gates reales declarados en
 | `build` | fast | `npm run build` | compilación limpia de Next.js, incluidas todas las rutas API |
 | `security` | slow | `node scripts/scan-secrets.mjs --json` | secretos en el árbol versionado |
 | `deps-audit` | slow | `npm audit --audit-level=high` | vulnerabilidades altas o críticas en producción y tooling ejecutado por CI/build |
+| `e2e` | slow | `npm run test:e2e:mock` | recorridos funcionales con SQLite, Vault, medios y proveedores simulados aislados |
 
 CI ejecuta además `npm ci` en Ubuntu y un smoke limpio en Windows 11, dentro de una ruta con
 espacios: crea SQLite sin seeds, exige cero filas de negocio, compila, arranca, consulta
-`/api/health/ready` y carga `/ajustes`.
+`/api/health/ready` y carga `/ajustes`. Un job Windows separado instala Chromium y ejecuta el E2E
+mock sin `secrets`; las trazas, capturas y vídeos se suben solo si falla y caducan a los tres días.
+
+El E2E activa únicamente `RRSS_E2E_MODE=mock`, valida que toda persistencia esté bajo una raíz
+temporal exacta y bloquea el egreso del navegador y del servidor. Los adaptadores simulados fallan
+cerrado si no existe fixture y publican un resumen con proveedores, transiciones, intentos
+bloqueados y `performedExternalRequests: 0`.
 
 ### Overrides de seguridad acotados
 
@@ -288,7 +295,6 @@ clase además de su motivo:
 | `docs` | `se-ejecuta-en-otro-sitio` | necesita el SHA base del pull request, así que corre en CI: `quality-gates.yml` y `sdd-gates.yml` lo invocan con `check-sdd --docs-diff` |
 | `smells` | `pendiente` | no hay umbrales de complejidad calibrados para el código histórico; activarlo ahora daría falsos bloqueos |
 | `coverage` | `pendiente` | la suite actual no produce todavía una cobertura combinada fiable de Vitest y `node:test` |
-| `e2e` | `pendiente` | el smoke de instalación existe, pero los flujos con red, proveedores y vídeos requieren credenciales y consentimiento humano |
 | `visual` | `pendiente` | no existe un almacén aprobado de capturas de referencia para comparación visual |
 | `a11y` | `pendiente` | no existe aún un runner de navegador estable para auditar todas las pantallas dinámicas |
 | `mutation` | `pendiente` | no hay motor de mutación configurado ni presupuesto de ejecución acordado |

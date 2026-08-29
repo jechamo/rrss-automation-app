@@ -1,9 +1,10 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { AuthorVideoMetric } from "./scrape-creators-contracts";
+import { getDataDir } from "../runtime/e2e-profile";
 
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const CACHE_DIR = path.join(process.cwd(), "data", "cache");
+const CACHE_DIR = path.join(getDataDir(), "cache");
 const CACHE_PATH = path.join(CACHE_DIR, "scrape-creators-authors.json");
 
 interface CacheEntry {

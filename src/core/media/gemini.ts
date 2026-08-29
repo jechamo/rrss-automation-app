@@ -2,6 +2,8 @@ import fs from "node:fs";
 import { getSecret } from "@/core/secrets/vault";
 import { fetchJson, fetchWithTimeout, sleep } from "./http";
 import { hasYtDlp, downloadVideo } from "./ytdlp";
+import { isMockE2E } from "@/core/runtime/e2e-profile";
+import { simulateMockProvider } from "@/core/testing/mock-runtime";
 
 // Conector Gemini: comprension MULTIMODAL del viral fuente (opcion de REQ-005).
 // - YouTube publico: se pasa la URL por file_data.file_uri (ingesta nativa, sin binario).
@@ -181,6 +183,10 @@ async function analyzeViaDownload(url: string, prompt: string, key: string): Pro
  * resto por descarga + Files API. Lanza si falla (extract.ts degrada a REQ-004).
  */
 export async function describeViral(sourceUrl: string, contexto: string): Promise<string> {
+  if (isMockE2E()) {
+    await simulateMockProvider("gemini");
+    return "Análisis multimodal E2E local: hook de promesa y resultado visible.";
+  }
   const key = apiKey();
   const prompt = buildPrompt(contexto);
   return isYouTube(sourceUrl)
@@ -193,6 +199,10 @@ export async function describeViral(sourceUrl: string, contexto: string): Promis
  * Comparte la misma subida temporal y limpieza remota que el análisis de virales.
  */
 export async function analyzeLocalVideoJson(absPath: string, prompt: string): Promise<unknown> {
+  if (isMockE2E()) {
+    await simulateMockProvider("gemini");
+    return { source: "fixture-local", duration: 12, clips: [], recovery: "resume-completed" };
+  }
   const key = apiKey();
   let remoteName = "";
   try {

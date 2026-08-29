@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { LoginCreds } from "@/core/secrets/login";
+import { isMockE2E } from "@/core/runtime/e2e-profile";
+import { installLoopbackRouteGuard } from "@/core/runtime/egress-policy";
 
 type Scope = import("playwright").Page | import("playwright").Frame;
 
@@ -190,6 +192,7 @@ export async function prepareAuthenticatedSession(args: {
   }
 
   try {
+    if (isMockE2E()) await installLoopbackRouteGuard(context);
     const page = await context.newPage();
     await page.goto(args.url, { waitUntil: "domcontentloaded", timeout: 30_000 });
     await page.waitForTimeout(1_200);

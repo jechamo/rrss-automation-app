@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { getDataDir } from "../runtime/e2e-profile";
 
 /**
  * Secret Vault (Arquitectura §7).
@@ -24,7 +25,7 @@ export class VaultIntegrityError extends Error {
   }
 }
 
-export function createVault(dataDir = path.join(process.cwd(), "data")) {
+export function createVault(dataDir = getDataDir()) {
   const keyFile = path.join(dataDir, ".vaultkey");
   const vaultFile = path.join(dataDir, "vault.enc");
   const lockFile = path.join(dataDir, ".vault.lock");

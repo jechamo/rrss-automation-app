@@ -7,8 +7,9 @@ import type {
   ClipSourceType,
   ImportedClipPlan,
 } from "./contracts";
+import { getDataDir } from "../runtime/e2e-profile";
 
-const CLIPS_DIR = path.join(process.cwd(), "data", "clips");
+const CLIPS_DIR = path.join(getDataDir(), "clips");
 
 export interface ClipCleanupSummary {
   jobs: number;

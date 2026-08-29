@@ -2,8 +2,11 @@ import path from "node:path";
 import type { Locator, Page } from "playwright";
 import type { LoginCreds } from "@/core/secrets/login";
 import { prepareAuthenticatedSession } from "./auth-session";
+import { getDataDir } from "../runtime/e2e-profile";
+import { isMockE2E } from "../runtime/e2e-profile";
+import { installLoopbackRouteGuard } from "../runtime/egress-policy";
 
-const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_DIR = getDataDir();
 
 export interface ObservedElement {
   tag: string;
@@ -146,6 +149,7 @@ export async function inspectNavigationSurface(args: {
       log: (message) => logs.push(message),
     });
     const context = await browser.newContext({ ...device, storageState: sessionPath });
+    if (isMockE2E()) await installLoopbackRouteGuard(context);
 
     try {
       const page = await context.newPage();

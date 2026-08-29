@@ -1,6 +1,7 @@
 import type { MediaConfig, PieceAssets, PieceContent } from "./types";
 import { assemble, assemblePresenterDemo } from "@/core/media/assemble";
 import { hasFfmpeg } from "@/core/media/ffmpeg";
+import { isMockE2E } from "@/core/runtime/e2e-profile";
 
 export interface RemountResult {
   assets: PieceAssets;
@@ -21,6 +22,12 @@ export function remountOwnPiece(args: {
   const { pieceId, config, content, assets, log } = args;
   if (!assets.recordingPath) {
     throw new Error("Falta la grabación de navegación. Grábala, súbela o elígela desde la mediateca.");
+  }
+  if (isMockE2E()) {
+    assets.videoPath ||= assets.presenterPath || assets.recordingPath;
+    assets.logs.push("Montaje fixture regenerado sin invocar proveedores ni FFmpeg real.");
+    log("Montaje fixture regenerado sin consumir créditos de vídeo ni voz.");
+    return { assets, finalReady: true };
   }
   if (!hasFfmpeg()) {
     throw new Error("FFmpeg no está disponible; instálalo para regenerar el montaje sin proveedores.");

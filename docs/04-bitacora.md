@@ -33,6 +33,28 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ## Historial
 
+### 2026-08-28 — E2E funcional simulado, aislado y sin créditos (Spec 002)
+
+- Perfil `RRSS_E2E_MODE=mock` fail-closed: SQLite, Vault, sesiones, cachés, medios y build viven
+  bajo raíces temporales exactas y se eliminan al terminar; `data/`, `.env` y el Vault normal no
+  participan.
+- Fakes deterministas para Claude/WebSearch, Gemini, fal.ai, HeyGen, ElevenLabs, Scrape Creators,
+  GitHub y yt-dlp. Registran `pending → completed` y permiten error, timeout y respuesta inválida;
+  una capacidad desconocida falla sin recurrir al adaptador real.
+- Playwright cubre arranque/Ajustes, proyecto+dossier, competencia/leads/virales y «Buscar más»,
+  fal/HeyGen/ElevenLabs, login cifrado y grabación privada, remontaje sin proveedores, laboratorio
+  de clips y reanudación por hash, recuperación de errores y bloqueo de egreso en navegador/servidor.
+- Gate `e2e` real en Windows 11 sin secretos. Chromium se instala en el job; diagnósticos se
+  conservan solo en fallo durante tres días. Cobertura y accesibilidad siguen pendientes porque
+  todavía no tienen comandos ni medidas fiables; no se declaran configuradas.
+- Cierre: 9/9 E2E sobre build de producción, 71/71 Vitest, 138/138 contratos, lint, typecheck y
+  build verdes; 55 operaciones simuladas, 18 loopback, 1 intento externo bloqueado y 0 realizados.
+  La fuente se construye desde una instantánea sin `.env*`, el entorno hijo usa allowlist y las
+  herramientas locales se consideran ausentes en mock. Teardown Windows probado con SIGTERM/
+  SIGKILL: lock, run y build temporal desaparecen incluso ante interrupción.
+- Revisión de código GO y auditoría OWASP/ASVS APTO, sin hallazgos. El gate global conserva deuda
+  histórica de trazabilidad de la spec 001; la spec 002 estricta tiene 0 problemas.
+
 ### 2026-08-24 — SDD 0.9.1 y endurecimiento del instalador (T-001-08)
 
 - Actualización brownfield fijada al commit oficial de SDD 0.9.1; simulación final sin conflictos.

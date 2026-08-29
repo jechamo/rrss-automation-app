@@ -2,6 +2,9 @@ import { getSecret } from "@/core/secrets/vault";
 import { fetchJson, fetchWithTimeout } from "./http";
 import { saveBytes } from "./storage";
 import type { MediaOption } from "./types";
+import { isMockE2E } from "@/core/runtime/e2e-profile";
+import { mockProviderAsset, mockProviderOptions } from "@/core/testing/mock-providers";
+import { simulateMockProvider } from "@/core/testing/mock-runtime";
 
 // Conector ElevenLabs: listado de voces + text-to-speech (locucion de la rama fal).
 
@@ -15,6 +18,10 @@ function key(): string {
 }
 
 export async function listVoices(): Promise<MediaOption[]> {
+  if (isMockE2E()) {
+    await simulateMockProvider("elevenlabs");
+    return mockProviderOptions("elevenlabs-voices");
+  }
   const data = await fetchJson<{ voices?: { voice_id: string; name: string; category?: string }[] }>(
     `${BASE}/voices`,
     { headers: { "xi-api-key": key() } },
@@ -24,6 +31,11 @@ export async function listVoices(): Promise<MediaOption[]> {
 
 /** Genera la locucion (mp3) y la guarda. Devuelve ruta relativa a data/. */
 export async function tts(pieceId: string, text: string, voiceId: string): Promise<string> {
+  if (isMockE2E()) {
+    await simulateMockProvider("elevenlabs");
+    const asset = mockProviderAsset("elevenlabs-audio", pieceId);
+    return saveBytes(pieceId, asset.name, asset.bytes);
+  }
   const vid = voiceId || VOZ_DEFECTO;
   const r = await fetchWithTimeout(
     `${BASE}/text-to-speech/${vid}`,

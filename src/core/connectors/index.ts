@@ -1,6 +1,7 @@
 import { getSecret } from "@/core/secrets/vault";
 import { getEngine } from "@/core/ai";
 import type { AiEngineId } from "@/core/ai";
+import { simulateMockProvider, type MockProvider } from "@/core/testing/mock-runtime";
 
 export type ProviderId =
   | "ai-engine"
@@ -79,6 +80,10 @@ export interface TestResult {
 }
 
 async function fetchWithTimeout(url: string, init: RequestInit = {}, ms = 12000): Promise<Response> {
+  if (process.env.RRSS_E2E_MODE === "mock") {
+    const { assertAllowedEgress } = await import("@/core/runtime/egress-policy");
+    assertAllowedEgress(url);
+  }
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), ms);
   try {
@@ -91,6 +96,18 @@ async function fetchWithTimeout(url: string, init: RequestInit = {}, ms = 12000)
 export async function testProvider(id: ProviderId, engineId?: AiEngineId): Promise<TestResult> {
   if (id === "ai-engine") {
     return getEngine(engineId).test();
+  }
+
+  if (process.env.RRSS_E2E_MODE === "mock") {
+    try {
+      await simulateMockProvider(id as MockProvider);
+      return { ok: true, detail: `${id}: proveedor simulado local activo.` };
+    } catch (error) {
+      return {
+        ok: false,
+        detail: `Fallo simulado y controlado: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
   }
 
   const key = getSecret(id);

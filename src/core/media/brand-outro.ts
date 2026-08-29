@@ -3,8 +3,9 @@ import path from "node:path";
 import { assetAbsPath, pieceDir } from "./storage";
 import { ffprobeDuration, ffprobeHasAudio, hasFfmpeg, hasFfprobe, runFfmpeg } from "./ffmpeg";
 import type { PieceAssets } from "@/core/content/types";
+import { getDataDir } from "../runtime/e2e-profile";
 
-const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_DIR = getDataDir();
 const OUTRO_SECONDS = 3;
 const VIDEO_FILTER = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30,setsar=1,format=yuv420p";
 

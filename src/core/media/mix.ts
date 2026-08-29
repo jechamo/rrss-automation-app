@@ -5,6 +5,7 @@ import { assetAbsPath, projectLibraryDir } from "./storage";
 import { ffprobeDuration, hasFfmpeg, runFfmpeg } from "./ffmpeg";
 import { writeAssSubtitles } from "./subtitles";
 import { mixVideoCount, type MixRecipe } from "./mix-contracts";
+import { getDataDir } from "../runtime/e2e-profile";
 
 export { coerceMixRecipe, mixVideoCount, mixVisualDuration } from "./mix-contracts";
 export type { MixRecipe, MixSegment, MixOverlay } from "./mix-contracts";
@@ -159,5 +160,5 @@ export async function assembleMix(projectId: string, mixId: string, recipe: MixR
   }
   const output = path.join(dir, outputName);
   if (!fs.existsSync(output)) throw new Error("FFmpeg no generó el fichero MIX.");
-  return path.relative(path.join(process.cwd(), "data"), output).replace(/\\/g, "/");
+  return path.relative(getDataDir(), output).replace(/\\/g, "/");
 }

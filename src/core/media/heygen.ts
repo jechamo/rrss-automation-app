@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { getSecret } from "@/core/secrets/vault";
 import { fetchWithTimeout, sleep } from "./http";
-import { downloadTo } from "./storage";
+import { downloadTo, saveBytes } from "./storage";
+import { isMockE2E } from "@/core/runtime/e2e-profile";
+import { mockProviderAsset, mockProviderOptions } from "@/core/testing/mock-providers";
+import { simulateMockProvider } from "@/core/testing/mock-runtime";
 import type { MediaOption } from "./types";
 import {
   buildHeygenVideoBody,
@@ -86,6 +89,10 @@ interface VoiceItem {
 }
 
 export async function listVoices(): Promise<MediaOption[]> {
+  if (isMockE2E()) {
+    await simulateMockProvider("heygen");
+    return mockProviderOptions("heygen-voices");
+  }
   const voices = await paginate<VoiceItem>("/v3/voices?type=public");
   return voices.map((v) => ({
     id: v.voice_id,
@@ -108,6 +115,10 @@ interface LookItem {
 
 /** Lista avatar looks (el `id` del look es el `avatar_id` para generar video). */
 export async function listAvatars(): Promise<MediaOption[]> {
+  if (isMockE2E()) {
+    await simulateMockProvider("heygen");
+    return mockProviderOptions("heygen-avatars");
+  }
   // Sin ownership devuelve presets publicos y avatares propios.
   const looks = await paginate<LookItem>("/v3/avatars/looks", 50);
   return looks.map((l) => ({
@@ -131,6 +142,10 @@ export async function uploadAsset(
   filename: string,
   mime: string,
 ): Promise<UploadedAsset> {
+  if (isMockE2E()) {
+    await simulateMockProvider("heygen");
+    return { assetId: "asset-e2e", url: "http://localhost/asset-e2e", mimeType: mime, sizeBytes: bytes.length };
+  }
   const fd = new FormData();
   fd.append("file", new Blob([new Uint8Array(bytes)], { type: mime }), filename);
   const res = (await heygenFetch(
@@ -145,6 +160,10 @@ export async function uploadAsset(
 
 /** Crea un Photo Avatar a partir de un asset de imagen ya subido. Devuelve avatar_id. */
 export async function createPhotoAvatar(name: string, imageAssetId: string): Promise<string> {
+  if (isMockE2E()) {
+    await simulateMockProvider("heygen");
+    return "avatar-e2e";
+  }
   const res = (await heygenFetch(
     "/v3/avatars",
     {
@@ -201,6 +220,11 @@ export interface GenerateAvatarArgs {
  * fuente de audio: (texto + voiceId) o audioAssetId. Devuelve la ruta relativa.
  */
 export async function generateAvatarVideo(args: GenerateAvatarArgs): Promise<string> {
+  if (isMockE2E()) {
+    await simulateMockProvider("heygen");
+    const asset = mockProviderAsset("heygen-video", args.pieceId);
+    return saveBytes(args.pieceId, args.outName ?? asset.name, asset.bytes);
+  }
   const body = buildHeygenVideoBody(args);
 
   const gen = (await heygenFetch(

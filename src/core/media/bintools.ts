@@ -166,10 +166,20 @@ function candidateFromWinGet(name: SystemToolName): string | null {
 
 export function resolveSystemTool(name: SystemToolName, refresh = false): SystemToolStatus {
   if (refresh) cache.delete(name);
+  const spec = SPECS[name];
+  if (process.env.RRSS_E2E_MODE === "mock") {
+    return {
+      name,
+      label: spec.label,
+      found: false,
+      path: "",
+      version: "",
+      source: "missing",
+      installHint: spec.installHint,
+    };
+  }
   const saved = cache.get(name);
   if (saved) return saved;
-
-  const spec = SPECS[name];
   const fromEnv = process.env[spec.env]?.trim();
   const candidates: Array<{ path: string; source: SystemToolStatus["source"] }> = [];
   if (fromEnv) candidates.push({ path: fromEnv, source: "env" });

@@ -19,6 +19,7 @@ import { assetAbsPath } from "@/core/media/storage";
 import { friendlyProviderFailure } from "@/core/media/contracts";
 import { effectiveClipLimit } from "@/core/media/planning";
 import type { PipelineDef, PipelineNode } from "./engine";
+import { isMockE2E } from "@/core/runtime/e2e-profile";
 
 export const REQ006_NODES = [
   { id: "input", label: "Entrada" },
@@ -256,7 +257,7 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
                 ...assets.clipManifest[manifestIndex],
                 path: clip,
                 status: "ok",
-                actualSeconds: ffprobeDuration(assetAbsPath(clip)),
+                actualSeconds: isMockE2E() ? config.falClipSeconds : ffprobeDuration(assetAbsPath(clip)),
               };
               await prisma.contentPiece.update({
                 where: { id: pieceId },
@@ -331,7 +332,11 @@ export function buildReq006Pipeline(pieceId: string): PipelineDef {
         assets.logs.push(message);
         ctx.log(message);
       }
-      if (!hasFfmpeg()) {
+      if (isMockE2E()) {
+        finalReady = Boolean(assets.videoPath);
+        assets.logs.push("Montaje de demo simulado local completado con subtítulos fixture.");
+        ctx.log("Montaje de demo simulado local completado con subtítulos fixture.");
+      } else if (!hasFfmpeg()) {
         const warning =
           "FFmpeg no encontrado: se conserva el preview, pero no se marca como final porque faltan subtitulos.";
         assets.logs.push(warning);

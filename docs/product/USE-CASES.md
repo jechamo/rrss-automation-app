@@ -1,6 +1,6 @@
 # Casos de uso de producto
 
-> Estado: `approved` · Normalizado el 2026-08-21 · Gate humano aprobado por norkc.
+> Estado durable: `legacy-pending` · Normalizado el 2026-08-27. Se conservan las decisiones humanas históricas y la autorización del corte E2E de 2026-08-27, pero el gate universal aún no está materializado.
 
 ## UC-001 · Analizar una app web
 
@@ -109,3 +109,12 @@
 - **Flujo principal**: Ejecuta el instalador en consola, revisa los requisitos detectados, distingue los necesarios para la instalación funcional de las capacidades opcionales bloqueadas visibles, conoce los efectos fuera de la carpeta del proyecto, los procesos y la caché, confirma las acciones autorizadas y recibe una conclusión de estado.
 - **Alternativas y errores**: Si un requisito no puede satisfacerse, una autorización se deniega o una capacidad queda degradada, recibe un bloqueo o estado accionable y el instalador no declara éxito fuera de la definición humana aprobada.
 - **Postcondiciones**: El proyecto queda funcional según la definición aprobada o la persona conoce exactamente el siguiente paso humano necesario y qué capacidad permanece limitada.
+
+## UC-013 · Validar de extremo a extremo una entrega sin red
+
+- **Actor**: Persona responsable de entrega.
+- **Cubre**: PRD-RF-015, PRD-RF-016, PRD-RF-017, PRD-RF-018.
+- **Precondiciones**: Dispone de una copia de trabajo en Windows 11, una fuente web local, recursos de prueba pequeños y escenarios deterministas; no necesita credenciales reales ni conexión a Internet.
+- **Flujo principal**: Inicia la validación desde un estado independiente; comprueba arranque y capacidades degradadas; crea y edita un proyecto y su dossier; amplía resultados de mercado sin duplicados; completa las ramas de contenido generado y contenido propio con acceso ficticio; reanuda clips; y verifica una recuperación representativa antes de aceptar el control de entrega.
+- **Alternativas y errores**: Un destino externo, una simulación ausente, una respuesta corrupta, una exposición de secreto, una contaminación de datos o el fallo de un recorrido obligatorio detiene el control y bloquea la entrega. Una ruta con espacios no cambia el resultado. Los estados exhaustivos de error se cubren fuera de este caso E2E.
+- **Postcondiciones**: La persona obtiene evidencia repetible de los recorridos principales y de cero accesos externos; los datos normales permanecen intactos y una entrega con regresiones no puede presentarse como validada.

@@ -1,10 +1,12 @@
 // Helpers HTTP compartidos por los conectores de media (fal/heygen/elevenlabs/gemini).
+import { assertAllowedEgress } from "@/core/runtime/egress-policy";
 
 export async function fetchWithTimeout(
   url: string,
   init: RequestInit = {},
   ms = 60000,
 ): Promise<Response> {
+  if (process.env.RRSS_E2E_MODE === "mock") assertAllowedEgress(url);
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), ms);
   try {

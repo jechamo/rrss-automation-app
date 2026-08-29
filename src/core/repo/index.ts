@@ -3,6 +3,8 @@ import path from "node:path";
 import os from "node:os";
 import { spawnSync } from "node:child_process";
 import { getSecret } from "@/core/secrets/vault";
+import { isMockE2E } from "@/core/runtime/e2e-profile";
+import { simulateMockProvider } from "@/core/testing/mock-runtime";
 
 const IGNORE_DIRS = new Set([
   "node_modules", ".git", ".next", "dist", "build", "out", "coverage",
@@ -234,6 +236,18 @@ export async function analyzeRepo(
   }
 
   if (codeType === "github_public" || codeType === "github_private") {
+    if (isMockE2E()) {
+      await simulateMockProvider("github");
+      return {
+        source: "github:fixture-local",
+        tree: "package.json\nsrc/app/page.tsx",
+        keyFiles: [{ path: "package.json", content: '{"name":"fixture-local"}' }],
+        navigationFiles: [{
+          path: "src/app/page.tsx",
+          content: '1: <a href="/private">Zona privada fixture</a>',
+        }],
+      };
+    }
     const token = codeType === "github_private" ? getSecret("github") ?? undefined : undefined;
     if (codeType === "github_private" && !token) {
       throw new Error("Repo privado pero falta el token de GitHub (configuralo en Ajustes).");

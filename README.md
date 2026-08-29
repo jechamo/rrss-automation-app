@@ -7,6 +7,28 @@ Se desarrolla por requisitos, con validación entre cada uno. La especificación
 activa de bandeja e instalación local es
 [`docs/specs/001-content-tray-local-installation/`](docs/specs/001-content-tray-local-installation/).
 
+## E2E funcional sin claves ni créditos
+
+La suite Playwright usa el perfil explícito `RRSS_E2E_MODE=mock`. El runner crea una SQLite,
+Vault, sesiones, cachés, medios y build de Next exclusivos bajo `.e2e-runtime/` y `.next-e2e/`;
+los elimina al terminar y nunca abre `data/`, `.env` ni el Vault normal.
+
+```bat
+npm ci
+npx playwright install chromium
+npm run test:e2e:mock
+```
+
+Los fakes de Claude, Gemini, fal.ai, HeyGen, ElevenLabs, Scrape Creators, GitHub y `yt-dlp`
+reproducen estados pendientes, finalización y fallos controlados con recursos locales. Tanto el
+navegador como el servidor rechazan cualquier host distinto de loopback antes de conectar; no
+existe fallback a proveedores reales. El resumen seguro queda en
+`test-results/e2e-summary.json`; capturas, vídeo y trazas solo se conservan al fallar.
+
+`npm run test:e2e:mock:ui` abre el modo interactivo sobre el mismo perfil aislado. Ningún comando
+del proyecto ejecuta automáticamente pruebas con proveedores reales; esas validaciones requieren
+consentimiento manual fuera de CI.
+
 ## Preparar RRSS Studio en Windows 11
 
 La guía cubre dos declaraciones visibles:

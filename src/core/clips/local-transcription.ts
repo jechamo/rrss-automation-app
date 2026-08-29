@@ -4,9 +4,10 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { TranscriptCue } from "./contracts.js";
+import { getDataDir } from "../runtime/e2e-profile.js";
 
 const execFileAsync = promisify(execFile);
-const LOCAL_ROOT = path.join(process.cwd(), "data", "tools", "whisper-cpp");
+const LOCAL_ROOT = path.join(getDataDir(), "tools", "whisper-cpp");
 const BINARY = path.join(LOCAL_ROOT, "bin", "Release", "whisper-cli.exe");
 const MODEL = path.join(LOCAL_ROOT, "models", "ggml-small.bin");
 

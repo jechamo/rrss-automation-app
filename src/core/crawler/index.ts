@@ -1,3 +1,5 @@
+import { E2EEgressError, assertAllowedEgress } from "@/core/runtime/egress-policy";
+
 /**
  * Crawler ligero basado en fetch (Arquitectura §9, REQ-001).
  * Extrae texto, titulos, meta y CTAs de la landing y de paginas clave.
@@ -94,6 +96,7 @@ function extractLinks(html: string, base: URL): string[] {
 
 async function fetchPage(url: string): Promise<CrawledPage | null> {
   try {
+    if (process.env.RRSS_E2E_MODE === "mock") assertAllowedEgress(url);
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 15000);
     const res = await fetch(url, {
@@ -112,7 +115,8 @@ async function fetchPage(url: string): Promise<CrawledPage | null> {
       ctas: extractCtas(html),
       text: bodyText.slice(0, 6000),
     };
-  } catch {
+  } catch (error) {
+    if (error instanceof E2EEgressError) throw error;
     return null;
   }
 }
@@ -127,11 +131,15 @@ export async function crawlSite(
   const pages: CrawledPage[] = home ? [home] : [];
 
   if (home) {
+    if (process.env.RRSS_E2E_MODE === "mock") assertAllowedEgress(base.href);
     const raw = await fetch(base.href, {
       headers: { "User-Agent": "Mozilla/5.0 (compatible; RRSS-Studio/0.1)" },
     })
       .then((r) => r.text())
-      .catch(() => "");
+      .catch((error) => {
+        if (error instanceof E2EEgressError) throw error;
+        return "";
+      });
     const links = extractLinks(raw, base);
     const contextTokens = context
       .toLocaleLowerCase("es")

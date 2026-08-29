@@ -6,6 +6,9 @@ import type { NavStep } from "@/core/content/types";
 import { hasFfmpeg, runFfmpeg } from "./ffmpeg";
 import { dismissTransientDialogs, prepareAuthenticatedSession } from "./auth-session";
 import { resolveTapStep, resolveVisibleSelector } from "./navigation-repair";
+import { getDataDir } from "../runtime/e2e-profile";
+import { isMockE2E } from "../runtime/e2e-profile";
+import { installLoopbackRouteGuard } from "../runtime/egress-policy";
 
 /**
  * REQ-006 — Grabacion de la propia app con Playwright en modo movil.
@@ -18,7 +21,7 @@ import { resolveTapStep, resolveVisibleSelector } from "./navigation-repair";
  * maquina del usuario (`npx playwright install chromium`).
  */
 
-const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_DIR = getDataDir();
 const MOBILE_VIDEO_SIZE = { width: 390, height: 693 } as const; // 9:16 sin letterbox gris
 
 export interface RecordArgs {
@@ -108,6 +111,7 @@ export async function recordDemo(args: RecordArgs): Promise<string> {
       storageState: sessionReady ? sessionPath : undefined,
     };
     context = await browser.newContext(contextOptions);
+    if (isMockE2E()) await installLoopbackRouteGuard(context);
     const page = await context.newPage();
 
     log(`Abriendo ${url} en modo movil…`);

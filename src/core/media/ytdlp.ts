@@ -9,6 +9,9 @@ import {
   isClipDownloadArtifact,
   isClipDownloadCandidate,
 } from "./ytdlp-contracts";
+import { getDataDir } from "../runtime/e2e-profile";
+import { isMockE2E } from "../runtime/e2e-profile";
+import { recordMockProviderUse, simulateMockProvider } from "../testing/mock-runtime";
 
 export {
   clipDownloadFormatSelector,
@@ -19,12 +22,13 @@ export {
 // TikTok/Instagram/etc. y analizarlos con Gemini (Files API). Degradacion:
 // si no esta instalado, hasYtDlp() = false y el llamador sigue con datos REQ-004.
 
-const TMP_DIR = path.join(process.cwd(), "data", "tmp");
+const TMP_DIR = path.join(getDataDir(), "tmp");
 const execFileAsync = promisify(execFile);
 const CLIP_MAX_FILESIZE_MB = 2_048;
 
 /** ¿Esta yt-dlp disponible en PATH, override o WinGet? */
 export function hasYtDlp(): boolean {
+  if (isMockE2E()) return true;
   return Boolean(systemToolPath("yt-dlp"));
 }
 
@@ -34,6 +38,13 @@ export function hasYtDlp(): boolean {
  * El llamador es responsable de borrar el fichero (idealmente en finally).
  */
 export function downloadVideo(url: string, maxFilesizeMb = 200): string {
+  if (isMockE2E()) {
+    recordMockProviderUse("yt-dlp");
+    fs.mkdirSync(TMP_DIR, { recursive: true });
+    const file = path.join(TMP_DIR, "viral-e2e.mp4");
+    fs.writeFileSync(file, Buffer.from("000000186674797069736f6d0000020069736f6d69736f32", "hex"));
+    return file;
+  }
   if (!hasYtDlp()) throw new Error("yt-dlp no esta instalado.");
   if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true });
 
@@ -82,6 +93,13 @@ export async function downloadVideoTo(
   outputDir: string,
   maxFilesizeMb = CLIP_MAX_FILESIZE_MB,
 ): Promise<string> {
+  if (isMockE2E()) {
+    await simulateMockProvider("yt-dlp");
+    fs.mkdirSync(outputDir, { recursive: true });
+    const file = path.join(outputDir, "source.mp4");
+    fs.writeFileSync(file, Buffer.from("000000186674797069736f6d0000020069736f6d69736f32", "hex"));
+    return file;
+  }
   const binary = systemToolPath("yt-dlp");
   if (!binary) throw new Error("yt-dlp no está instalado.");
   fs.mkdirSync(outputDir, { recursive: true });

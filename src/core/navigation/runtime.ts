@@ -8,8 +8,11 @@ import {
   type NavigationMap,
   type NavigationNode,
 } from "./types";
+import { getDataDir } from "../runtime/e2e-profile";
+import { isMockE2E } from "../runtime/e2e-profile";
+import { installLoopbackRouteGuard } from "../runtime/egress-policy";
 
-const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_DIR = getDataDir();
 const DYNAMIC_ROUTE = /:\w+|\{[^}]+\}|\[[^\]]+\]|\*/;
 const AUTH_ROUTE = /\/(?:auth|login|signin|sign-in|iniciar)(?:\/|$)/i;
 
@@ -74,6 +77,7 @@ export async function verifyNavigationMap(args: {
     ...playwright.devices["iPhone 13"],
     storageState,
   });
+  if (isMockE2E()) await installLoopbackRouteGuard(context);
   try {
     const page = await context.newPage();
     const visitNodes = async (nodes: NavigationNode[]): Promise<void> => {

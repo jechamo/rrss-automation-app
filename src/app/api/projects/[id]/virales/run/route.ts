@@ -8,6 +8,7 @@ import {
   type ViralEnrichmentLevel,
 } from "@/core/virales/types";
 import { hasSecret } from "@/core/secrets/vault";
+import { isMockE2E } from "@/core/runtime/e2e-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       { status: 409 },
     );
   }
-  if (fuente !== "web" && !hasSecret("scrapecreators")) {
+  if (fuente !== "web" && !isMockE2E() && !hasSecret("scrapecreators")) {
     return NextResponse.json(
       { error: "Configura primero la API key de Scrape Creators en Ajustes." },
       { status: 409 },

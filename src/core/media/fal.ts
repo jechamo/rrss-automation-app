@@ -1,6 +1,9 @@
 import { getSecret } from "@/core/secrets/vault";
 import { fetchJson, sleep } from "./http";
-import { downloadTo } from "./storage";
+import { downloadTo, saveBytes } from "./storage";
+import { isMockE2E } from "@/core/runtime/e2e-profile";
+import { mockProviderAsset } from "@/core/testing/mock-providers";
+import { simulateMockProvider } from "@/core/testing/mock-runtime";
 import type { MediaOption } from "./types";
 import {
   buildFalRequestBody,
@@ -103,6 +106,13 @@ export async function generateClip(args: {
   seconds?: number;
   log?: (m: string) => void;
 }): Promise<string> {
+  if (isMockE2E()) {
+    args.log?.("fal.ai simulado: pending.");
+    await simulateMockProvider("fal");
+    args.log?.("fal.ai simulado: completed.");
+    const asset = mockProviderAsset("fal-video", args.pieceId, args.index);
+    return saveBytes(args.pieceId, asset.name, asset.bytes);
+  }
   const model = args.model || autoModel();
   const auth = { Authorization: `Key ${key()}` };
 

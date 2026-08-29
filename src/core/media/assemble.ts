@@ -5,8 +5,9 @@ import { assetAbsPath, pieceDir } from "./storage";
 import { ffprobeDuration, hasFfmpeg, runFfmpeg } from "./ffmpeg";
 import { writeAssSubtitles } from "./subtitles";
 import { planDemoTimeline } from "./contracts";
+import { getDataDir } from "../runtime/e2e-profile";
 
-const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_DIR = getDataDir();
 const VIDEO_FILTER =
   "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30,setsar=1,format=yuv420p";
 const HOOK_SECONDS = 3;

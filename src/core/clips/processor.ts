@@ -24,6 +24,8 @@ import {
   readClipJob,
   updateClipJob,
 } from "./storage";
+import { isMockE2E } from "@/core/runtime/e2e-profile";
+import { simulateMockProvider } from "@/core/testing/mock-runtime";
 
 const running = new Set<string>();
 
@@ -74,6 +76,9 @@ export function startClipResume(id: string): boolean {
 }
 
 export function clipToolsStatus(sourceType: "upload" | "youtube") {
+  if (isMockE2E()) {
+    return { gemini: true, ffmpeg: true, ffprobe: true, ytdlp: true, whisper: true };
+  }
   return {
     gemini: hasSecret("gemini"),
     ffmpeg: hasFfmpeg(),
@@ -85,6 +90,10 @@ export function clipToolsStatus(sourceType: "upload" | "youtube") {
 
 async function processClipJob(id: string): Promise<void> {
   try {
+    if (isMockE2E()) {
+      await processMockClipJob(id);
+      return;
+    }
     const initial = readClipJob(id);
     const tools = clipToolsStatus(initial.sourceType);
     const needsGemini = (initial.selectionMode ?? "ai") === "ai"
@@ -279,6 +288,20 @@ async function processClipJob(id: string): Promise<void> {
 
 async function processPendingClipMoments(id: string): Promise<void> {
   try {
+    if (isMockE2E()) {
+      const job = readClipJob(id);
+      if (!job.selection || !job.sourceFile) {
+        throw new Error("Este historial no conserva una selección y una fuente que se puedan reanudar.");
+      }
+      updateClipJob(id, {
+        status: "ready",
+        stage: "results",
+        progress: 100,
+        activeOperation: undefined,
+      });
+      appendClipLog(id, "No había clips pendientes: los resultados fixture se conservaron sin regenerar.");
+      return;
+    }
     const job = readClipJob(id);
     if (!job.selection || !job.sourceFile) {
       throw new Error("Este historial no conserva una selección y una fuente que se puedan reanudar.");
@@ -408,6 +431,81 @@ async function processPendingClipMoments(id: string): Promise<void> {
       // El historial pudo eliminarse mientras se reanudaba.
     }
   }
+}
+
+async function processMockClipJob(id: string): Promise<void> {
+  let initial = readClipJob(id);
+  if (initial.sourceType === "youtube" && !initial.sourceFile) {
+    const downloaded = await downloadVideoTo(initial.sourceUrl!, clipJobDir(id));
+    initial = updateClipJob(id, { sourceFile: path.basename(downloaded) });
+  }
+  if (!initial.sourceFile) throw new Error("El trabajo no contiene un vídeo fixture.");
+  updateClipJob(id, {
+    status: "processing",
+    stage: "understanding",
+    progress: 28,
+    activeOperation: { kind: "full", label: "Análisis simulado local" },
+  });
+  appendClipLog(id, "Gemini simulado: pending.");
+  await simulateMockProvider("gemini");
+  await simulateMockProvider("clips");
+
+  const outputName = "clip-fixture.mp4";
+  const thumbnailName = "clip-fixture.png";
+  const subtitleName = "subs-fixture.ass";
+  fs.writeFileSync(
+    clipAssetPath(id, outputName),
+    Buffer.from("000000186674797069736f6d0000020069736f6d69736f32525253532d453245", "hex"),
+  );
+  fs.writeFileSync(
+    clipAssetPath(id, thumbnailName),
+    Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64"),
+  );
+  fs.writeFileSync(
+    clipAssetPath(id, subtitleName),
+    "[Script Info]\nScriptType: v4.00+\n[Events]\nDialogue: 0,0:00:01.00,0:00:04.00,Default,,0,0,0,,Resultado fixture sincronizado\n",
+    "utf8",
+  );
+  const selection: ClipSelection = {
+    source: initial.selectionMode ?? "ai",
+    summary: "Selección multimodal simulada y determinista.",
+    language: "es",
+    transcript: [{ start: 1, end: 4, text: "Resultado fixture sincronizado", momentId: "fixture-viral" }],
+    moments: [{
+      id: "fixture-viral",
+      title: "Momento viral fixture",
+      start: 1,
+      end: 7,
+      duration: 6,
+      viralScore: 91,
+      controversyScore: 68,
+      confidence: 95,
+      hook: "Resultado antes del proceso",
+      evidence: "Fixture local",
+      whyViral: "Promesa concreta",
+      whyControversial: "Contrasta el proceso manual",
+      context: "Prueba E2E sin proveedor real",
+      risk: "low",
+      riskReason: "Contenido sintético",
+      subtitleSource: "synced_json",
+      sourceCues: [{ start: 1, end: 4, text: "Resultado fixture sincronizado", momentId: "fixture-viral" }],
+      outputName,
+      thumbnailName,
+    }],
+    topViral: ["fixture-viral"],
+    topControversial: ["fixture-viral"],
+    rejectedCount: 1,
+  };
+  updateClipJob(id, {
+    status: "ready",
+    stage: "results",
+    progress: 100,
+    duration: 30,
+    selection,
+    error: undefined,
+    activeOperation: undefined,
+  });
+  appendClipLog(id, `1 clip vertical fixture listo con subtítulos (${subtitleName}).`);
 }
 
 async function processSingleClipMoment(

@@ -24,6 +24,8 @@ import type {
   ViralCandidato,
   ViralDiscovery,
 } from "./types";
+import { isMockE2E } from "@/core/runtime/e2e-profile";
+import { simulateMockProvider } from "@/core/testing/mock-runtime";
 
 const API_BASE = "https://api.scrapecreators.com";
 const REQUEST_TIMEOUT_MS = 45_000;
@@ -70,6 +72,34 @@ export async function discoverWithScrapeCreators(args: {
   cantidad: number;
   excluir?: string[];
 }): Promise<ScrapeCreatorsDiscovery> {
+  if (isMockE2E()) {
+    await simulateMockProvider("scrapecreators");
+    const localUrl = process.env.RRSS_E2E_FIXTURE_URL ?? "http://localhost/fixture";
+    return {
+      candidatos: [{
+        url: `${localUrl}/scrape-viral`,
+        plataforma: "youtube",
+        titulo: "Viral Scrape Creators Fixture",
+        autor: "Autor Fixture",
+        vistas: "25000",
+        fecha: "2026-08-01",
+        ratioAutor: 2.5,
+        viralScore: 82,
+        formato: "tutorial corto",
+        motivo: "Respuesta estructurada local",
+        sourceProvider: "scrapecreators",
+      }],
+      discovery: {
+        source: "scrapecreators",
+        queries: { youtube: "fixture", tiktok: "fixture", instagram: "fixture" },
+        platformCounts: { youtube: 1 },
+        creditsCharged: 0,
+        creditsRemaining: 999,
+        warnings: [],
+        searchedAt: "2026-08-27T00:00:00.000Z",
+      },
+    };
+  }
   const key = getSecret("scrapecreators");
   if (!key) {
     throw new Error("Scrape Creators no esta configurado. Guarda su API key en Ajustes.");
@@ -171,6 +201,23 @@ export async function enrichWithAuthorBaselines(args: {
   candidatos: ViralCandidato[];
   maxRequests: number;
 }): Promise<ScrapeCreatorsEnrichment> {
+  if (isMockE2E()) {
+    await simulateMockProvider("scrapecreators");
+    return {
+      candidatos: args.candidatos,
+      report: {
+        creditsCharged: 0,
+        requests: Math.min(args.maxRequests, args.candidatos.length),
+        cacheHits: 0,
+        authorsVerified: args.candidatos.length,
+        authorsEstimated: 0,
+        authorsUnverified: 0,
+        authorsSkippedBudget: 0,
+        creditsRemaining: 999,
+        warnings: [],
+      },
+    };
+  }
   const key = getSecret("scrapecreators");
   if (!key) {
     throw new Error("Scrape Creators no esta configurado. Guarda su API key en Ajustes.");

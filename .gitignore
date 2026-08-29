@@ -46,6 +46,8 @@ pnpm-debug.log*
 /playwright-report/
 /test-results/
 /.playwright/
+/.e2e-runtime/
+/.next-e2e/
 
 # Sistema operativo / editor
 .DS_Store

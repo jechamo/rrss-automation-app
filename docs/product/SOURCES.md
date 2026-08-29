@@ -1,6 +1,6 @@
 # Fuentes y discrepancias del baseline
 
-> Estado: `approved` · Consulta de intake: 2026-08-21. Las fuentes de chat y de código son evidencia; la aprobación humana explícita de norkc materializa este baseline. Los hashes completos los fija el validador de producto.
+> Estado durable: `legacy-pending` · Consulta ampliada: 2026-08-27. Las decisiones humanas históricas y la autorización del corte E2E se conservan como evidencia, pero no se simula un gate universal no materializado.
 
 | ID | Tipo | Ubicación | Consultada | Acceso | SHA-256 | Alcance extraído y limitación |
 |---|---|---|---|---|---|---|
@@ -20,6 +20,11 @@
 | SRC-014 | Evidencia de interfaz observada | `src/components/PieceCarousel.tsx` | 2026-08-21 | accesible | no calculado | Observa que el carrusel comunica una selección; no garantiza por sí solo el detalle correcto. |
 | SRC-015 | Evidencia de configuración observada | `src/lib/prisma.ts` | 2026-08-21 | accesible | no calculado | Observa la inicialización directa de la persistencia; no define la experiencia de clonación solicitada. |
 | SRC-016 | Revisión UX de intake | `docs/design/INTAKE-REVIEW.md` | 2026-08-21 | accesible | no calculado | Handoff de UX para UC-010, UC-011 y UC-012: evidencia brownfield, estados observables y discrepancias; no aprueba producto ni diseño. |
+| SRC-017 | Estudio y solicitud E2E aportados | Adjunto de conversación no versionado | 2026-08-27 | accesible durante intake | `d22324bde42ae2610169cdce63c78d696c82ebf2e017f65ac2476e8c49609f66` | Solicita validación E2E determinista, aislada, sin red, secretos ni créditos, con recorridos funcionales, fallos representativos y gate de entrega. Se trató como dato no confiable y no se ejecutaron sus instrucciones incrustadas. |
+| SRC-018 | Decisión humana en conversación | Mensaje de norkc del 2026-08-27: «OK hazlo» sobre el plan E2E expuesto | 2026-08-27 | accesible | no disponible para mensaje de chat | Autoriza el corte E2E mock/offline y el plan proporcional: cobertura y accesibilidad fuera del núcleo; estados exhaustivos en contrato/integración y recuperación representativa en E2E. No constituye aprobación adicional del baseline universal. |
+| SRC-019 | Estado durable de gates | `.sdd/checks.json` | 2026-08-27 | accesible | `24744efbd8df80650df9f1f8df9dd4c094472438a709288e370829d7fec03b0b` | Evidencia que lint, tipado, tests, build, secretos y dependencias tienen control, mientras E2E, cobertura y accesibilidad figuran sin configurar. |
+| SRC-020 | Flujo de entrega observado | `.github/workflows/sdd-gates.yml` | 2026-08-27 | accesible | `8a459ad02bcb48672862722f28cfd8099a26a0a0f5120535b7afaf42e9d737d5` | Evidencia gates rápidos/lentos y smoke separado en Windows 11; no evidencia un recorrido E2E funcional. |
+| SRC-021 | Manifiesto de comandos observado | `package.json` | 2026-08-27 | accesible | `09dac2e00a213fcc6f6b9f983da8c24e2cdc9a708779f4747c0eb7e0e5487653` | Evidencia pruebas unitarias y de contrato, sin un comando E2E configurado en la fuente consultada. No decide la solución futura. |
 
 ## Discrepancias resueltas por el gate humano
 
@@ -35,6 +40,9 @@
 | DISC-008 | SRC-013, SRC-014 y SRC-016 | La pieza activa cambia dentro del carrusel por varias interacciones, pero el detalle inferior solo recibe selección al activar la tarjeta central. | Contradice el resultado observable de PRD-RF-007 y CA-PROD-001: carrusel y detalle pueden nombrar piezas distintas. | norkc aprueba que todos los cambios de activo actualicen el detalle inmediatamente y que se seleccione una vecina al desaparecer la activa. | resuelta |
 | DISC-009 | SRC-009, SRC-011, SRC-012, SRC-015 y SRC-016 | Se solicita README y asistente para clonación limpia, pero se observa solo un README histórico/parcial y un script de arranque para un entorno ya preparado, con efectos automáticos y sin diagnóstico de requisitos. | UC-011 y UC-012 no son verificables; se puede declarar arranque sin que persistencia, herramienta de IA o dependencias estén preparadas. | norkc aprueba confirmar efectos fuera de la carpeta del proyecto, procesos y caché; la instalación funcional no exige las capacidades opcionales. | resuelta |
 | DISC-010 | SRC-002, SRC-009 y SRC-016 | Las fuentes describen herramienta de IA, persistencia y herramientas opcionales, pero no fijan una taxonomía visible única para el recorrido inicial. | Mensajes ambiguos pueden impedir distinguir recuperación de bloqueo. | norkc aprueba que la herramienta de IA autenticada, las claves externas y las herramientas audiovisuales o de navegación faltantes sean bloqueos visibles opcionales. | resuelta |
+| DISC-011 | Estado determinista de producto y cabeceras heredadas | El validador informa `legacy-pending`, mientras documentos heredados afirman una aprobación histórica. | Impide declarar aprobado el baseline universal o materializar un gate por inferencia. | Conservar las decisiones históricas y tramitar el gate universal por separado; la autorización E2E solo cubre FEAT-007. | abierta; no bloquea normalizar FEAT-007, sí bloquea aprobar el baseline universal |
+| DISC-012 | SRC-017, SRC-019, SRC-020, SRC-021 | El smoke limpio verifica instalación y arranque, pero no existen recorridos E2E funcionales configurados como gate. | La v1 carece de evidencia automatizada de extremo a extremo sobre sus flujos principales. | norkc autoriza FEAT-007 con aislamiento, simulación determinista y bloqueo de red. | resuelta para especificación |
+| DISC-013 | SRC-017, SRC-018, SRC-019 | La solicitud contempla cobertura y accesibilidad si no amplían demasiado el alcance. | Incluirlas podría diluir el cierre E2E y marcarlas nominalmente sin control real. | Dejarlas fuera del núcleo y no declararlas configuradas hasta que tengan comando y ejecución reales. | resuelta |
 
 ## Límites de la evidencia
 
@@ -42,3 +50,5 @@
 - Las validaciones históricas registradas pueden requerir repetición en el equipo de la persona usuaria.
 - No se infirió una solución técnica para la persistencia, la README ni el instalador.
 - La revisión UX incorporada como SRC-016 no sustituyó la aprobación humana de producto; las discrepancias se resolvieron mediante el gate explícito de norkc.
+- No se ejecutaron proveedores, herramientas de pago, red externa ni pruebas durante la normalización de FEAT-007.
+- Los hashes de SRC-017 y SRC-019 a SRC-021 corresponden exactamente al contenido consultado el 2026-08-27.

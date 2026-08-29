@@ -1,8 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { AiEngineId } from "@/core/ai";
+import { getDataDir } from "./runtime/e2e-profile";
 
-const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_DIR = getDataDir();
 const FILE = path.join(DATA_DIR, "settings.json");
 
 /**

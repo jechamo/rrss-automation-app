@@ -1,11 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fetchWithTimeout } from "./http";
+import { getDataDir } from "../runtime/e2e-profile";
 
 // Almacenamiento local de los binarios generados (video/audio) en data/media/<pieceId>/.
 // Se guardan rutas RELATIVAS a data/ en el blob assets; el endpoint de asset las sirve.
 
-const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_DIR = getDataDir();
 const MEDIA_DIR = path.join(DATA_DIR, "media");
 
 export function pieceDir(pieceId: string): string {
