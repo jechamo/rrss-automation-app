@@ -67,7 +67,7 @@ los *must* (`RF-01`, `RF-02`, `RF-04`, `RF-05`) quedan cubiertos antes de que `T
 
 ---
 
-## T-001-01 · Fijar la regla pura de reconciliación de la pieza activa
+### T-001-01 · Fijar la regla pura de reconciliación de la pieza activa
 
 - Estado: hecho · 2026-08-21 · evidencia en [`evidence.md`](./evidence.md#t-001-01--regla-pura-de-reconciliación-de-la-pieza-activa)
 - Terreno: middle
@@ -142,7 +142,7 @@ casos pasan en GREEN. `selection.ts` no importa React, Prisma, `fs` ni nada de `
 
 ---
 
-## T-001-02 · Tipos, validación de rutas y saneamiento del diagnóstico de instalación
+### T-001-02 · Tipos, validación de rutas y saneamiento del diagnóstico de instalación
 
 - Estado: hecho · 2026-08-21 · evidencia en [`evidence.md`](./evidence.md#t-001-02--tipos-rutas-y-diagnóstico-seguro-de-instalación)
 - Terreno: middle
@@ -157,6 +157,7 @@ casos pasan en GREEN. `selection.ts` no importa React, Prisma, `fs` ni nada de `
 - Documentación: no aplica. Los tipos públicos ya están fijados en
   [`contracts/internal-cli.md`](contracts/internal-cli.md); `T-001-07` documenta el recorrido humano.
 - Test que la define: `src/core/installation/installation.test.mjs::debe_sanear_diagnostico_local`
+- Trazabilidad estricta: `SEC-INPUT-001` · T-001-02 · `installation.test.mjs::debe_rechazar_ruta_fuera_del_proyecto`; `SEC-DIAG-004` · T-001-02 · `installation.test.mjs::debe_sanear_diagnostico_local`.
 - Depende de: ninguna
 - Ficheros previstos: `src/core/installation/types.mjs`, `src/core/installation/paths.mjs`,
   `src/core/installation/diagnostics.mjs`, `src/core/installation/installation.test.mjs`,
@@ -191,7 +192,7 @@ sensibles inyectadas.
 
 ---
 
-## T-001-03 · Casos de uso de precheck, clasificación, consentimiento y recibo
+### T-001-03 · Casos de uso de precheck, clasificación, consentimiento y recibo
 
 - Estado: hecho · 2026-08-21 · evidencia en [`evidence.md`](./evidence.md#t-001-03--precheck-capacidades-consentimiento-y-recibo)
 - Terreno: middle
@@ -207,6 +208,7 @@ sensibles inyectadas.
   `T-001-07` refleja en el README.
 - Test que la define:
   `src/core/installation/installation.test.mjs::debe_bloquear_datos_existentes_sin_reset_confirmado`
+- Trazabilidad estricta: `SEC-DATA-002` · T-001-03 · `installation.test.mjs::debe_bloquear_datos_existentes_sin_reset_confirmado`; `UX-COPY-001` · T-001-03 · `installation.test.mjs::debe_devolver_recuperacion_segura`.
 - Depende de: `T-001-02`
 - Ficheros previstos: `src/core/installation/precheck.mjs`, `src/core/installation/capabilities.mjs`,
   `src/core/installation/consent.mjs`, `src/core/installation/receipt.mjs`,
@@ -233,7 +235,7 @@ el estado del filesystem antes y después es idéntico. `ready` solo se alcanza 
 
 ---
 
-## T-001-04 · Adaptadores locales de filesystem, proceso, puerto y persistencia
+### T-001-04 · Adaptadores locales de filesystem, proceso, puerto y persistencia
 
 - Estado: hecho · 2026-08-21 · corrección TDD final verificada · evidencia en [`evidence.md`](./evidence.md#t-001-0405--corrección-tdd-final)
 - Terreno: infra
@@ -248,6 +250,7 @@ el estado del filesystem antes y después es idéntico. `ready` solo se alcanza 
   se presenta en `T-001-05`.
 - Documentación: no aplica. `T-001-07` documenta el resultado, no el adaptador.
 - Test que la define: `scripts/install-local.test.mjs::debe_requerir_confirmacion_por_pid`
+- Trazabilidad estricta: `SEC-PROC-003` · T-001-04 · `install-local.test.mjs::debe_requerir_confirmacion_por_pid`; `SEC-DEPS-005` · T-001-04 · `install-local.test.mjs::debe_clasificar_instalacion_global_como_efecto_externo`.
 - Depende de: `T-001-03`
 - Ficheros previstos: `src/core/installation/adapters/filesystem.mjs`,
   `src/core/installation/adapters/process.mjs`, `src/core/installation/adapters/port.mjs`,
@@ -280,7 +283,7 @@ directorios temporales. Añadir `scripts/install-local.test.mjs` a `node --test`
 
 ---
 
-## T-001-05 · Asistente de consola lineal con consentimientos y recibo
+### T-001-05 · Asistente de consola lineal con consentimientos y recibo
 
 - Estado: hecho · 2026-08-21 · corrección TDD final verificada · evidencia en [`evidence.md`](./evidence.md#t-001-0405--corrección-tdd-final)
 - Terreno: infra
@@ -294,6 +297,7 @@ directorios temporales. Añadir `scripts/install-local.test.mjs` a `node --test`
 - Documentación: alimenta `DOC-README-INSTALACION`; `T-001-07` depende de que esta superficie esté
   estabilizada.
 - Test que la define: `scripts/install-local.test.mjs::debe_exigir_confirmacion_separada_para_reset`
+- Trazabilidad estricta: `UX-FORM-001` · T-001-05 · `install-local.test.mjs::debe_exigir_confirmacion_separada_para_reset`.
 - Depende de: `T-001-04`
 - Ficheros previstos: `scripts/install-local.mjs`, `scripts/install-local.test.mjs`, `package.json`
 - Estimación: M

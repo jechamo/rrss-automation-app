@@ -33,6 +33,14 @@ Leyenda: ⚪ pendiente · 🟡 en curso/parcial · 🟢 aprobado por el usuario
 
 ## Historial
 
+### 2026-08-29 — Cierre documental de la spec 001
+
+- Reparada la trazabilidad exacta tarea-control-test-evidencia de seguridad, usabilidad y
+  documentación; `T-001-06` y `T-001-07` quedan registradas como ejecuciones directas históricas.
+- Sincronizada la aprobación visual ya contenida en el diseño aprobado de la spec 001.
+- Cambio exclusivamente documental: no modifica código, comportamiento, configuración, base de
+  datos, Vault, claves, sesiones ni archivos locales del operador.
+
 ### 2026-08-28 — E2E funcional simulado, aislado y sin créditos (Spec 002)
 
 - Perfil `RRSS_E2E_MODE=mock` fail-closed: SQLite, Vault, sesiones, cachés, medios y build viven

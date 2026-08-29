@@ -251,7 +251,7 @@ ejecutada con riesgo y siguiente paso, no como verde.
 | UX-A11Y-006 | WCAG 2.2 · 4.1.3 | H1 | sí | Anuncio educado para selección y asertivo solo para bloqueo. | T-001-06 | `ContentTray.test.tsx::debe_anunciar_detalle_actualizado` | `evidence.md#UX-A11Y-006` |
 | UX-A11Y-007 | WCAG 2.2 · 2.3.3 | H8 | sí | Alternativa estable con movimiento reducido. | T-001-06 | `PieceCarousel.test.tsx::debe_conservar_seleccion_sin_movimiento` | `evidence.md#UX-A11Y-007` |
 | UX-FORM-001 | 3.3.2, 3.3.4 | H5 | sí | Consentimiento visible, separado y no afirmativo por defecto. | T-001-05 | `install-local.test.mjs::debe_exigir_confirmacion_separada_para_reset` | `evidence.md#UX-FORM-001` |
-| UX-COPY-001 | 3.3.1, 3.3.3 | H9 | sí | Diagnóstico: categoría, recuperación y alternativa sin datos locales. | T-001-03 | `installation.test.ts::debe_devolver_recuperacion_segura` | `evidence.md#UX-COPY-001` |
+| UX-COPY-001 | 3.3.1, 3.3.3 | H9 | sí | Diagnóstico: categoría, recuperación y alternativa sin datos locales. | T-001-03 | `installation.test.mjs::debe_devolver_recuperacion_segura` | `evidence.md#UX-COPY-001` |
 | UX-PERF-001 | n/a | H1 | sí | Selección local p95 <100 ms; carga larga comunica progreso y salida segura. | T-001-06 | `ContentTray.test.tsx::debe_actualizar_detalle_en_una_activacion` | `evidence.md#UX-PERF-001` |
 
 No hay actualización optimista para eliminación, reset, procesos o caché. La selección local es

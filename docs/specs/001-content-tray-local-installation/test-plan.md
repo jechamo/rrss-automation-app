@@ -50,13 +50,13 @@
 
 ## Seguridad
 
-| Control | Abuso | Resultado seguro |
-|---|---|---|
-| SEC-INPUT-001 | Ruta absoluta, traversal o `.env`. | Rechazo sin leer ni mostrar contenido. |
-| SEC-DATA-002 | DB/sidecar e intento de reset. | Bloqueo o confirmación separada; resguardo. |
-| SEC-PROC-003 | Imagen global o PID no confirmado. | Rechazo; no termina procesos. |
-| SEC-DIAG-004 | Error con URL, variable o ruta personal simulada. | Salida categórica saneada. |
-| SEC-DEPS-005 | Instalación global o PATH. | Efecto no autorizado en esta spec. |
+| Control | Abuso | Resultado seguro | Test |
+|---|---|---|---|
+| SEC-INPUT-001 | Ruta absoluta, traversal o `.env`. | Rechazo sin leer ni mostrar contenido. | `installation.test.mjs::debe_rechazar_ruta_fuera_del_proyecto` |
+| SEC-DATA-002 | DB/sidecar e intento de reset. | Bloqueo o confirmación separada; resguardo. | `installation.test.mjs::debe_bloquear_datos_existentes_sin_reset_confirmado` |
+| SEC-PROC-003 | Imagen global o PID no confirmado. | Rechazo; no termina procesos. | `install-local.test.mjs::debe_requerir_confirmacion_por_pid` |
+| SEC-DIAG-004 | Error con URL, variable o ruta personal simulada. | Salida categórica saneada. | `installation.test.mjs::debe_sanear_diagnostico_local` |
+| SEC-DEPS-005 | Instalación global o PATH. | Efecto no autorizado en esta spec. | `install-local.test.mjs::debe_clasificar_instalacion_global_como_efecto_externo` |
 
 ## Usabilidad y documentación
 
@@ -70,8 +70,8 @@
 | UX-A11Y-005 | `PieceCarousel.test.tsx::debe_nombrar_indicador_y_pieza_activa` |
 | UX-A11Y-006 | `ContentTray.test.tsx::debe_anunciar_detalle_actualizado` |
 | UX-A11Y-007 | `PieceCarousel.test.tsx::debe_conservar_seleccion_sin_movimiento` |
-| UX-FORM-001 | Confirmación separada, no afirmativa por defecto y rechazo sin efecto. |
-| UX-COPY-001 | Categoría, recuperación y alternativa sin datos locales. |
+| UX-FORM-001 | Confirmación separada, no afirmativa por defecto y rechazo sin efecto. · `install-local.test.mjs::debe_exigir_confirmacion_separada_para_reset` |
+| UX-COPY-001 | Categoría, recuperación y alternativa sin datos locales. · `installation.test.mjs::debe_devolver_recuperacion_segura` |
 | UX-PERF-001 | `ContentTray.test.tsx::debe_actualizar_detalle_en_una_activacion` |
 | Revisión manual | Lector de pantalla, contraste y clonación Windows 11 por `code-reviewer` en `/sdd-verify`. |
 

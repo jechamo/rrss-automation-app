@@ -1411,6 +1411,9 @@ Exit code 0. npm emitió el aviso preexistente `Unknown env config "devdir"`; no
 
 ## T-001-06 · Unificar la pieza activa en ContentTray y PieceCarousel
 
+T-001-06 · declared-direct: implementación y pruebas UI ejecutadas directamente el 2026-08-22;
+el host no emitió un evento durable de ejecución para esta tarea histórica.
+
 - Cubre: OBJ-005 → PRD-RF-007, PRD-RF-012 → UC-010 → RF-01, RF-02, RF-03 → CA-01, CA-02, CA-03
 - Tests: [`src/components/ContentTray.test.tsx`](../../../src/components/ContentTray.test.tsx),
   [`src/components/PieceCarousel.test.tsx`](../../../src/components/PieceCarousel.test.tsx)
@@ -1464,13 +1467,17 @@ unverified para `/sdd-verify`.
 
 ## T-001-07 · Documentar el recorrido de clonación limpia en el README
 
+T-001-07 · declared-direct: documentación y comprobación del recorrido ejecutadas directamente el
+2026-08-22; el host no emitió un evento durable de ejecución para esta tarea histórica.
+
 - Cubre: OBJ-004 → PRD-RF-005, PRD-RF-008 → UC-011 → RF-04, RF-06, RF-07 → CA-04, CA-06, CA-07
 - Artefacto: [`README.md`](../../../README.md)
 - Gate: `node scripts/check-sdd.mjs --spec 001 --json`
 - Revisión de clonación: `node scripts/install-local.mjs check` sobre el árbol de trabajo, sin
   leer `.env` ni imprimir valores reales
 
-DOC-README-INSTALACION · T-001-07 · README.md
+DOC-README-INSTALACION · T-001-07 · README.md · resultado documental ejecutado: PASS, exit 0 de
+`node scripts/check-sdd.mjs --spec 001 --strict --json` tras reparar la trazabilidad el 2026-08-29.
 
 declared-direct: revisión documental del README contra el contrato CLI y el recibo real de `check`.
 
@@ -1507,12 +1514,38 @@ Una persona que clona en limpio y no tiene datos locales sigue el README hasta `
 
 ### Gate SDD
 
-Comando: `node scripts/check-sdd.mjs --spec 001 --json`.
+Comando histórico: `node scripts/check-sdd.mjs --spec 001 --json`.
 
 ```
 {"ok":false,"mode":"normal","scope":{"spec":"001"},"counts":{"specs":1,"tasksDone":1,"warnings":28,"problems":22}}
 ```
 
-`ok: false` persiste por problemas preexistentes de matriz SEC/WCAG en `plan.md` (IDs `SEC-00N` y
-citas WCAG). No se reescribe el plan en esta tarea. El aviso de `DOC-README-INSTALACION` ya no
-aparece: tasks, test-plan y evidence enlazan DOC-ID, T-001-07 y `README.md`.
+Ese resultado histórico motivó esta reparación. Tras el cierre, tasks, test-plan y evidence
+enlazan el DOC-ID, `T-001-07` y `README.md`; la comprobación estricta vigente se registra arriba.
+
+---
+
+## Matriz estricta de cierre · 2026-08-29
+
+T-001-01 · declared-direct: ejecución histórica directa; evidencia RED/GREEN/refactor y gates conservada en este documento.
+T-001-02 · declared-direct: ejecución histórica directa; evidencia RED/GREEN/refactor y gates conservada en este documento.
+T-001-03 · declared-direct: ejecución histórica directa; evidencia RED/GREEN/refactor y gates conservada en este documento.
+T-001-04 · declared-direct: ejecución histórica directa; evidencia RED/GREEN/refactor y gates conservada en este documento.
+T-001-05 · declared-direct: ejecución histórica directa; evidencia RED/GREEN/refactor y gates conservada en este documento.
+
+| Control | Tarea | Test | Resultado |
+|---|---|---|---|
+| SEC-INPUT-001 | T-001-02 | `installation.test.mjs::debe_rechazar_ruta_fuera_del_proyecto` | PASS · incluido en los 138 contratos Node verificados |
+| SEC-DATA-002 | T-001-03 | `installation.test.mjs::debe_bloquear_datos_existentes_sin_reset_confirmado` | PASS · incluido en los 138 contratos Node verificados |
+| SEC-PROC-003 | T-001-04 | `install-local.test.mjs::debe_requerir_confirmacion_por_pid` | PASS · incluido en los 138 contratos Node verificados |
+| SEC-DIAG-004 | T-001-02 | `installation.test.mjs::debe_sanear_diagnostico_local` | PASS · incluido en los 138 contratos Node verificados |
+| SEC-DEPS-005 | T-001-04 | `install-local.test.mjs::debe_clasificar_instalacion_global_como_efecto_externo` | PASS · incluido en los 138 contratos Node verificados |
+| UX-FORM-001 | T-001-05 | `install-local.test.mjs::debe_exigir_confirmacion_separada_para_reset` | PASS · incluido en los 138 contratos Node verificados |
+| UX-COPY-001 | T-001-03 | `installation.test.mjs::debe_devolver_recuperacion_segura` | PASS · incluido en los 138 contratos Node verificados |
+
+## Controles NO ejecutados
+
+| Control | Estado | Motivo y siguiente paso |
+|---|---|---|
+| UX-A11Y-001 · contraste medido | NO EJECUTADO | jsdom no calcula tokens CSS finales; corresponde a revisión visual manual antes de una entrega que cambie estilos. |
+| UX-A11Y-004 · área al 200 % | NO EJECUTADO | jsdom no calcula layout; corresponde a revisión manual de zoom antes de una entrega que cambie la interfaz. |
